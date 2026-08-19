@@ -44,6 +44,7 @@
   // Single refresh path: Go emits "tasks:changed" after every local mutation;
   // M4's external watcher emits the same event for CLI-side writes.
   let unbindChanged: (() => void) | undefined
+  let unbindTrayNewTask: (() => void) | undefined
 
   function onKeydown(e: KeyboardEvent) {
     const el = e.target as HTMLElement | null
@@ -51,6 +52,12 @@
     if (e.key === 'Escape') {
       if (dialogOpen) dialogOpen = false
       else selectedId = null
+      return
+    }
+    // Ctrl+Q → real quit. Window close hides to tray; this is the in-window exit.
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
+      e.preventDefault()
+      api.quit()
       return
     }
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return
@@ -92,12 +99,15 @@
     const { EventsOn } = await import('../wailsjs/runtime/runtime.js')
     dbPath = await api.dbPath()
     unbindChanged = EventsOn('tasks:changed', () => load())
+    // Tray "New Task": show the window (Go side) and open the create dialog here.
+    unbindTrayNewTask = EventsOn('tray:new-task', () => { dialogOpen = true })
     window.addEventListener('keydown', onKeydown)
     await load()
   })
 
   onDestroy(() => {
     unbindChanged?.()
+    unbindTrayNewTask?.()
     window.removeEventListener('keydown', onKeydown)
   })
 </script>
@@ -136,7 +146,7 @@
   <footer class="flex items-center gap-4 border-t border-zinc-800 px-5 py-2 text-xs text-zinc-500">
     <span class="truncate font-mono">{dbPath}</span>
     <div class="flex-1"></div>
-    <span><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>esc</kbd> close · <kbd>1–4</kbd> filter</span>
+    <span><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>esc</kbd> close · <kbd>1–4</kbd> filter · <kbd>ctrl+q</kbd> quit</span>
   </footer>
 
   {#if selectedTask}

@@ -37,7 +37,9 @@ const toGoFilter = (f: ListFilterInput) => ({
 
 export const api = {
   list(f: ListFilterInput): Promise<Task[]> {
-    return App.ListTasks(toGoFilter(f)) as Promise<Task[]>
+    // Defensive: a nil Go slice arrives as null over the Wails bridge; the
+    // app normalizes it, but never trust an external boundary.
+    return App.ListTasks(toGoFilter(f)).then((t) => t ?? []) as Promise<Task[]>
   },
   get(ref: string) {
     return App.GetTask(ref)
@@ -66,6 +68,10 @@ export const api = {
   },
   dbPath(): Promise<string> {
     return App.DBPath()
+  },
+  // Real exit (Ctrl+Q). Window close hides to tray instead.
+  quit(): void {
+    App.Quit()
   }
 }
 

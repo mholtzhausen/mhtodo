@@ -1,6 +1,6 @@
 # mhtodo — v0.1 progress (updated 2026-08-19)
 
-Status: M3 done ✅ — GUI MVP live: Wails + Vite/Svelte/Tailwind frontend, bound API per parity contract, single-instance lock with focus-on-relaunch; list view + new-task dialog + detail drawer = full CLI parity in UI. Verified on the desktop (screenshots). Ready for M4 (tray polish + notifications + live sync). Everything below is copy-pasteable to Slack as-is.
+Status: M4 done ✅ — tray wired into internal/tray, hide-to-tray close, open-task count in the tray, notify-send on →done/→waiting (GUI always; CLI opt-in via `mhtodo done ID --notify`), live sync: fsnotify + 2s poll watcher → tasks:changed so CLI edits appear in the GUI without restart. Verified end-to-end over D-Bus/X11 (tray menu clicks, window map states, tooltip label). Ready for M5 (board view + polish). Everything below is copy-pasteable to Slack as-is.
 
 ## Milestones
 - [x] **M0** Tray spike — Wails + systray coexist on this machine (gate for everything else; fallbacks not needed)
@@ -21,7 +21,14 @@ Status: M3 done ✅ — GUI MVP live: Wails + Vite/Svelte/Tailwind frontend, bou
   - [x] single-instance lock `$XDG_RUNTIME_DIR/mhtodo.lock` (pid, stale-lock steal) + focus-on-relaunch via SIGUSR2; second launch exits 0 with a log line — all unit-tested in main_test.go and verified live
   - [x] window 1100×720 / min 800×560 per spec; tray wiring kept from M0 (moves to internal/tray in M4)
   - [x] `make build` = wails build (frontend + bindings + ldflags version stamp) → bin/mhtodo; `make dev` hot-reload; desktop smoke test: window renders, selftest show→hide→quit exit 0
-- [ ] **M4** Tray + notifications + live sync — hide-to-tray close, tooltip counts, notify-send on →done/→waiting, fsnotify watcher (+2s poll fallback) → tasks:changed
+- [x] **M4** Tray + notifications + live sync — hide-to-tray close, open-task count in tray, notify-send on →done/→waiting, fsnotify watcher (+2s poll fallback) → tasks:changed
+  - [x] internal/tray: M0-validated Register pattern (before wails.Run), menu Show/Hide · New Task · Quit; handlers run off the GTK loop via channels
+  - [x] hide-to-tray close: OnBeforeClose hides instead of quitting; real exit only via tray Quit / Ctrl+Q / SIGINT/SIGTERM (signal handler sets quitting first — Wails routes its own signal path through OnBeforeClose, which would otherwise swallow Ctrl+C forever)
+  - [x] tray count: "mhtodo — N open tasks" tooltip + compact XAyatanaLabel "mhtodo (N)" refreshed on every change (local or external); verified live over D-Bus (add → "mhtodo (1)", done → "mhtodo")
+  - [x] internal/notify: notify-send `-a mhtodo -i dialog-task` wrapper, 60s dedupe per id+status, failures logged never fatal; GUI fires on real →done/→waiting transitions only; CLI opt-in `mhtodo done ID --notify` (same transition semantics)
+  - [x] internal/sync: fsnotify on .db + -wal/-shm sidecars AND always-on 2s max(updated_at) poll (risk #5 safety net), 300ms debounce → tasks:changed; unit tests incl. fallback-with-fsnotify-dead path, `go test -race` green
+  - [x] tray "New Task" shows window + emits tray:new-task → frontend opens create dialog; Ctrl+Q bound to Quit()
+  - [x] E2E verified headless via dbusmenu Event over D-Bus: Show/Hide toggles both ways (window map state), New Task re-shows, Quit exits clean; single-instance relaunch still exit-0 + focus
 - [ ] **M5** Polish — board/kanban view + column quick-add, keyboard shortcuts, styling pass, empty states, error toasts (stretch: drag-and-drop, light theme)
 - [ ] **M6** Packaging & docs — Makefile finalize (arm64 guard), .desktop file, app+tray icons, README with agent contract section, make install smoke test
 
@@ -32,6 +39,13 @@ Status: M3 done ✅ — GUI MVP live: Wails + Vite/Svelte/Tailwind frontend, bou
 - [ ] make test && make lint green; DB survives concurrent CLI+GUI use
 
 ## Notes / blockers
+- **M4 findings (2026-08-19):**
+  - **Wails v2 routes SIGINT/SIGTERM through OnBeforeClose** (`Frontend.Quit` calls it before `mainWindow.Quit`). A hide-to-tray handler that returns true therefore swallows Ctrl+C/kill — the process hangs forever in "Shutting down...". Fix: our own signal handler sets `quitting` first, so whichever path reaches OnBeforeClose last allows the exit. Verified: SIGTERM now exits clean and releases the instance lock.
+  - **getlantern/systray's Linux AppIndicator backend is a no-op for SetTooltip** (libappindicator has no tooltip API; the C shim just frees the string). The count therefore also goes to XAyatanaLabel via `tray.SetLabel` ("mhtodo (N)", visible in Cinnamon when tray labels are enabled); the spec tooltip call stays for Windows/macOS. Verified live by reading SNI properties over D-Bus.
+  - **Wails v2 emits no window:shown/window:hidden events** (M3's EventsOn tracking was dead code — `visible` stayed false, so the tray toggle could never hide). Visibility is now self-tracked with atomic.Bool in showWindow/hideWindow/beforeClose; all app paths go through those three methods.
+  - **Watcher watches .db + -wal/-shm** (superset of the plan's "fsnotify on the DB file" — WAL commits touch sidecars first). Both sources can fire for one logical change (fsnotify immediate, poll at next tick); harmless by design since the frontend handler is an idempotent refetch. Poll baseline is established on its first tick → no spurious event at startup; a write in that first 2s window is only seen if fsnotify also missed it (negligible double-failure case).
+  - **Tray E2E testing without a human:** SNI menu items are clickable over D-Bus — `com.canonical.dbusmenu.GetLayout` + `Event(id, "clicked", ...)` on the item's Menu objectpath. That's how Show/Hide/New Task/Quit were verified headless (window map state via xwininfo).
+  - **This machine's bash is broken for function definitions** (`f() { : }` fails to parse in files and `bash -c`, even byte-perfect; dash too; zsh fine) — environmental, like the Go embed anomaly. Use zsh or flat scripts for shell test harnesses.
 - **M3 findings (2026-08-19):**
   - **NEVER send SIGUSR1 to a Wails/WebKit process.** WebKit/JSC installs its own C handler for signal 10 ("Overriding existing handler for signal 10 … JSC_SIGNAL_FOR_GC"); delivering SIGUSR1 crashes the app with SIGSEGV during cgo execution (reproduced). Focus-on-relaunch uses **SIGUSR2** instead.
   - **This machine's Go toolchains reject `//go:embed` into string/[]byte** ("imported and not used") while embed.FS works — reproduced across go1.24.12/1.25.5/1.25.6 with canonical examples, so it's environmental, not our code. All mhtodo embeds therefore use `embed.FS` (tray icon bytes read out at startup).

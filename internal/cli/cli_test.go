@@ -402,6 +402,67 @@ func TestStatusAndDone(t *testing.T) {
 	}
 }
 
+func TestDoneNotifyFlag(t *testing.T) {
+	out, errb, run := newCLI(t)
+	id := strings.Fields(runMust(out, run, "add", "Notify me"))[0]
+	out.Reset()
+
+	// Record notifications instead of exec'ing notify-send (test seam).
+	var notified []string
+	orig := cli.NotifyDone
+	cli.NotifyDone = func(id, title string) { notified = append(notified, id+"|"+title) }
+	defer func() { cli.NotifyDone = orig }()
+
+	if code := run("done", id, "--notify"); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if len(notified) != 1 || notified[0] != id+"|Notify me" {
+		t.Errorf("--notify should fire once for the transition, got %v", notified)
+	}
+
+	out.Reset()
+	notified = nil
+	// Already done → no-op re-set must not notify (matches GUI transition semantics).
+	if code := run("done", id, "--notify"); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if len(notified) != 0 {
+		t.Errorf("no-op re-set should not notify, got %v", notified)
+	}
+
+	out.Reset()
+	notified = nil
+	// Without --notify → never notifies.
+	runMust(out, run, "status", id, "wip")
+	if code := run("done", id); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if len(notified) != 0 {
+		t.Errorf("plain done should not notify, got %v", notified)
+	}
+
+	out.Reset()
+	notified = nil
+	// --notify must not change the printed object or exit code (agent contract).
+	runMust(out, run, "status", id, "wip")
+	if code := run("done", id); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	plain := out.String()
+	out.Reset()
+	notified = nil
+	runMust(out, run, "status", id, "wip")
+	if code := run("done", id, "--notify"); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if strings.TrimSpace(plain) != strings.TrimSpace(out.String()) {
+		t.Errorf("--notify changed output:\n%s\nvs\n%s", plain, out.String())
+	}
+	if len(notified) != 1 {
+		t.Errorf("expected one notification, got %v", notified)
+	}
+}
+
 // --- rm --------------------------------------------------------------------------
 
 func TestRm(t *testing.T) {

@@ -26,6 +26,10 @@ export function ListTasks(arg1) {
   return window['go']['main']['App']['ListTasks'](arg1);
 }
 
+export function Quit() {
+  return window['go']['main']['App']['Quit']();
+}
+
 export function SetStatus(arg1, arg2) {
   return window['go']['main']['App']['SetStatus'](arg1, arg2);
 }

@@ -5,10 +5,9 @@
 //	mhtodo            → GUI (Wails app + tray)   [also: mhtodo gui]
 //	mhtodo <command>  → CLI, exits when done     [agentic path]
 //
-// The GUI half is the M3 Wails app (app.go). Tray wiring still lives here —
-// it moves to internal/tray in M4. Validated ordering from the M0 spike:
-// systray.Register() BEFORE wails.Run(), never systray.Run() (that would start
-// a second gtk_main).
+// The GUI half is the Wails app (app.go) with tray wiring in internal/tray.
+// Validated ordering from the M0 spike: systray.Register() BEFORE wails.Run(),
+// never systray.Run() (that would start a second gtk_main).
 package main
 
 import (
@@ -21,12 +20,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	"mhtodo/internal/cli"
+	"mhtodo/internal/tray"
 )
 
 // Stamped by the Makefile via -ldflags (see .agent/plan/06-makefile.md).
@@ -60,37 +59,9 @@ func init() {
 	trayIcon = b
 }
 
-func onTrayReady() {
-	systray.SetIcon(trayIcon)
-	systray.SetTitle("mhtodo")
-	systray.SetTooltip("mhtodo") // M4: "mhtodo — N open tasks", refreshed on change
-
-	mShow := systray.AddMenuItem("Show / Hide mhtodo", "Toggle the mhtodo window")
-	mNew := systray.AddMenuItem("New Task", "Open a new task in the window") // M3: just shows; dialog opens in M4 tray wiring
-	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Quit", "Quit mhtodo")
-
-	go func() {
-		for {
-			select {
-			case <-mShow.ClickedCh:
-				if app.visible {
-					app.trayHide()
-				} else {
-					app.trayShow()
-				}
-			case <-mNew.ClickedCh:
-				app.trayShow() // M4: also emit an event that opens the create dialog
-			case <-mQuit.ClickedCh:
-				app.trayQuit()
-				return
-			}
-		}
-	}()
-	log.Println("tray ready")
-}
-
-func onTrayExit() { log.Println("tray exit") }
+// Tray wiring lives in internal/tray (M0-validated Register pattern); the app
+// provides the handlers. Tooltip counts are refreshed by App.emitChanged via
+// tray.SetTooltip.
 
 // runGUI is the GUI entrypoint: single-instance lock, focus-on-relaunch signal,
 // tray registration (before Wails), then wails.Run.
@@ -122,11 +93,35 @@ func runGUI(args []string) {
 	go func() {
 		for range sigCh {
 			log.Println("focus requested by second instance → showing window")
-			app.trayShow()
+			app.showWindow()
 		}
 	}()
 
-	systray.Register(onTrayReady, onTrayExit)
+	// SIGINT/SIGTERM must really quit — Wails routes its own signal handling
+	// through OnBeforeClose, which would otherwise hide-to-tray and swallow the
+	// signal (Ctrl+C / kill would hang forever). Our handler sets quitting
+	// first, so whichever path reaches OnBeforeClose last allows the exit.
+	termCh := make(chan os.Signal, 1)
+	signal.Notify(termCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range termCh {
+			log.Println("termination signal received → quitting")
+			app.Quit()
+		}
+	}()
+
+	// M0-validated ordering: Register BEFORE wails.Run (see internal/tray).
+	tray.Register(trayIcon, tray.Handlers{
+		ToggleWindow: func() {
+			if app.visible.Load() {
+				app.hideWindow()
+			} else {
+				app.showWindow()
+			}
+		},
+		NewTask: app.openNewTaskFromTray,
+		Quit:    app.Quit,
+	})
 
 	if *selftest {
 		// Must start BEFORE wails.Run(): that call blocks for the app's whole lifetime.
@@ -136,13 +131,13 @@ func runGUI(args []string) {
 			}
 			time.Sleep(2 * time.Second) // let tray + window settle
 			log.Println("selftest: show")
-			app.trayShow()
+			app.showWindow()
 			time.Sleep(1500 * time.Millisecond)
 			log.Println("selftest: hide")
-			app.trayHide()
+			app.hideWindow()
 			time.Sleep(1500 * time.Millisecond)
 			log.Println("selftest: quit")
-			app.trayQuit()
+			app.Quit()
 		}()
 	}
 
@@ -155,9 +150,10 @@ func runGUI(args []string) {
 		AssetServer: &assetserver.Options{
 			Assets: assets, // embedded frontend/dist; ignored under -tags dev (vite server)
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
-		Bind:       []interface{}{app},
+		OnStartup:     app.startup,
+		OnShutdown:    app.shutdown,
+		OnBeforeClose: app.beforeClose, // hide-to-tray unless Quit() was called first
+		Bind:          []interface{}{app},
 	})
 	if err != nil {
 		log.Fatalf("wails: %v", err)

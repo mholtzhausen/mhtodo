@@ -20,6 +20,7 @@ type TaskRepository interface {
 	List(ctx context.Context, f ListFilter) ([]Task, error)
 	Update(ctx context.Context, t Task) error // mutable fields by t.ID; ErrNotFound if missing
 	Delete(ctx context.Context, id string) (Task, error)
+	CountOpen(ctx context.Context) (int, error) // non-done tasks; tray tooltip only
 }
 
 // Service holds all business rules shared by CLI and GUI. Neither frontend
@@ -197,3 +198,7 @@ func (s *Service) Delete(ctx context.Context, ref string) (Task, error) {
 	}
 	return s.repo.Delete(ctx, id)
 }
+
+// CountOpen returns the number of non-done tasks. Tray tooltip only — not part
+// of the CLI parity surface (no business rules involved).
+func (s *Service) CountOpen(ctx context.Context) (int, error) { return s.repo.CountOpen(ctx) }

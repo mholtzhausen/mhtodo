@@ -174,6 +174,13 @@ func (r *TaskRepo) Delete(ctx context.Context, id string) (core.Task, error) {
 	return t, err
 }
 
+// CountOpen counts tasks not in done status (tray tooltip; no CLI equivalent).
+func (r *TaskRepo) CountOpen(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tasks WHERE status <> 'done'`).Scan(&n)
+	return n, err
+}
+
 // --- helpers -----------------------------------------------------------------
 
 func nullTS(t *time.Time) any {
