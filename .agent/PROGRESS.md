@@ -1,12 +1,12 @@
 # mhtodo — v0.1 progress (updated 2026-08-19)
 
-Status: M0 done ✅ — tray spike passed on this machine; ready for M1. Everything below is copy-pasteable to Slack as-is.
+Status: M1 done ✅ — core + store with full unit tests; ready for M2 (CLI). Everything below is copy-pasteable to Slack as-is.
 
 ## Milestones
 - [x] **M0** Tray spike — Wails + systray coexist on this machine (gate for everything else; fallbacks not needed)
   - [x] Tray icon appears (AppIndicator), menu works
   - [x] Show/hide window from tray, clean quit
-- [ ] **M1** Core + store — internal/store (WAL, migrations) + internal/core (Task/Status/Service); unit tests for transitions, prefix matching, validation, migration idempotency
+- [x] **M1** Core + store — internal/store (WAL, migrations) + internal/core (Task/Status/Service); unit tests for transitions, prefix matching, validation, migration idempotency (+ concurrent-writer test; `go test -race` green)
 - [ ] **M2** CLI — all commands per 04-cli-spec.md, --json everywhere, exit codes, non-TTY rm guard; golden tests incl. error paths → fully usable agentic interface with zero GUI
 - [ ] **M3** GUI MVP — Wails frontend (Vite+Svelte+Tailwind v4), app.go bindings per parity contract, single-instance lock; list view + new task dialog + detail drawer = full CLI parity in UI
 - [ ] **M4** Tray + notifications + live sync — hide-to-tray close, tooltip counts, notify-send on →done/→waiting, fsnotify watcher (+2s poll fallback) → tasks:changed
@@ -23,3 +23,4 @@ Status: M0 done ✅ — tray spike passed on this machine; ready for M1. Everyth
 - **M0 findings (2026-08-19):** validated pattern = `systray.Register()` called *before* `wails.Run()` (never `systray.Run()` — that starts a second gtk_main). Register does gtk_init + AppIndicator pre-loop; all later tray mutations queue via g_idle_add onto Wails' single GTK loop. Show/hide/quit verified headless (`./mhtodo --selftest` → exit 0) and manually on the desktop (icon, menu, JS show/hide).
 - **Wails v2 mode-tag gotcha:** raw `go build -tags webkit2_41` compiles but fails at runtime ("will not build without the correct build tags"). GUI builds need a mode tag: `wails build`/`wails dev` inject `production`/`dev` automatically; plain `go build` must use `-tags "webkit2_41 production"`. CLI-only paths (M2) never call wails.Run and are unaffected.
 - Spike code lives at repo root (`main.go`, `frontend/index.html`, `assets/tray.png`) — reworked into the M3 layout; tray wiring moves to `internal/tray` in M4 using the validated Register pattern.
+- **M1 design notes (2026-08-19):** `core` defines the domain types + a `TaskRepository` interface and holds all business rules (transition effects, prefix resolution ≥4 chars with sorted-candidate ambiguity error, validation); `store` implements it over SQLite (WAL + busy_timeout=5000 via DSN `_journal_mode=wal&_busy_timeout=5000`, versioned forward migrations in one tx, single-statement writes incl. `DELETE … RETURNING`). Timestamps are RFC3339 UTC strings per spec; UUIDv7 IDs. Edit never changes status (done tasks keep `completed_at`); only SetStatus applies transition effects.
