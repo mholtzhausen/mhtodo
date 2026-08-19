@@ -1,13 +1,13 @@
-// mhtodo — M0 spike.
+// mhtodo — one binary, two frontends over one shared core.
 //
-// Validates the top project risk on this machine: a system tray (AppIndicator via
-// getlantern/systray) coexisting with Wails v2's GTK main loop under webkit2gtk-4.1.
+// Dispatch (see .agent/plan/02-architecture.md):
 //
-// Design note (why Register, not Run): systray.Run() would start a second gtk_main(),
-// which is the deadlock risk this spike exists to rule out. Instead we call
-// systray.Register() BEFORE wails.Run(): it does gtk_init + AppIndicator creation once,
-// pre-loop, and every later tray mutation (icon, menu items, quit) is queued with
-// g_idle_add onto the single GMainContext that Wails' loop iterates. One GTK main loop total.
+//	mhtodo            → GUI (Wails app + tray)   [also: mhtodo gui]
+//	mhtodo <command>  → CLI, exits when done     [agentic path]
+//
+// The GUI half below is the M0 spike (validated pattern: systray.Register()
+// BEFORE wails.Run(), never systray.Run() — that would start a second
+// gtk_main). It moves to app.go + internal/tray in M3/M4.
 package main
 
 import (
@@ -15,6 +15,7 @@ import (
 	"embed"
 	"flag"
 	"log"
+	"os"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -22,7 +23,24 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"mhtodo/internal/cli"
 )
+
+// Stamped by the Makefile via -ldflags (see 06-makefile.md).
+var (
+	version = "dev"
+	commit  = "none"
+)
+
+func main() {
+	args := os.Args[1:]
+	if len(args) == 0 || args[0] == "gui" {
+		runGUI() // blocks for the app's lifetime
+		return
+	}
+	os.Exit(cli.Run(args, version, commit))
+}
 
 //go:embed frontend/index.html
 var assets embed.FS
@@ -38,8 +56,16 @@ func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 func (a *App) shutdown(_ context.Context)  {}
 
 // Tray callbacks — the exact functions the menu items invoke.
-func (a *App) trayShow() { if a.ctx != nil { wruntime.WindowShow(a.ctx) } }
-func (a *App) trayHide() { if a.ctx != nil { wruntime.WindowHide(a.ctx) } }
+func (a *App) trayShow() {
+	if a.ctx != nil {
+		wruntime.WindowShow(a.ctx)
+	}
+}
+func (a *App) trayHide() {
+	if a.ctx != nil {
+		wruntime.WindowHide(a.ctx)
+	}
+}
 func (a *App) trayQuit() {
 	systray.Quit() // queues indicator removal + gtk_main_quit on the shared loop
 	if a.ctx != nil {
@@ -81,9 +107,11 @@ func onTrayReady() {
 
 func onTrayExit() { log.Println("tray exit") }
 
-func main() {
-	selftest := flag.Bool("selftest", false, "auto-run tray callbacks (show → hide → quit) for headless verification")
-	flag.Parse()
+// runGUI is the M0-spike GUI entrypoint (M3 replaces it with app.go + Vite).
+func runGUI() {
+	fs := flag.NewFlagSet("gui", flag.ExitOnError)
+	selftest := fs.Bool("selftest", false, "auto-run tray callbacks (show → hide → quit) for headless verification")
+	fs.Parse(os.Args[1:])
 
 	// Register the tray BEFORE Wails starts its GTK loop: gtk_init + AppIndicator are
 	// created pre-loop; everything after is g_idle_add-queued onto Wails' loop.
@@ -95,7 +123,7 @@ func main() {
 			for app.ctx == nil {
 				time.Sleep(50 * time.Millisecond) // wait for Wails startup (GTK loop up)
 			}
-			time.Sleep(2 * time.Second)           // let tray + window settle
+			time.Sleep(2 * time.Second) // let tray + window settle
 			log.Println("selftest: show")
 			app.trayShow()
 			time.Sleep(1500 * time.Millisecond)

@@ -29,8 +29,10 @@ type Service struct {
 	now  func() time.Time // injectable for tests; defaults to UTC now
 }
 
+// The default clock truncates to whole seconds so returned objects match what
+// the store persists (RFC3339 second precision) — keeps --json output stable.
 func NewService(repo TaskRepository) *Service {
-	return &Service{repo: repo, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{repo: repo, now: func() time.Time { return time.Now().UTC().Truncate(time.Second) }}
 }
 
 // SetNowFunc is test-only.

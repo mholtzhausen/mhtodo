@@ -103,7 +103,9 @@ var ErrEmptyTitle = errors.New("title must not be empty")
 // ProgressRangeError is returned for progress outside 0..100.
 type ProgressRangeError struct{ Value int }
 
-func (e *ProgressRangeError) Error() string { return fmt.Sprintf("progress %d out of range 0-100", e.Value) }
+func (e *ProgressRangeError) Error() string {
+	return fmt.Sprintf("progress %d out of range 0-100", e.Value)
+}
 
 var ErrNoFieldsToUpdate = errors.New("no fields to update")
 
