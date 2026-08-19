@@ -1,7 +1,12 @@
 <script lang="ts">
   import { shortId, relTime } from '../lib/format'
 
-  let { tasks, selectedId, onSelect }: { tasks: any[]; selectedId: string | null; onSelect: (id: string) => void } = $props()
+  let {
+    tasks,
+    hasFilters,
+    selectedId,
+    onSelect
+  }: { tasks: any[]; hasFilters: boolean; selectedId: string | null; onSelect: (id: string) => void } = $props()
 
   const badgeClass: Record<string, string> = {
     pending: 'bg-zinc-700/50 text-zinc-300',
@@ -13,8 +18,13 @@
 
 {#if tasks.length === 0}
   <div class="flex flex-col items-center gap-2 py-24 text-center">
-    <p class="text-sm text-zinc-500">No tasks match.</p>
-    <p class="text-xs text-zinc-600">Press <kbd>n</kbd> to create one, or clear the filters above.</p>
+    {#if hasFilters}
+      <p class="text-sm text-zinc-500">No tasks match.</p>
+      <p class="text-xs text-zinc-600">Clear the filters above to see everything.</p>
+    {:else}
+      <p class="text-sm text-zinc-500">No tasks yet.</p>
+      <p class="text-xs text-zinc-600">Press <kbd>n</kbd> or use a column’s + button on the board to create one.</p>
+    {/if}
   </div>
 {:else}
   <table class="w-full border-separate border-spacing-y-1 text-sm">

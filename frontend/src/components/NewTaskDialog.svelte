@@ -2,13 +2,23 @@
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
 
-  let { open, onClose, onError }: { open: boolean; onClose: () => void; onError: (msg: string) => void } = $props()
+  let {
+    open,
+    initialStatus = 'pending',
+    onClose,
+    onError
+  }: { open: boolean; initialStatus?: Status; onClose: () => void; onError: (msg: string) => void } = $props()
 
   const STATUSES: Status[] = ['pending', 'wip', 'waiting', 'done']
 
   let title = $state('')
   let description = $state('')
   let status = $state<Status>('pending')
+
+  // Board column quick-add presets the status; applied each time the dialog opens.
+  $effect(() => {
+    if (open) status = initialStatus
+  })
   let progress = $state(0)
   let submitting = $state(false)
 

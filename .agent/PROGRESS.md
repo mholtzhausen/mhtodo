@@ -1,6 +1,6 @@
 # mhtodo — v0.1 progress (updated 2026-08-19)
 
-Status: M4 done ✅ — tray wired into internal/tray, hide-to-tray close, open-task count in the tray, notify-send on →done/→waiting (GUI always; CLI opt-in via `mhtodo done ID --notify`), live sync: fsnotify + 2s poll watcher → tasks:changed so CLI edits appear in the GUI without restart. Verified end-to-end over D-Bus/X11 (tray menu clicks, window map states, tooltip label). Ready for M5 (board view + polish). Everything below is copy-pasteable to Slack as-is.
+Status: M5 done ✅ — board/kanban view (default) with column quick-add and native drag-and-drop (stretch), b/l view toggle persisted across launches, error toasts, empty states; verified live incl. synthesized drags confirmed in the DB. Ready for M6 (packaging & docs). Everything below is copy-pasteable to Slack as-is.
 
 ## Milestones
 - [x] **M0** Tray spike — Wails + systray coexist on this machine (gate for everything else; fallbacks not needed)
@@ -29,7 +29,13 @@ Status: M4 done ✅ — tray wired into internal/tray, hide-to-tray close, open-
   - [x] internal/sync: fsnotify on .db + -wal/-shm sidecars AND always-on 2s max(updated_at) poll (risk #5 safety net), 300ms debounce → tasks:changed; unit tests incl. fallback-with-fsnotify-dead path, `go test -race` green
   - [x] tray "New Task" shows window + emits tray:new-task → frontend opens create dialog; Ctrl+Q bound to Quit()
   - [x] E2E verified headless via dbusmenu Event over D-Bus: Show/Hide toggles both ways (window map state), New Task re-shows, Quit exits clean; single-instance relaunch still exit-0 + focus
-- [ ] **M5** Polish — board/kanban view + column quick-add, keyboard shortcuts, styling pass, empty states, error toasts (stretch: drag-and-drop, light theme)
+- [x] **M5** Polish — board/kanban view + column quick-add, keyboard shortcuts, styling pass, empty states, error toasts; stretch drag-and-drop done too (light theme deferred)
+  - [x] Board view (default): four kanban columns pending|wip|waiting|done with live counts; cards show title / progress bar / relative updated time; per-column + button opens the new-task dialog preset to that column's status; board always shows all statuses incl. done, list keeps its own filters
+  - [x] Board/List toggle in header (+ `b`/`l` keys), choice persisted across launches (localStorage); footer shortcut legend updated
+  - [x] drag-and-drop (stretch): native HTML5 DnD, zero deps — drop a card on another column → api.setStatus (same bound method as CLI `status`; Go notifies + emits tasks:changed, frontend refetches through its single refresh path); own-column drop is a no-op; dragged-card opacity/rotate + indigo drop-target highlight (≤150ms); post-drag click suppressed so drags never open the drawer. Verified live with synthesized xdotool drags (pending→wip and wip→empty column) confirmed in DB
+  - [x] error toasts: rose-tinted alert on every failure path (load, drawer edits, dialog submit, board drop), single showToast auto-dismiss path
+  - [x] empty states: board "no tasks yet" / search-no-match + per-column dashed placeholder; list distinguishes "no tasks yet" from "filters match nothing"
+  - [x] styling pass: dark zinc/indigo palette throughout, card hover lift, drawer/dialog fly-in (150ms), thin scrollbars; `npm run build` + `make build` clean, `go test -race ./...` green
 - [ ] **M6** Packaging & docs — Makefile finalize (arm64 guard), .desktop file, app+tray icons, README with agent contract section, make install smoke test
 
 ## Definition of done (v0.1)
@@ -39,6 +45,9 @@ Status: M4 done ✅ — tray wired into internal/tray, hide-to-tray close, open-
 - [ ] make test && make lint green; DB survives concurrent CLI+GUI use
 
 ## Notes / blockers
+- **M5 findings (2026-08-19):**
+  - Svelte 5's template parser rejects mixing `??` and `||` in one expression — parenthesize.
+  - HTML5 drag-and-drop works as-is in WebKitGTK, including drags synthesized with xdotool (mousemove/mousedown/move/up) — no special handling needed for headless verification; drops land through the normal api.setStatus path so DB state is ground truth.
 - **M4 findings (2026-08-19):**
   - **Wails v2 routes SIGINT/SIGTERM through OnBeforeClose** (`Frontend.Quit` calls it before `mainWindow.Quit`). A hide-to-tray handler that returns true therefore swallows Ctrl+C/kill — the process hangs forever in "Shutting down...". Fix: our own signal handler sets `quitting` first, so whichever path reaches OnBeforeClose last allows the exit. Verified: SIGTERM now exits clean and releases the instance lock.
   - **getlantern/systray's Linux AppIndicator backend is a no-op for SetTooltip** (libappindicator has no tooltip API; the C shim just frees the string). The count therefore also goes to XAyatanaLabel via `tray.SetLabel` ("mhtodo (N)", visible in Cinnamon when tray labels are enabled); the spec tooltip call stays for Windows/macOS. Verified live by reading SNI properties over D-Bus.
