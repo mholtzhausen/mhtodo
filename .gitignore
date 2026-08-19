@@ -3,3 +3,5 @@
 /bin/
 /dist/
 frontend/node_modules/
+/build/
+frontend/package.json.md5

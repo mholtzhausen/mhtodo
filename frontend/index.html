@@ -1,37 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>mhtodo — M0 spike</title>
-  <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; height: 100vh; display: flex; flex-direction: column; gap: 14px;
-           align-items: center; justify-content: center; background: #181825; color: #cdd6f4;
-           font-family: system-ui, sans-serif; }
-    h1 { font-size: 20px; font-weight: 600; margin: 0; }
-    p { color: #a6adc8; max-width: 42ch; text-align: center; line-height: 1.5; }
-    .row { display: flex; gap: 10px; }
-    button { padding: 9px 16px; font-size: 14px; border-radius: 8px; border: 1px solid #45475a;
-             background: #313244; color: #cdd6f4; cursor: pointer; }
-    button:hover { background: #45475a; }
-    #status { font-size: 12px; color: #6c7086; min-height: 1.2em; }
-  </style>
-</head>
-<body>
-  <h1>mhtodo — M0 tray spike</h1>
-  <p>If this window renders, Wails + webkit2gtk-4.1 is working. The tray icon should be in your
-     panel: try Show / Hide / Quit from its menu.</p>
-  <div class="row">
-    <button onclick="call('ShowWindow')">Show (JS)</button>
-    <button onclick="call('HideWindow')">Hide (JS)</button>
-  </div>
-  <div id="status"></div>
-  <script>
-    function call(method) {
-      const el = document.getElementById('status');
-      try { window.go.main.App[method]().then(() => el.textContent = method + ' ok'); }
-      catch (e) { el.textContent = 'error: ' + e; }
-    }
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mhtodo</title>
+    <style>html { background: #09090b; }</style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
