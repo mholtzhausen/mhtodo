@@ -45,7 +45,7 @@ func TestDedupeSameIDAndStatus(t *testing.T) {
 		t.Fatalf("want 1 call at +59s, got %d: %v", len(calls), calls)
 	}
 
-	advance(2 * time.Second) // total +61s
+	advance(2 * time.Second)       // total +61s
 	n.TaskDone("id1", "Ship v0.1") // window elapsed → sent
 	if len(calls) != 2 {
 		t.Fatalf("want 2 calls at +61s, got %d: %v", len(calls), calls)

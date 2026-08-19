@@ -32,7 +32,7 @@ func New() *Notifier {
 	return &Notifier{
 		last: make(map[string]time.Time),
 		now:  time.Now,
-		run: func(args ...string) error { return exec.Command("notify-send", args...).Run() },
+		run:  func(args ...string) error { return exec.Command("notify-send", args...).Run() },
 	}
 }
 

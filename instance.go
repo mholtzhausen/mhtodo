@@ -20,7 +20,9 @@ var ErrAlreadyRunning = errors.New("mhtodo is already running")
 type AlreadyRunningError struct{ PID int }
 
 // Error names the stable sentinel; Unwrap links it for errors.Is/As.
-func (e *AlreadyRunningError) Error() string { return fmt.Sprintf("mhtodo is already running (pid %d)", e.PID) }
+func (e *AlreadyRunningError) Error() string {
+	return fmt.Sprintf("mhtodo is already running (pid %d)", e.PID)
+}
 func (e *AlreadyRunningError) Unwrap() error { return ErrAlreadyRunning }
 
 // lockPathFn is a test seam.

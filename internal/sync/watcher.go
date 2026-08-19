@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	pollInterval = 2 * time.Second    // safety net: fsnotify can miss WAL-only writes (risk #5)
+	pollInterval = 2 * time.Second // safety net: fsnotify can miss WAL-only writes (risk #5)
 	debounce     = 300 * time.Millisecond
 )
 
@@ -97,7 +97,7 @@ func (w *Watcher) eventLoop() {
 				return
 			}
 			w.poke()
-			if ev.Op.Has(fsnotify.Remove|fsnotify.Rename) {
+			if ev.Op.Has(fsnotify.Remove | fsnotify.Rename) {
 				p := ev.Name
 				go func(p string) {
 					time.Sleep(200 * time.Millisecond) // give the writer a beat to recreate it

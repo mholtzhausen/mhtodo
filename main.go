@@ -23,6 +23,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 
 	"mhtodo/internal/cli"
 	"mhtodo/internal/tray"
@@ -46,17 +47,23 @@ func main() {
 // NOTE (M3, 2026-08-19): this machine's Go toolchains reject //go:embed into
 // string/[]byte ("imported and not used") but accept embed.FS — so all embeds
 // here use embed.FS. Read the bytes out at startup instead of embedding []byte.
-//go:embed assets/tray.png
-var trayAssets embed.FS
+//
+//go:embed assets/icon.png assets/tray.png
+var uiAssets embed.FS
 
-var trayIcon []byte
+var (
+	appIcon  []byte // window/taskbar icon → options.Linux.Icon
+	trayIcon []byte // AppIndicator tray icon
+)
 
 func init() {
-	b, err := trayAssets.ReadFile("assets/tray.png")
-	if err != nil {
+	var err error
+	if appIcon, err = uiAssets.ReadFile("assets/icon.png"); err != nil {
+		log.Fatalf("embedded app icon: %v", err)
+	}
+	if trayIcon, err = uiAssets.ReadFile("assets/tray.png"); err != nil {
 		log.Fatalf("embedded tray icon: %v", err)
 	}
-	trayIcon = b
 }
 
 // Tray wiring lives in internal/tray (M0-validated Register pattern); the app
@@ -147,6 +154,9 @@ func runGUI(args []string) {
 		Height:    720,
 		MinWidth:  800,
 		MinHeight: 560,
+		Linux: &linux.Options{
+			Icon: appIcon, // window/taskbar icon (M6)
+		},
 		AssetServer: &assetserver.Options{
 			Assets: assets, // embedded frontend/dist; ignored under -tags dev (vite server)
 		},

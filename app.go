@@ -27,8 +27,8 @@ type App struct {
 	ctx      context.Context // Wails lifecycle context; all runtime calls go through it
 	svc      *core.Service
 	repo     *store.TaskRepo
-	visible  atomic.Bool   // window visibility, self-tracked (Wails v2 emits no show/hide events)
-	quitting atomic.Bool   // set by Quit() so OnBeforeClose allows a real exit
+	visible  atomic.Bool // window visibility, self-tracked (Wails v2 emits no show/hide events)
+	quitting atomic.Bool // set by Quit() so OnBeforeClose allows a real exit
 	notifier *notify.Notifier
 	watcher  *mhsync.Watcher // external (CLI-side) DB changes → tasks:changed
 }

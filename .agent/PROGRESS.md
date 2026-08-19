@@ -1,6 +1,6 @@
 # mhtodo — v0.1 progress (updated 2026-08-19)
 
-Status: M5 done ✅ — board/kanban view (default) with column quick-add and native drag-and-drop (stretch), b/l view toggle persisted across launches, error toasts, empty states; verified live incl. synthesized drags confirmed in the DB. Ready for M6 (packaging & docs). Everything below is copy-pasteable to Slack as-is.
+Status: **v0.1 complete** ✅ — all six milestones done (M0–M6). M6 shipped packaging & docs: finalized Makefile (release/install/uninstall + arm64 guard), .desktop launcher entry, app+tray icons, README with the agent contract section; `make install` smoke-tested live on this machine (tray E2E over D-Bus, close-hides-to-tray, clean quit). Everything below is copy-pasteable to Slack as-is.
 
 ## Milestones
 - [x] **M0** Tray spike — Wails + systray coexist on this machine (gate for everything else; fallbacks not needed)
@@ -36,15 +36,25 @@ Status: M5 done ✅ — board/kanban view (default) with column quick-add and na
   - [x] error toasts: rose-tinted alert on every failure path (load, drawer edits, dialog submit, board drop), single showToast auto-dismiss path
   - [x] empty states: board "no tasks yet" / search-no-match + per-column dashed placeholder; list distinguishes "no tasks yet" from "filters match nothing"
   - [x] styling pass: dark zinc/indigo palette throughout, card hover lift, drawer/dialog fly-in (150ms), thin scrollbars; `npm run build` + `make build` clean, `go test -race ./...` green
-- [ ] **M6** Packaging & docs — Makefile finalize (arm64 guard), .desktop file, app+tray icons, README with agent contract section, make install smoke test
+- [x] **M6** Packaging & docs — Makefile finalize (arm64 guard), .desktop file, app+tray icons, README with agent contract section, make install smoke test
+  - [x] Makefile finalized: `release` cross-builds linux tarballs → dist/ (staged under mhtodo_0.1.0/); **arm64 guard** — without aarch64-linux-gnu-gcc it warns and ships amd64 only (verified on this machine, which lacks the toolchain); `install`/`uninstall` into $PREFIX (~/.local): binary + .desktop + hicolor icon + update-desktop-database; version stamping refactored to one STAMP var shared by build/release
+  - [x] packaging/mhtodo.desktop: Terminal=false, Exec=mhtodo, Icon=mhtodo — passes desktop-file-validate; installed entry appears in the launcher menu
+  - [x] icons: assets/icon.png (512×512 app icon, indigo rounded square + white check matching the GUI palette) → .desktop/hicolor/tarball AND wired as the Wails window icon via options.Linux.Icon (embedded embed.FS, same pattern as tray); assets/tray.png replaced with a 48px template-style badge — verified byte-identical in the live SNI item
+  - [x] README.md: install (source + tarball), full CLI reference from the real binary (commands/flags/exit codes/error envelope/canonical JSON object/examples), **agent contract stability** section, GUI/tray/notification/live-sync behavior, data & concurrency notes, parity table, dev notes (TAGS + mode-tag gotcha)
+  - [x] make install smoke test on this machine: installed files verified; live E2E of the installed binary — SNI tray item registered with new icon, Show/Hide toggles both ways over dbusmenu D-Bus clicks, **WM close request hides to tray** (window unmaps, process + indicator survive), Quit exits clean and releases the instance lock; SIGTERM quit path re-verified
+  - [x] make test && make lint green after all changes; gofmt clean
 
-## Definition of done (v0.1)
-- [ ] make install → launcher entry, tray icon works, close hides to tray
-- [ ] Full CLI ↔ GUI parity (table in 02-architecture.md holds both ways)
-- [ ] mhtodo list --json stable & documented; an agent can drive the full lifecycle via CLI alone
-- [ ] make test && make lint green; DB survives concurrent CLI+GUI use
+## Definition of done (v0.1) — all met ✅
+- [x] make install → launcher entry, tray icon works, close hides to tray (M6 live E2E: SNI registered with new icon, dbusmenu Show/Hide both ways, WM-close unmaps window while process + indicator survive, Quit clean)
+- [x] Full CLI ↔ GUI parity (table in 02-architecture.md holds both ways; restated in README)
+- [x] mhtodo list --json stable & documented; an agent can drive the full lifecycle via CLI alone (README "CLI reference (agent contract)" incl. exit codes, error envelope, canonical object, examples)
+- [x] make test && make lint green; DB survives concurrent CLI+GUI use
 
 ## Notes / blockers
+- **M6 findings (2026-08-19):**
+  - **This machine's GTK does not export `_NET_WM_ICON` for pixbuf-based window icons** — even a direct `gdk_window_set_icon_list()` call on a realized+shown window writes no X property at all (verified with xprop -spy + minimal C tests; zenity/Zed get theirs via other means). Wails' `options.Linux.Icon` is wired correctly in main.go and works on standard distro builds; here the taskbar falls back to .desktop lookup, which resolves our installed hicolor icon via mhtodo.desktop (Icon=mhtodo). Also: mhtodo's window did not appear in this machine's Cinnamon panel window list regardless of workspace — user panel-config quirk, not an app defect (window has correct WM properties: NORMAL type, proper class/name).
+  - **gdbus call gotchas for D-Bus E2E:** `v`-typed params need a wrapped annotated variant (`'<@i 0>'` works; bare `{}`, `@a{sv}{}`, and `0` all fail to parse); args starting with `-` (e.g. dbusmenu GetLayout's recursionDepth -1) must follow `--`. Cinnamon's StatusNotifierWatcher exposes the property as **RegisteredStatusNotifierItems** (not the spec name RegisteredItems).
+  - arm64 cross-build guard verified: without gcc-aarch64-linux-gnu, `make release` warns and ships amd64-only; tarball layout mhtodo_0.1.0/{mhtodo,mhtodo.desktop,icon.png,README.md}, extracted binary smoke-tested (version stamp + CLI add --json).
 - **M5 findings (2026-08-19):**
   - Svelte 5's template parser rejects mixing `??` and `||` in one expression — parenthesize.
   - HTML5 drag-and-drop works as-is in WebKitGTK, including drags synthesized with xdotool (mousemove/mousedown/move/up) — no special handling needed for headless verification; drops land through the normal api.setStatus path so DB state is ground truth.
