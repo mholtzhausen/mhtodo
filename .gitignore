@@ -1,0 +1,5 @@
+# build artifacts
+/mhtodo
+/bin/
+/dist/
+frontend/node_modules/
