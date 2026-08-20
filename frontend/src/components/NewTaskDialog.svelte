@@ -63,7 +63,7 @@
         <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-600">Title *</span>
         <input
           autofocus
-          value={title}
+          bind:value={title}
           onkeydown={(e) => e.key === 'Enter' && title.trim() && (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
           placeholder="What needs doing?"
           class="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"
@@ -73,7 +73,7 @@
       <label class="mb-3 block">
         <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-600">Description</span>
         <textarea
-          value={description}
+          bind:value={description}
           rows="3"
           placeholder="Optional notes…"
           class="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"

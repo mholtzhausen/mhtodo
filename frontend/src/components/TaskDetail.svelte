@@ -81,7 +81,7 @@
     <label class="block">
       <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-600">Title</span>
       <input
-        value={title}
+        bind:value={title}
         onblur={saveTitle}
         onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
         class="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-100 focus:border-indigo-500 focus:outline-none"
@@ -106,7 +106,7 @@
     <label class="block">
       <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-600">Description</span>
       <textarea
-        value={description}
+        bind:value={description}
         onblur={saveDescription}
         rows="5"
         placeholder="Notes, links, context…"
@@ -122,7 +122,7 @@
           min="0"
           max="100"
           step="5"
-          value={progress}
+          bind:value={progress}
           onchange={() => saveProgress()}
           class="flex-1 accent-indigo-500"
         />
@@ -131,7 +131,7 @@
             type="number"
             min="0"
             max="100"
-            value={progress}
+            bind:value={progress}
             onblur={() => saveProgress()}
             onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
             class="w-16 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-right font-mono text-sm text-zinc-200 focus:border-indigo-500 focus:outline-none"
