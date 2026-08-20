@@ -18,13 +18,25 @@
     onError?: (msg: string) => void
   } = $props()
 
-  // Column order is the workflow order; dot/bar colors double as the status
-  // legend so cards don't need a redundant badge.
-  const COLUMNS: { status: Status; label: string; dot: string; bar: string }[] = [
-    { status: 'pending', label: 'Pending', dot: 'bg-zinc-400', bar: 'bg-indigo-500' },
-    { status: 'wip', label: 'In progress', dot: 'bg-indigo-400', bar: 'bg-indigo-500' },
-    { status: 'waiting', label: 'Waiting', dot: 'bg-amber-400', bar: 'bg-amber-500' },
-    { status: 'done', label: 'Done', dot: 'bg-emerald-400', bar: 'bg-emerald-500' }
+  // Column order is the workflow order; per-status colors double as the board
+  // legend (dot, progress bar, card left edge) so cards need no redundant badge.
+  const COLUMNS: { status: Status; label: string; dot: string; bar: string; edge: string }[] = [
+    {
+      status: 'pending',
+      label: 'Pending',
+      dot: 'bg-st-pending',
+      bar: 'bg-st-pending',
+      edge: 'border-l-st-pending'
+    },
+    { status: 'wip', label: 'In progress', dot: 'bg-st-wip', bar: 'bg-st-wip', edge: 'border-l-st-wip' },
+    {
+      status: 'waiting',
+      label: 'Waiting',
+      dot: 'bg-st-waiting',
+      bar: 'bg-st-waiting',
+      edge: 'border-l-st-waiting'
+    },
+    { status: 'done', label: 'Done', dot: 'bg-st-done', bar: 'bg-st-done', edge: 'border-l-st-done' }
   ]
 
   const byStatus = $derived.by(() => {
@@ -33,8 +45,6 @@
     for (const t of tasks) (m[t.status] ??= []).push(t)
     return m
   })
-
-  const columnBar = $derived(Object.fromEntries(COLUMNS.map((c) => [c.status, c.bar])))
 
   // --- Native HTML5 drag & drop: dropping a card on another column calls
   // api.setStatus; Go emits tasks:changed and App refetches through its single
@@ -70,7 +80,7 @@
 
   function onColumnDragLeave(e: DragEvent, col: Status) {
     const sec = e.currentTarget as HTMLElement | null
-    if (dropTarget === col && !(sec?.contains(e.relatedTarget as Node | null))) dropTarget = ''
+    if (dropTarget === col.status && !(sec?.contains(e.relatedTarget as Node))) dropTarget = ''
   }
 
   async function onColumnDrop(e: DragEvent, col: Status) {
@@ -94,11 +104,11 @@
 {#if tasks.length === 0}
   <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
     {#if search}
-      <p class="text-sm text-zinc-500">No tasks match “{search}”.</p>
-      <p class="text-xs text-zinc-600">Clear the search above to see everything.</p>
+      <p class="text-sm text-ink-3">No tasks match “{search}”.</p>
+      <p class="text-xs text-ink-3/70">Clear the search above to see everything.</p>
     {:else}
-      <p class="text-sm text-zinc-500">No tasks yet.</p>
-      <p class="text-xs text-zinc-600">Press <kbd>n</kbd> or use a column’s + button to create one.</p>
+      <p class="text-sm text-ink-3">No tasks yet.</p>
+      <p class="text-xs text-ink-3/70">Press <kbd>n</kbd> or use a column’s + button to create one.</p>
     {/if}
   </div>
 {:else}
@@ -108,28 +118,32 @@
         ondragover={(e) => onColumnDragOver(e, col.status)}
         ondragleave={(e) => onColumnDragLeave(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
-        class="flex min-h-0 flex-col rounded-xl border transition-colors duration-150
-          {dropTarget === col.status ? 'border-indigo-500/60 bg-indigo-500/[0.04]' : 'border-zinc-800/70 bg-zinc-900/30'}"
+        class="flex min-h-0 flex-col rounded-md border shadow-sm transition-colors duration-150
+          {dropTarget === col.status
+            ? 'border-accent/60 bg-accent/5'
+            : 'border-line-soft bg-col'}"
       >
-        <header class="flex items-center gap-2 px-3 py-2.5">
-          <span class="h-2 w-2 rounded-full {col.dot}"></span>
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-zinc-400">{col.label}</h2>
-          <span class="rounded-full bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] leading-none text-zinc-400">
+        <header class="flex flex-none items-center gap-2 px-3 py-2.5">
+          <span class="h-2 w-2 flex-none rounded-full {col.dot}"></span>
+          <h2 class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-2">{col.label}</h2>
+          <span
+            class="rounded-[3px] border border-line-soft bg-white/5 px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-3"
+          >
             {byStatus[col.status].length}
           </span>
           <div class="flex-1"></div>
           <button
             title={`New ${col.label.toLowerCase()} task`}
             onclick={() => onQuickAdd(col.status)}
-            class="rounded-md px-1.5 text-sm leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
+            class="rounded p-1 text-sm leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
           >
             +
           </button>
         </header>
 
-        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 py-2.5">
           {#if byStatus[col.status].length === 0}
-            <p class="rounded-lg border border-dashed border-zinc-800/80 py-4 text-center text-[11px] text-zinc-700">
+            <p class="rounded border border-dashed border-line px-2 py-4 text-center text-[11px] text-ink-3">
               no tasks
             </p>
           {:else}
@@ -139,23 +153,24 @@
                 onclick={() => onCardClick(t)}
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="w-full cursor-grab rounded-lg border p-2.5 text-left transition-all duration-150
-                  {draggingId === t.id ? 'cursor-grabbing rotate-1 opacity-40' : ''}
+                class="w-full cursor-grab rounded-md border border-l-2 p-2.5 text-left shadow-sm transition-all duration-150
+                  {col.edge}
+                  {draggingId === t.id ? 'cursor-grabbing rotate-2 opacity-40' : ''}
                   {selectedId === t.id
-                    ? 'border-indigo-500/60 bg-zinc-900 ring-1 ring-indigo-500/40'
-                    : 'border-zinc-800 bg-zinc-900/70 hover:-translate-y-px hover:border-zinc-700 hover:bg-zinc-900 hover:shadow-lg'}"
+                    ? 'border-accent bg-card-hi ring-1 ring-accent/70'
+                    : 'border-line-soft bg-card hover:-translate-y-px hover:bg-card-hi hover:shadow-lg'}"
               >
-                <p class="mb-2 line-clamp-2 text-sm font-medium leading-snug text-zinc-200">{t.title}</p>
+                <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                 <div class="flex items-center gap-2">
-                  <div class="h-1 flex-1 overflow-hidden rounded-full bg-zinc-800">
+                  <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                     <div
-                      class="h-full rounded-full {columnBar[t.status] ?? 'bg-indigo-500'} transition-all duration-150"
+                      class="h-full rounded-full {col.bar} transition-all duration-150"
                       style="width: {t.progress}%"
                     ></div>
                   </div>
-                  <span class="w-8 text-right font-mono text-[10px] text-zinc-600">{t.progress}%</span>
+                  <span class="font-mono text-[10.5px] text-ink-3">{t.progress}%</span>
+                  <span class="text-[10.5px] text-ink-3">{relTime(t.updated_at)}</span>
                 </div>
-                <p class="mt-1.5 text-[10px] text-zinc-600">{relTime(t.updated_at)}</p>
               </button>
             {/each}
           {/if}

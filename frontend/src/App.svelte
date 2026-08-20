@@ -5,6 +5,7 @@
   import List from './components/List.svelte'
   import TaskDetail from './components/TaskDetail.svelte'
   import NewTaskDialog from './components/NewTaskDialog.svelte'
+  import ConfirmDialog from './components/ConfirmDialog.svelte'
   import { api, errMsg, type Status } from './lib/api'
 
   // In the Wails webview window.runtime exists; in a plain browser (fe-dev) it does not.
@@ -21,6 +22,9 @@
   let dialogOpen = $state(false)
   // '' = default (pending); a board column's + button presets its status.
   let dialogInitialStatus = $state<Status | ''>('')
+  // Task awaiting delete confirmation (Delete key or the drawer's button).
+  let confirmTask = $state<any | null>(null)
+  let deleting = $state(false)
   let dbPath = $state('')
 
   // Filter state — mirrors core.ListFilter (parity with CLI `list` flags).
@@ -67,11 +71,33 @@
   let unbindChanged: (() => void) | undefined
   let unbindTrayNewTask: (() => void) | undefined
 
+  // One code path for both delete triggers (drawer button + Delete key).
+  function requestDelete(t: any) {
+    if (deleting || confirmTask) return
+    confirmTask = t
+  }
+
+  async function doDelete() {
+    const t = confirmTask
+    if (!t || deleting) return
+    deleting = true
+    try {
+      await api.remove(t.id)
+      selectedId = null // drawer closes; the tasks:changed refetch drops the row
+    } catch (e) {
+      showToast(errMsg(e))
+    } finally {
+      confirmTask = null
+      deleting = false
+    }
+  }
+
   function onKeydown(e: KeyboardEvent) {
     const el = e.target as HTMLElement | null
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     if (e.key === 'Escape') {
-      if (dialogOpen) dialogOpen = false
+      if (confirmTask) confirmTask = null
+      else if (dialogOpen) dialogOpen = false
       else selectedId = null
       return
     }
@@ -91,6 +117,13 @@
         e.preventDefault()
         dialogInitialStatus = ''
         dialogOpen = true
+        break
+      // Delete key on a selected task → confirmation dialog, then deletion.
+      case 'Delete':
+        if (!dialogOpen && !confirmTask && selectedTask) {
+          e.preventDefault()
+          requestDelete(selectedTask)
+        }
         break
       // b/l switch between board and list views.
       case 'b':
@@ -142,29 +175,38 @@
 </script>
 
 <div class="flex h-full flex-col">
-  <header class="flex items-center gap-4 border-b border-zinc-800 px-5 py-3">
-    <h1 class="text-lg font-semibold tracking-tight text-zinc-100">mhtodo</h1>
+  <header class="flex h-[52px] flex-none items-center gap-4 border-b border-line-soft bg-chrome px-5">
+    <div class="flex items-center gap-2.5">
+      <span
+        class="grid h-[22px] w-[22px] flex-none place-items-center rounded-[5px] bg-accent text-[12px] font-bold text-accent-ink"
+      >
+        M
+      </span>
+      <h1 class="text-[15px] font-semibold tracking-tight text-ink">mhtodo</h1>
+    </div>
 
-    <div class="flex gap-1 rounded-lg bg-zinc-900 p-1" role="tablist" aria-label="View">
+    <nav class="flex items-stretch gap-1" role="tablist" aria-label="View">
       {#each [['board', 'Board'], ['list', 'List']] as [v, label] (v)}
         <button
           role="tab"
           aria-selected={view === v}
           onclick={() => setView(v as 'board' | 'list')}
-          class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors
-            {view === v ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'}"
+          class="relative px-3 text-[13px] font-medium transition-colors
+            {view === v ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}"
         >
           {label}
+          {#if view === v}<span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>{/if}
         </button>
       {/each}
-    </div>
+    </nav>
 
     <div class="flex-1"></div>
     <button
       onclick={() => { dialogInitialStatus = ''; dialogOpen = true }}
-      class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+      class="btn-primary flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi"
     >
-      + New task <kbd>n</kbd>
+      <span class="font-semibold leading-none">+</span>
+      New task <kbd>n</kbd>
     </button>
   </header>
 
@@ -180,22 +222,42 @@
       onToggleAsc={() => { ascending = !ascending; load() }}
     />
   {:else}
-    <div class="flex items-center gap-3 border-b border-zinc-800 px-5 py-3">
-      <input
-        id="task-search"
-        type="search"
-        placeholder="Search… ( / )"
-        value={search}
-        oninput={(e) => { search = e.currentTarget.value; load() }}
-        class="w-56 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"
-      />
+    <div class="flex flex-none items-center gap-3 border-b border-line-soft px-5 py-2.5">
+      <label
+        class="flex h-8 w-64 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25"
+      >
+        <svg
+          class="h-3.5 w-3.5 flex-none text-ink-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          id="task-search"
+          type="search"
+          placeholder="Search… ( / )"
+          value={search}
+          oninput={(e) => { search = e.currentTarget.value; load() }}
+          class="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
+        />
+      </label>
+      <div class="flex-1"></div>
+      <span class="font-mono text-[11px] text-ink-3">
+        {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+      </span>
     </div>
   {/if}
 
   <!-- board view scrolls per-column; list view scrolls the whole pane -->
   <main class="min-h-0 flex-1 {view === 'board' ? '' : 'overflow-y-auto'} px-5 py-4">
     {#if loading}
-      <p class="text-sm text-zinc-500">Loading…</p>
+      <p class="text-sm text-ink-3">Loading…</p>
     {:else if view === 'board'}
       <Board
         tasks={tasks}
@@ -215,15 +277,24 @@
     {/if}
   </main>
 
-  <footer class="flex items-center gap-4 border-t border-zinc-800 px-5 py-2 text-xs text-zinc-500">
-    <span class="truncate font-mono">{dbPath}</span>
+  <footer class="flex h-9 flex-none items-center gap-4 border-t border-line-soft bg-chrome px-5 text-xs text-ink-3">
+    <span class="truncate font-mono text-[11px]">{dbPath}</span>
     <div class="flex-1"></div>
-    <span><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd> view {#if view === 'list'}· <kbd>1–4</kbd> filter{/if} · <kbd>esc</kbd> close · <kbd>ctrl+q</kbd> quit</span>
+    <span class="flex-none whitespace-nowrap"
+      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd> view
+      {#if view === 'list'}· <kbd>1–4</kbd> filter{/if} · <kbd>del</kbd> delete ·
+      <kbd>esc</kbd> close · <kbd>ctrl+q</kbd> quit</span
+    >
   </footer>
 
   {#if selectedTask}
     {#key selectedTask.id}
-      <TaskDetail task={selectedTask} onClose={() => (selectedId = null)} onError={showToast} />
+      <TaskDetail
+        task={selectedTask}
+        onClose={() => (selectedId = null)}
+        onError={showToast}
+        onDelete={(t: any) => requestDelete(t)}
+      />
     {/key}
   {/if}
 
@@ -234,13 +305,22 @@
     onError={showToast}
   />
 
+  <ConfirmDialog
+    open={confirmTask !== null}
+    title="Delete task?"
+    message={confirmTask ? `"${confirmTask.title}" will be permanently removed.` : ''}
+    confirmLabel="Delete"
+    onCancel={() => (confirmTask = null)}
+    onConfirm={doDelete}
+  />
+
   {#if toast}
     <div
       role="alert"
-      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded-lg border px-4 py-2 text-sm shadow-xl
+      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded border px-4 py-2 text-sm shadow-xl
         {toast.kind === 'error'
-          ? 'border-rose-900/70 bg-rose-950/90 text-rose-200'
-          : 'border-zinc-700 bg-zinc-900 text-zinc-200'}"
+          ? 'border-danger/50 bg-card-hi text-danger'
+          : 'border-line bg-card-hi text-ink'}"
     >
       {toast.msg}
     </div>

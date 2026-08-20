@@ -36,7 +36,7 @@ Single-page app, three views + detail drawer:
    timestamps, delete button (confirm dialog). Every field editable → full CLI parity.
 
 Plus: **New Task dialog** (title required; desc/status/progress optional) reachable from toolbar, tray,
-and `Ctrl+N`. Keyboard: `/` focus search, `n` new task, `Esc` close drawer/dialog, `1..4` switch status filter.
+and `Ctrl+N`. Keyboard: `/` focus search, `n` new task, `Esc` close drawer/dialog/confirm, `1..4` switch status filter, `Delete` deletes the selected task (confirmation dialog).
 
 ## Notifications (`internal/notify`)
 

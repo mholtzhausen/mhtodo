@@ -1,10 +1,61 @@
 @import "tailwindcss";
 
-/* Tailwind v4 CSS-first config (.agent/plan/05-gui-spec.md): dark slate/zinc
-   palette, single indigo accent, Inter with system fallback (no webfont). */
+/* Self-hosted Inter (variable, wght 100–900) — bundled so the webview never
+   depends on system fonts. Without a native face for a requested weight,
+   WebKitGTK synthesizes bold and it renders blurry at small sizes; the
+   variable axis makes every CSS weight (500/600/700) a native instance.
+   License: SIL OFL — see assets/fonts/OFL.txt. */
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/InterVariable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* mhtodo design system — "Slate" (approved from tmp/design/01-slate.html, 2026-08-20).
+   Mid-dark slate lifted well above near-black so surface steps, borders and
+   shadows read; 4px radius on controls, 6px on cards; one bright periwinkle
+   accent; status colors double as the board legend (dot / bar / left edge).
+   Tailwind v4 CSS-first config: the tokens below generate the utilities used
+   across components (bg-canvas, text-ink, border-line-soft, bg-st-wip/20 …). */
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* surfaces: page → chrome → column → card → elevated */
+  --color-canvas: #252b37;
+  --color-chrome: #1f242f;
+  --color-col: #2c3340;
+  --color-card: #343c4d;
+  --color-card-hi: #3d465a;
+  --color-field: #28303d;
+
+  /* borders */
+  --color-line: #4a556b;
+  --color-line-soft: #3a4356;
+
+  /* text */
+  --color-ink: #eef1f7;
+  --color-ink-2: #b6bed0;
+  --color-ink-3: #8791a5;
+
+  /* accent (buttons, focus, selection) */
+  --color-accent: #7b8cff;
+  --color-accent-hi: #93a0ff;
+  --color-accent-ink: #0e1230;
+
+  /* status legend: pending / wip / waiting / done */
+  --color-st-pending: #a3adbf;
+  --color-st-wip: #7b8cff;
+  --color-st-waiting: #e8ab4a;
+  --color-st-done: #4cc48e;
+
+  --color-danger: #ff8492;
+
+  /* unfilled progress track */
+  --color-track: rgba(255, 255, 255, 0.13);
 }
 
 html,
@@ -15,22 +66,100 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-zinc-950);
-  color: var(--color-zinc-200);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-zinc-700) transparent;
+  scrollbar-color: var(--color-line-soft) transparent;
 }
 
 kbd {
-  border: 1px solid var(--color-zinc-700);
+  display: inline-block;
+  margin: 0 1px;
+  padding: 2px 5px 1px;
+  border: 1px solid #414b5e;
   border-bottom-width: 2px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #9aa2b5;
+  font: 10px/1 var(--font-mono);
+  vertical-align: 1px;
+}
+
+/* kbd chips inside accent (primary) buttons are light inverted chips */
+.btn-primary kbd {
+  color: var(--color-accent-ink);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* small uppercase field label (Title / Status / …) */
+.micro {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+
+/* Progress slider: styled native input (WebKitGTK is the primary runtime).
+   The filled portion is painted by an inline linear-gradient in ProgressControl. */
+.prog-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.prog-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: transparent;
+}
+.prog-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 3px rgba(6, 8, 12, 0.5);
+}
+.prog-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: transparent;
+}
+.prog-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* −/+ stepper buttons beside the slider (ProgressControl.svelte) */
+.stepbtn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-line-soft);
   border-radius: 4px;
-  padding: 0 4px;
-  font-size: 10px;
-  color: var(--color-zinc-400);
+  background: var(--color-card);
+  color: var(--color-ink-2);
+  font-size: 14px;
+  line-height: 1;
+}
+.stepbtn:hover {
+  color: var(--color-ink);
+  background: var(--color-card-hi);
+  border-color: var(--color-line);
 }
