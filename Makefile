@@ -22,7 +22,7 @@ AARCH64_CC ?= aarch64-linux-gnu-gcc
 LINTER     := $(shell command -v golangci-lint 2>/dev/null)
 GOFORMT    := $(shell command -v gofmt || echo "$$(go env GOROOT)/bin/gofmt")
 
-.PHONY: help all dev build test lint fmt tidy fe-install fe-bindings fe-build fe-dev release install uninstall path clean
+.PHONY: help all dev build test lint fmt tidy fe-install fe-bindings fe-build fe-dev release install install-files uninstall service-install service-remove path clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -103,17 +103,56 @@ release: ## cross-build linux tarballs → dist/ (arm64 needs $(AARCH64_CC))
 # Installs into $(PREFIX) (default ~/.local): binary on PATH, .desktop in the
 # user applications dir, icon in hicolor. update-desktop-database refreshes the
 # launcher menu; a running desktop picks it up without a restart.
-install: build ## install binary + .desktop + icon into $(PREFIX) (~/.local)
+install-files: ## @ internal — copy binary + .desktop + icon into $(PREFIX)
 	install -Dm755 $(BIN) $(PREFIX)/bin/$(APP)
 	install -Dm644 packaging/$(APP).desktop $(PREFIX)/share/applications/$(APP).desktop
 	install -Dm644 assets/icon.png $(PREFIX)/share/icons/hicolor/512x512/apps/$(APP).png
 	-update-desktop-database $(PREFIX)/share/applications 2>/dev/null || true
+
+install: build install-files ## install binary + .desktop + icon into $(PREFIX) (~/.local)
 
 uninstall: ## remove installed files
 	rm -f $(PREFIX)/bin/$(APP) \
 	      $(PREFIX)/share/applications/$(APP).desktop \
 	      $(PREFIX)/share/icons/hicolor/512x512/apps/$(APP).png
 	-update-desktop-database $(PREFIX)/share/applications 2>/dev/null || true
+
+## --- service ---------------------------------------------------------------
+
+# User-level systemd unit that keeps the GUI (tray app) running across logins.
+# Re-running service-install replaces a previous install: stop → overwrite
+# binary/files → rewrite unit → daemon-reload → enable --now (fresh start).
+SERVICE_UNIT  := $(APP).service
+USER_UNIT_DIR ?= $(HOME)/.config/systemd/user
+
+service-install: build ## build + install, then run as user systemd service (replaces if present)
+	@systemctl --user stop $(SERVICE_UNIT) 2>/dev/null || true
+	$(MAKE) install-files
+	@mkdir -p $(USER_UNIT_DIR)
+	@{ \
+	  echo "[Unit]"; \
+	  echo "Description=mhtodo — todo manager (GUI + system tray)"; \
+	  echo "After=graphical-session.target"; \
+	  echo ""; \
+	  echo "[Service]"; \
+	  echo "Type=simple"; \
+	  echo "ExecStart=$(PREFIX)/bin/$(APP) gui"; \
+	  echo "Restart=on-failure"; \
+	  echo "RestartSec=2"; \
+	  echo ""; \
+	  echo "[Install]"; \
+	  echo "WantedBy=default.target"; \
+	} > $(USER_UNIT_DIR)/$(SERVICE_UNIT)
+	@for v in DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR; do \
+	  [ -n "$$v" ] && systemctl --user import-environment $$v || true; \
+	done
+	systemctl --user daemon-reload
+	systemctl --user enable --now $(SERVICE_UNIT)
+
+service-remove: ## stop + remove the user systemd service (files stay; see uninstall)
+	-systemctl --user disable --now $(SERVICE_UNIT) 2>/dev/null || true
+	rm -f $(USER_UNIT_DIR)/$(SERVICE_UNIT)
+	systemctl --user daemon-reload
 
 clean: ## remove build artifacts
 	rm -rf bin dist frontend/wailsjs

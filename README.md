@@ -30,6 +30,7 @@ Other useful targets:
 | `make test` / `make lint` | Go tests (incl. CLI golden tests) / golangci-lint or go vet fallback |
 | `make release` | cross-build linux tarballs → `dist/` (arm64 needs `aarch64-linux-gnu-gcc`; without it, amd64 only + warning) |
 | `make install` / `uninstall` | user-local install into `$PREFIX` (default `~/.local`) |
+| `make service-install` / `service-remove` | build + install, then run as a user systemd service at login (re-running replaces the installed version) |
 | `make path` | print where the DB lives |
 
 ### From a release tarball
