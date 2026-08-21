@@ -10,7 +10,7 @@ $XDG_DATA_HOME/mhtodo/mhtodo.db        # default: ~/.local/share/mhtodo/mhtodo.d
   Env override exists for tests and for agents that want an isolated DB.
 - Directory created 0700, db file 0600 on first run; migrations run at open (idempotent).
 
-## Schema (v1)
+## Schema (v1 → v2)
 
 ```sql
 CREATE TABLE meta (
@@ -36,6 +36,18 @@ CREATE INDEX idx_tasks_status  ON tasks(status);
 CREATE INDEX idx_tasks_updated ON tasks(updated_at DESC);
 ```
 
+**v2 (archive, v0.2):**
+
+```sql
+ALTER TABLE tasks ADD COLUMN archived_at TEXT; -- set on archive, cleared on unarchive
+CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+```
+
+Archived tasks are hidden from every default view (CLI `list` incl. `--all`, board columns) and only
+appear via an explicit archived filter (`list --archived`, GUI List → Archived chip). Archive is
+bulk-only: the Done column's archive button / `mhtodo archive` moves all done tasks at once; there is
+no per-task archive in v0.2.
+
 Timestamps stored as RFC3339 UTC strings (not unix ints) so CLI/JSON output is human-readable without conversion.
 
 ## IDs
@@ -50,6 +62,8 @@ Timestamps stored as RFC3339 UTC strings (not unix ints) so CLI/JSON output is h
 |---|---|
 | any → `done` | `progress = 100`, `completed_at = now` |
 | `done` → anything else | `completed_at = NULL`; progress left as-is unless explicitly set |
+| archive (bulk, done only) | `archived_at = now`; status/progress untouched; hidden from default views |
+| unarchive | `status = pending`, `progress = 0`, `completed_at = NULL`, `archived_at = NULL` — a fresh start |
 | any other change | `updated_at = now` always; `created_at` immutable |
 
 - `waiting` is a first-class status (blocked on external dependency), not a flag.

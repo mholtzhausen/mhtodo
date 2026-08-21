@@ -572,3 +572,124 @@ func runMust(out *bytes.Buffer, run func(args ...string) int, args ...string) st
 	out.Reset()
 	return s
 }
+
+// --- archive / unarchive (v0.2) ----------------------------------------------
+
+func TestArchiveAndUnarchive(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("add", "Finished thing"); code != 0 {
+		t.Fatal(code)
+	}
+	out.Reset()
+	if code := run("add", "Done one", "--status", "done"); code != 0 {
+		t.Fatal(code)
+	}
+	id1 := strings.Fields(out.String())[0]
+	out.Reset()
+	if code := run("add", "Done two", "--status", "done"); code != 0 {
+		t.Fatal(code)
+	}
+	id2 := strings.Fields(out.String())[0]
+
+	// archive → JSON array of exactly the done tasks, each with archived_at set.
+	out.Reset()
+	if code := run("archive", "--json"); code != 0 {
+		t.Fatalf("exit %d (stderr: %s)", code, errb.String())
+	}
+	var archived []core.Task
+	mustJSON(t, out.Bytes(), &archived)
+	if len(archived) != 2 {
+		t.Fatalf("archive returned %d tasks, want 2: %+v", len(archived), archived)
+	}
+	gotIDs := map[string]bool{archived[0].ID: true, archived[1].ID: true}
+	if !gotIDs[id1] || !gotIDs[id2] {
+		t.Errorf("archive returned wrong ids: %v (want %s + %s)", gotIDs, id1, id2)
+	}
+	for _, tsk := range archived {
+		if tsk.ArchivedAt == nil || tsk.Status != core.StatusDone {
+			t.Errorf("archived task wrong: %+v", tsk)
+		}
+	}
+
+	// Default list and --all now hide the archived tasks; only "Finished thing" shows.
+	out.Reset()
+	run("list", "--all", "--json")
+	mustJSON(t, out.Bytes(), &archived)
+	if len(archived) != 1 || archived[0].Title != "Finished thing" {
+		t.Errorf("--all should hide archived: %+v", archived)
+	}
+
+	// list --archived shows exactly the two.
+	out.Reset()
+	if code := run("list", "--archived", "--json"); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &archived)
+	if len(archived) != 2 {
+		t.Errorf("--archived wrong: %+v", archived)
+	}
+
+	// unarchive by prefix → pending, progress reset.
+	out.Reset()
+	if code := run("unarchive", id1, "--json"); code != 0 {
+		t.Fatalf("exit %d (stderr: %s)", code, errb.String())
+	}
+	var task core.Task
+	mustJSON(t, out.Bytes(), &task)
+	if task.ID != id1 || task.Status != core.StatusPending || task.Progress != 0 ||
+		task.CompletedAt != nil || task.ArchivedAt != nil {
+		t.Errorf("unarchived task wrong: %+v", task)
+	}
+
+	// It is back in the default list (order is updated_at desc — check as a set).
+	out.Reset()
+	run("list", "--json")
+	mustJSON(t, out.Bytes(), &archived)
+	if len(archived) != 2 {
+		t.Fatalf("default list after unarchive = %d tasks: %+v", len(archived), archived)
+	}
+	titles := map[string]bool{archived[0].Title: true, archived[1].Title: true}
+	if !titles["Finished thing"] || !titles["Done one"] {
+		t.Errorf("default list after unarchive wrong titles: %v", titles)
+	}
+
+	// unarchive on a non-archived task (id1 was restored to pending above) →
+	// exit 1, not_archived.
+	out.Reset()
+	errb.Reset()
+	if code := run("unarchive", id1); code != 1 {
+		t.Fatalf("exit %d, want 1 (stderr: %s)", code, errb.String())
+	}
+	if got := strings.TrimSpace(errb.String()); !strings.Contains(got, "not archived") {
+		t.Errorf("stderr missing 'not archived': %q", got)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("unarchive", id1, "--json"); code != 1 {
+		t.Fatalf("--json exit %d, want 1", code)
+	}
+	var env struct{ Error, Message string }
+	mustJSON(t, errb.Bytes(), &env)
+	if env.Error != "not_archived" {
+		t.Errorf("error name = %q, want not_archived", env.Error)
+	}
+
+	// archive with nothing done → empty output, exit 0.
+	out.Reset()
+	errb.Reset()
+	if code := run("archive"); code != 0 {
+		t.Fatalf("exit %d (stderr: %s)", code, errb.String())
+	}
+	if got := strings.TrimSpace(out.String()); got != "" {
+		t.Errorf("empty archive should print nothing: %q", got)
+	}
+
+	// unarchive unknown id → exit 2.
+	out.Reset()
+	errb.Reset()
+	if code := run("unarchive", "zzzz9999"); code != 2 {
+		t.Fatalf("exit %d, want 2 (stderr: %s)", code, errb.String())
+	}
+}

@@ -247,3 +247,82 @@ func TestListViaService(t *testing.T) {
 		t.Errorf("bad filter status: %v", err)
 	}
 }
+
+// TestArchiveDoneAndUnarchive covers the v0.2 archive lifecycle: bulk archive
+// of done tasks, exclusion from default lists, explicit archived view, and
+// unarchive → pending with progress reset.
+func TestArchiveDoneAndUnarchive(t *testing.T) {
+	svc, repo := newTestService(t)
+	ctx := context.Background()
+
+	seed(t, repo, "aaaa1111-0000-7000-8000-000000000001", "done one", core.StatusDone, 100)
+	seed(t, repo, "bbbb2222-0000-7000-8000-000000000001", "done two", core.StatusDone, 100)
+	seed(t, repo, "cccc3333-0000-7000-8000-000000000001", "wip task", core.StatusWIP, 50)
+	seed(t, repo, "dddd4444-0000-7000-8000-000000000001", "pending task", core.StatusPending, 0)
+
+	// ArchiveDone returns exactly the done tasks, stamped with archived_at.
+	archived, err := svc.ArchiveDone(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archived) != 2 {
+		t.Fatalf("archived %d tasks, want 2: %+v", len(archived), archived)
+	}
+	for _, tsk := range archived {
+		if tsk.ArchivedAt == nil || tsk.Status != core.StatusDone {
+			t.Errorf("%s wrong after archive: %+v", tsk.ID, tsk)
+		}
+	}
+
+	// Second call is a no-op.
+	again, err := svc.ArchiveDone(ctx)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("second ArchiveDone = (%d, %v), want (0, nil)", len(again), err)
+	}
+
+	// Default list hides archived (and done); the wip+pending tasks remain.
+	defList, err := svc.List(ctx, core.ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(defList) != 2 {
+		t.Errorf("default list = %d tasks, want 2 (wip + pending): %+v", len(defList), defList)
+	}
+
+	// Explicit archived view shows exactly the two done tasks.
+	archList, err := svc.List(ctx, core.ListFilter{Archived: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archList) != 2 {
+		t.Fatalf("archived list = %d tasks, want 2: %+v", len(archList), archList)
+	}
+
+	// Unarchive by prefix → pending, progress reset to 0, completed_at cleared.
+	got, err := svc.Unarchive(ctx, "aaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != core.StatusPending || got.Progress != 0 ||
+		got.CompletedAt != nil || got.ArchivedAt != nil {
+		t.Errorf("unarchived task wrong: %+v", got)
+	}
+
+	// It is back in the default list.
+	defList, _ = svc.List(ctx, core.ListFilter{})
+	if len(defList) != 3 {
+		t.Errorf("default list after unarchive = %d tasks, want 3: %+v", len(defList), defList)
+	}
+
+	// Unarchiving a non-archived task → ErrNotArchived.
+	_, err = svc.Unarchive(ctx, "cccc")
+	if !errors.Is(err, core.ErrNotArchived) {
+		t.Errorf("unarchive of wip task: %v, want ErrNotArchived", err)
+	}
+
+	// Unknown id still maps to ErrNotFound.
+	_, err = svc.Unarchive(ctx, "zzzz9999")
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("unarchive unknown: %v, want ErrNotFound", err)
+	}
+}

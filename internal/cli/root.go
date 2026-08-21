@@ -59,6 +59,8 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "progress_range", msg: err.Error()}
 		case errors.Is(err, core.ErrNoFieldsToUpdate):
 			return &errExit{code: ExitUsage, name: "no_fields", msg: err.Error()}
+		case errors.Is(err, core.ErrNotArchived):
+			return &errExit{code: ExitUsage, name: "not_archived", msg: err.Error()}
 		default:
 			return &errExit{code: ExitStorage, name: "storage", msg: err.Error()}
 		}
@@ -214,7 +216,8 @@ func NewRootCmd(version, commit string) *cobra.Command {
 
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
-		newStatusCmd(), newDoneCmd(), newRmCmd(), newPathCmd(),
+		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(),
+		newRmCmd(), newPathCmd(),
 	} {
 		root.AddCommand(c)
 	}

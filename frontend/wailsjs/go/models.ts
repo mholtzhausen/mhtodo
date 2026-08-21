@@ -25,6 +25,7 @@ export namespace core {
 	    Sort: string;
 	    Ascending: boolean;
 	    IncludeDone: boolean;
+	    Archived: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListFilter(source);
@@ -38,6 +39,7 @@ export namespace core {
 	        this.Sort = source["Sort"];
 	        this.Ascending = source["Ascending"];
 	        this.IncludeDone = source["IncludeDone"];
+	        this.Archived = source["Archived"];
 	    }
 	}
 	export class Task {
@@ -52,6 +54,8 @@ export namespace core {
 	    updated_at: any;
 	    // Go type: time
 	    completed_at?: any;
+	    // Go type: time
+	    archived_at?: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -67,6 +71,7 @@ export namespace core {
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.updated_at = this.convertValues(source["updated_at"], null);
 	        this.completed_at = this.convertValues(source["completed_at"], null);
+	        this.archived_at = this.convertValues(source["archived_at"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

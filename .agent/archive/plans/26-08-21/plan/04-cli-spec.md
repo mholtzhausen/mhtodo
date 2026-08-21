@@ -33,9 +33,11 @@ Creates a task; prints the full created object (JSON with `--json`, one line `id
 
 ### list / ls
 ```
-mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+|-]] [--all]
+mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+|-]] [--all] [--archived]
 ```
-- Default: **excludes done**, sorted `updated_at desc`. `--all` includes done.
+- Default: **excludes done and archived**, sorted `updated_at desc`. `--all` includes done.
+  `--archived` shows archived tasks only (they are hidden from every other view); it composes with
+  `--status`/`--search`.
 - `--search`: case-insensitive LIKE over title + description.
 - `--sort`: `created`, `updated`, `status`, `progress`, `title`; default `updated`; `-` prefix = ascending.
 - Human format: aligned columns `ID(8)  STATUS  PROG  UPDATED(rel+abs)  TITLE`.
@@ -58,6 +60,22 @@ mhtodo status ID pending|wip|done|waiting
 mhtodo done ID            # shortcut for `status ID done`
 ```
 Prints updated object (so agents can confirm the transition + timestamps).
+
+### archive
+```
+mhtodo archive
+```
+Archives **all** currently-done tasks in one step (the CLI form of the board's Done-column button).
+Prints the archived objects (JSON array with `--json`); prints nothing and exits 0 when there was
+nothing to archive. No per-task form — archiving is a bulk sweep by design; restore individually via
+`unarchive`.
+
+### unarchive
+```
+mhtodo unarchive ID
+```
+Restores an archived task: it goes back to `pending`, progress resets to 0, `completed_at` is
+cleared. Prints the updated object. Non-archived ID → exit 1 (`not_archived`).
 
 ### rm / remove
 ```
@@ -86,7 +104,8 @@ mhtodo gui                # explicit GUI launch; identical to bare `mhtodo`
   "progress": 40,
   "created_at": "2025-08-19T07:59:00Z",
   "updated_at": "2025-08-19T08:30:12Z",
-  "completed_at": null
+  "completed_at": null,
+  "archived_at": null
 }
 ```
 
@@ -101,4 +120,7 @@ mhtodo show 01958b2e --json
 mhtodo edit 01958b2e --progress 60
 mhtodo status 01958b2e waiting
 mhtodo done 01958b2e
+mhtodo archive --json | jq -r '.[].id'
+mhtodo list --archived --json
+mhtodo unarchive 01958b2e
 ```

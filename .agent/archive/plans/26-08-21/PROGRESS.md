@@ -1,4 +1,19 @@
-# mhtodo — v0.1 progress (updated 2026-08-19)
+# mhtodo — progress (updated 2026-08-20)
+
+## v0.2 — Archive (in progress, pending manual GUI check)
+
+Done tasks now have a destination: the **archive**. Bulk-only by design — one click on the Done
+column's archive button sweeps everything in it; restore individually from List → Archived.
+
+- [x] Schema v2 migration (`archived_at` + index), idempotent, v1→v2 upgrade path tested against a real pre-v0.2 DB file
+- [x] Core: `ArchiveDone()` (single-statement UPDATE…RETURNING — atomic under WAL) + `Unarchive(id)` → pending, progress 0, completed_at cleared; `ErrNotArchived` typed error
+- [x] Archived tasks hidden from every default view (CLI list incl. --all, board); explicit filter only (`list --archived`, GUI chip)
+- [x] CLI: `mhtodo archive`, `mhtodo unarchive ID`, `list --archived`; exit codes + JSON envelope per contract (`not_archived` → 1); golden tests green
+- [x] GUI: Done-column archive button (count toast, no confirm — reversible), Archived filter chip + key `5`, detail-pane Unarchive button + archived timestamp; bindings regenerated
+- [x] Parity table / plan docs / README agent contract updated; `go test -race` all green; `make build` clean
+- [ ] Manual GUI verification (board sweep, archived view, unarchive round-trip)
+
+## v0.1 — complete ✅
 
 Status: **v0.1 complete** ✅ — all six milestones done (M0–M6). M6 shipped packaging & docs: finalized Makefile (release/install/uninstall + arm64 guard), .desktop launcher entry, app+tray icons, README with the agent contract section; `make install` smoke-tested live on this machine (tray E2E over D-Bus, close-hides-to-tray, clean quit). Everything below is copy-pasteable to Slack as-is.
 

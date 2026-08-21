@@ -133,6 +133,29 @@ func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 	return t, err
 }
 
+// ArchiveDone maps to CLI `archive`: archives every done task at once (the
+// board's Done-column button). Emits tasks:changed only when something moved,
+// so an empty click is a true no-op for the UI.
+func (a *App) ArchiveDone() ([]core.Task, error) {
+	tasks, err := a.svc.ArchiveDone(a.ctx)
+	if err == nil && len(tasks) > 0 {
+		a.emitChanged("", "archive")
+	}
+	if tasks == nil {
+		tasks = []core.Task{} // Wails marshals nil slices as null; the frontend expects an array
+	}
+	return tasks, err
+}
+
+// Unarchive maps to CLI `unarchive`: restores an archived task to pending.
+func (a *App) Unarchive(id string) (core.Task, error) {
+	t, err := a.svc.Unarchive(a.ctx, id)
+	if err == nil {
+		a.emitChanged(t.ID, "unarchive")
+	}
+	return t, err
+}
+
 // DeleteTask maps to CLI `rm`; returns the deleted task.
 func (a *App) DeleteTask(id string) (core.Task, error) {
 	t, err := a.svc.Delete(a.ctx, id)

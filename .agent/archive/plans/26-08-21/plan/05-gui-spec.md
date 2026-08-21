@@ -28,15 +28,24 @@ to the Wails app through channels — never touch GTK from non-main threads beyo
 Single-page app, three views + detail drawer:
 
 1. **Board** (default): kanban columns `pending | wip | waiting | done`, cards show title, progress
-   bar, relative updated time. Column headers show counts and allow quick-add per column.
+   bar, relative updated time. Column headers show counts and allow quick-add per column. The Done
+   column header additionally carries an **archive button** (v0.2): one click archives everything in
+   the column (reversible — no confirm dialog), shows a toast with the count, and empties the column
+   via the normal `tasks:changed` refetch. Archived tasks never appear on the board.
 2. **List**: sortable table mirroring CLI `list` flags (status filter chips, search box, sort by any
-   field). Row click → detail drawer.
+   field). Row click → detail drawer. Filter chips include a neutral **Archived** chip (v0.2):
+   All/status views hide archived tasks; only the Archived chip shows them.
 3. **Detail drawer** (right side): full task — title (inline edit), description (textarea, markdown-ish
    plain text for v1), status segmented control, progress slider + numeric input, created/updated/completed
-   timestamps, delete button (confirm dialog). Every field editable → full CLI parity.
+   timestamps, delete button (confirm dialog). Every field editable → full CLI parity. For archived
+   tasks the drawer shows an **Archived** timestamp and an **Unarchive → pending** button (v0.2):
+   restoring moves the task to pending with progress reset (rule owned by `core.Unarchive`).
+
+Toasts (errors/info, e.g. the archive count) auto-dismiss after **3s** by default; individual call
+sites may pass a different lifetime when a message needs it.
 
 Plus: **New Task dialog** (title required; desc/status/progress optional) reachable from toolbar, tray,
-and `Ctrl+N`. Keyboard: `/` focus search, `n` new task, `Esc` close drawer/dialog/confirm, `1..4` switch status filter, `Delete` deletes the selected task (confirmation dialog).
+and `Ctrl+N`. Keyboard: `/` focus search, `n` new task, `Esc` close drawer/dialog/confirm, `1..4` switch status filter, `5` toggle archived view (list), `Delete` deletes the selected task (confirmation dialog).
 
 ## Notifications (`internal/notify`)
 

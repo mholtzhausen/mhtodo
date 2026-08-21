@@ -57,6 +57,17 @@
     }
   }
 
+  // v0.2 unarchive → the task goes back to pending with progress reset on the
+  // Go side; sync the local slider so it doesn't write a stale value later.
+  async function unarchive() {
+    try {
+      const t = await api.unarchive(task.id)
+      progress = t.progress
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
 </script>
 
 <aside
@@ -119,10 +130,25 @@
         <dt>Completed</dt>
         <dd class="font-mono text-[11px] text-ink-2">{task.completed_at ? absShort(task.completed_at) : '—'}</dd>
       </div>
+      {#if task.archived_at}
+        <div class="flex justify-between">
+          <dt>Archived</dt>
+          <dd class="font-mono text-[11px] text-ink-2">{absShort(task.archived_at)}</dd>
+        </div>
+      {/if}
     </dl>
   </div>
 
-  <div class="flex-none border-t border-line-soft bg-chrome px-5 py-3">
+  <div class="flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
+    {#if task.archived_at}
+      <button
+        onclick={unarchive}
+        title="Restore to pending (progress resets to 0)"
+        class="w-full rounded border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
+      >
+        Unarchive → pending
+      </button>
+    {/if}
     <button
       onclick={() => onDelete(task)}
       title="Delete (del)"

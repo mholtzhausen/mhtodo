@@ -66,18 +66,20 @@ concurrently with the GUI.
 
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
-`invalid_status`, `progress_range`, `no_fields`, `usage`, `storage`.
+`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `usage`, `storage`.
 
 ### Commands
 
 | Command | Synopsis | Notes |
 |---|---|---|
 | `add` | `mhtodo add TITLE [--desc TEXT] [--status pending\|wip\|done\|waiting] [--progress 0-100]` | prints the created object (or just the ID with `-q`) |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all]` | default: excludes done, sorted `updated_at desc`; `--all` includes done; `--search` = case-insensitive substring over title + description; sort fields: `created`, `updated`, `status`, `progress`, `title` — suffix `-` ascending, `+` or none descending |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived]` | default: excludes done **and archived**, sorted `updated_at desc`; `--all` includes done; `--archived` shows archived tasks only (they are hidden everywhere else); `--search` = case-insensitive substring over title + description; sort fields: `created`, `updated`, `status`, `progress`, `title` — suffix `-` ascending, `+` or none descending |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--progress 0-100]` | at least one flag required; never changes status |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|done\|waiting` | prints the updated object (transition + timestamps) |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
+| `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step (no per-task form); prints the archived objects, nothing when there was none; reversible via `unarchive` |
+| `unarchive` | `mhtodo unarchive ID` | restores an archived task: it goes back to `pending`, progress resets to 0, `completed_at` cleared; non-archived ID → exit 1 (`not_archived`) |
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`** (agents must pass it — exit 1 otherwise); prints only the deleted ID |
 | `path` | `mhtodo path` | print the DB file path |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
@@ -93,12 +95,14 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "progress": 40,
   "created_at": "2025-08-19T07:59:00Z",
   "updated_at": "2025-08-19T08:30:12Z",
-  "completed_at": null
+  "completed_at": null,
+  "archived_at": null
 }
 ```
 
 `--json list` returns an array of these. Timestamps are RFC3339 UTC; `completed_at` is set on the
-→done transition and cleared when a task leaves done. IDs are UUIDv7 (time-ordered).
+→done transition and cleared when a task leaves done; `archived_at` is set by `archive` and cleared
+by `unarchive`. IDs are UUIDv7 (time-ordered).
 
 ### Agent usage examples
 
@@ -109,6 +113,9 @@ mhtodo show 01958b2e --json
 mhtodo edit 01958b2e --progress 60
 mhtodo status 01958b2e waiting
 mhtodo done 01958b2e
+mhtodo archive --json | jq -r '.[].id'      # sweep the Done column into the archive
+mhtodo list --archived --json               # inspect archived tasks
+mhtodo unarchive 01958b2e                   # back to pending, progress reset
 ```
 
 **Contract stability:** JSON field names, flags, and exit codes are API. They change deliberately,

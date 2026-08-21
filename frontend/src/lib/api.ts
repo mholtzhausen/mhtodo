@@ -15,10 +15,12 @@ export interface Task {
   created_at: string
   updated_at: string
   completed_at: string | null
+  archived_at: string | null // v0.2: set while the task is in the archive
 }
 
 export interface ListFilterInput {
-  status?: string // '' = all (shows done too)
+  status?: string // '' = all (shows done too); never combined with archived
+  archived?: boolean // true → archived tasks only; default false → archived hidden
   search?: string
   sort?: 'created' | 'updated' | 'status' | 'progress' | 'title'
   ascending?: boolean
@@ -32,7 +34,10 @@ const toGoFilter = (f: ListFilterInput) => ({
   Limit: 0,
   Sort: f.sort ?? 'updated',
   Ascending: !!f.ascending,
-  IncludeDone: !f.status // "all" view includes done; explicit status chips don't need it
+  // "all" view includes done; explicit status chips don't need it. The archived
+  // view always shows its (done) tasks — Go enforces that too.
+  IncludeDone: !f.status || !!f.archived,
+  Archived: !!f.archived
 })
 
 export const api = {
@@ -62,6 +67,14 @@ export const api = {
   },
   setStatus(id: string, status: Status) {
     return App.SetStatus(id, status as unknown as string)
+  },
+  // v0.2 archive: bulk-archive everything in the Done column (board button).
+  archiveDone(): Promise<Task[]> {
+    return App.ArchiveDone().then((t) => t ?? []) as Promise<Task[]>
+  },
+  // Unarchive restores the task to pending (progress reset) — Go owns that rule.
+  unarchive(id: string) {
+    return App.Unarchive(id)
   },
   remove(id: string) {
     return App.DeleteTask(id)

@@ -28,19 +28,23 @@
   let dbPath = $state('')
 
   // Filter state — mirrors core.ListFilter (parity with CLI `list` flags).
-  let status = $state<Status | ''>('') // '' = all
+  // 'archived' is a separate mode: default/all views hide archived tasks; only
+  // this filter shows them (v0.2). Mutually exclusive with the status chips.
+  let status = $state<Status | '' | 'archived'>('') // '' = all
   let search = $state('')
   let sort = $state<'created' | 'updated' | 'status' | 'progress' | 'title'>('updated')
   let ascending = $state(false)
 
   const selectedTask = $derived(tasks.find((t) => t.id === selectedId) ?? null)
 
-  function showToast(msg: string, kind: 'error' | 'info' = 'error') {
+  // All toasts auto-dismiss after 3s by default; individual call sites may pass
+  // a different lifetime when a message needs more (or less) time.
+  function showToast(msg: string, kind: 'error' | 'info' = 'error', ms = 3000) {
     const t = { msg, kind }
     toast = t
     setTimeout(() => {
       if (toast === t) toast = null
-    }, 5000)
+    }, ms)
   }
 
   function setView(v: 'board' | 'list') {
@@ -56,8 +60,10 @@
       // the status chips/sort controls only apply to the list view.
       const filter =
         view === 'board'
-          ? { search, sort: 'updated' as const, ascending: false }
-          : { status, search, sort, ascending }
+          ? { search, sort: 'updated' as const, ascending: false } // board hides archived automatically (Go side)
+          : status === 'archived'
+            ? { archived: true, search, sort, ascending }
+            : { status, search, sort, ascending }
       tasks = await api.list(filter)
     } catch (e) {
       showToast(errMsg(e))
@@ -149,6 +155,12 @@
         status = status === 'done' ? '' : 'done'
         load()
         break
+      // 5 toggles the archived view (list only; mutually exclusive with 1–4).
+      case '5':
+        if (view === 'list') {
+          status = status === 'archived' ? '' : 'archived'
+          load()
+        }
     }
   }
 
@@ -216,7 +228,7 @@
       {search}
       {sort}
       {ascending}
-      onStatusChange={(s: Status | '') => { status = s; load() }}
+      onStatusChange={(s: Status | '' | 'archived') => { status = s; load() }}
       onSearchInput={(v: string) => { search = v; load() }}
       onSortChange={(f: 'created' | 'updated' | 'status' | 'progress' | 'title') => { sort = f; load() }}
       onToggleAsc={() => { ascending = !ascending; load() }}
@@ -265,6 +277,7 @@
         selectedId={selectedId}
         onSelect={(id: string) => (selectedId = id)}
         onQuickAdd={(s: Status) => { dialogInitialStatus = s; dialogOpen = true }}
+        onArchived={(n: number) => showToast(`Archived ${n} task${n === 1 ? '' : 's'}`, 'info')}
         onError={showToast}
       />
     {:else}
@@ -282,7 +295,7 @@
     <div class="flex-1"></div>
     <span class="flex-none whitespace-nowrap"
       ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd> view
-      {#if view === 'list'}· <kbd>1–4</kbd> filter{/if} · <kbd>del</kbd> delete ·
+      {#if view === 'list'}· <kbd>1–4</kbd> filter · <kbd>5</kbd> archived{/if} · <kbd>del</kbd> delete ·
       <kbd>esc</kbd> close · <kbd>ctrl+q</kbd> quit</span
     >
   </footer>

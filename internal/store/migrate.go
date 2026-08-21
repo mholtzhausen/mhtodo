@@ -15,7 +15,17 @@ type migration struct {
 
 var migrations = []migration{
 	{version: 1, up: schemaV1},
+	{version: 2, up: schemaV2},
 }
+
+// v2 adds the archive (v0.2): archived_at is set when a done task is archived
+// and cleared on unarchive. Archived tasks are hidden from default lists and
+// the board; only an explicit archived filter shows them.
+const schemaV2 = `
+ALTER TABLE tasks ADD COLUMN archived_at TEXT; -- set on archive, cleared on unarchive
+
+CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+`
 
 const schemaV1 = `
 CREATE TABLE meta (

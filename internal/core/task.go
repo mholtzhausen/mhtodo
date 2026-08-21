@@ -41,6 +41,7 @@ type Task struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	CompletedAt *time.Time `json:"completed_at"`
+	ArchivedAt  *time.Time `json:"archived_at"` // set on archive, cleared on unarchive (v0.2)
 }
 
 // CreateInput carries the fields accepted by add / CreateTask.
@@ -72,6 +73,7 @@ type ListFilter struct {
 	Sort        string // created|updated|status|progress|title; default "updated"
 	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
 	IncludeDone bool   // default false → done tasks are hidden unless matched by Status
+	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
 }
 
 // --- typed errors -----------------------------------------------------------
@@ -108,6 +110,9 @@ func (e *ProgressRangeError) Error() string {
 }
 
 var ErrNoFieldsToUpdate = errors.New("no fields to update")
+
+// ErrNotArchived is returned when unarchive is called on a non-archived task.
+var ErrNotArchived = errors.New("task is not archived")
 
 // MinPrefixLen is the shortest prefix accepted for ID lookup.
 const MinPrefixLen = 4

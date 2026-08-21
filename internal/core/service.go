@@ -20,6 +20,9 @@ type TaskRepository interface {
 	List(ctx context.Context, f ListFilter) ([]Task, error)
 	Update(ctx context.Context, t Task) error // mutable fields by t.ID; ErrNotFound if missing
 	Delete(ctx context.Context, id string) (Task, error)
+	// ArchiveDone archives every non-archived done task in one statement and
+	// returns the archived tasks (v0.2). at is the service clock (tests inject it).
+	ArchiveDone(ctx context.Context, at time.Time) ([]Task, error)
 	CountOpen(ctx context.Context) (int, error) // non-done tasks; tray tooltip only
 }
 
@@ -183,6 +186,40 @@ func (s *Service) SetStatus(ctx context.Context, ref string, st Status) (Task, e
 		t.CompletedAt = nil // progress left as-is per spec
 	}
 	t.Status = st
+	t.UpdatedAt = now
+	if err := s.repo.Update(ctx, t); err != nil {
+		return Task{}, err
+	}
+	return t, nil
+}
+
+// ArchiveDone archives all done tasks at once (board Done-column button / CLI
+// `archive`). It is reversible via Unarchive; no notification fires (the tasks
+// were already done). Returns the archived tasks, empty when there was nothing.
+func (s *Service) ArchiveDone(ctx context.Context) ([]Task, error) {
+	return s.repo.ArchiveDone(ctx, s.now())
+}
+
+// Unarchive restores an archived task: it goes back to pending with progress
+// reset to 0 and completed_at cleared (the done→other transition rule), so the
+// user starts fresh. Non-archived tasks → ErrNotArchived.
+func (s *Service) Unarchive(ctx context.Context, ref string) (Task, error) {
+	id, err := s.ResolveID(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.ArchivedAt == nil {
+		return Task{}, ErrNotArchived
+	}
+	now := s.now()
+	t.Status = StatusPending
+	t.Progress = 0
+	t.CompletedAt = nil // done → other rule
+	t.ArchivedAt = nil
 	t.UpdatedAt = now
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err

@@ -37,7 +37,7 @@ mhtodo/
 │   │   └── repo_test.go
 │   ├── cli/                 # CLI — cobra commands → core.Service
 │   │   ├── root.go          #   root cmd, global flags (--json), output helpers
-│   │   ├── add.go list.go show.go edit.go status.go rm.go path.go gui.go
+│   │   ├── add.go list.go show.go edit.go status.go archive.go rm.go path.go gui.go
 │   │   └── cli_test.go      #   golden tests: run command against temp DB, assert stdout/exit
 │   ├── tray/                # GUI-only — systray wiring (icon, menu, callbacks)
 │   │   └── tray.go
@@ -66,11 +66,13 @@ mhtodo/
 
 | Method | Maps to CLI | Notes |
 |---|---|---|
-| `ListTasks(filter ListFilter) []Task` | `list` | filter: status, search, limit, sort, includeDone |
+| `ListTasks(filter ListFilter) []Task` | `list` | filter: status, search, limit, sort, includeDone, archived (v0.2; default hides archived) |
 | `GetTask(id string) Task` | `show` | prefix match allowed (same helper as CLI) |
 | `CreateTask(in CreateInput) Task` | `add` | |
 | `UpdateTask(id string, patch UpdateInput) Task` | `edit` | title/description/progress |
 | `SetStatus(id string, status Status) Task` | `status` / `done` | fires notify + event on done/waiting |
+| `ArchiveDone() []Task` | `archive` | v0.2: bulk-archives all done tasks (board Done-column button); no-op when empty |
+| `Unarchive(id string) Task` | `unarchive` | v0.2: archived → pending, progress reset to 0 |
 | `DeleteTask(id string)` | `rm` | |
 | `DBPath() string` | `path` | shown in settings/about |
 

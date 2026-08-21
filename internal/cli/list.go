@@ -34,7 +34,7 @@ func newListCmd() *cobra.Command {
 	var status, search string
 	var limit int
 	var sort string
-	var all bool
+	var all, archived bool
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -65,6 +65,7 @@ func newListCmd() *cobra.Command {
 				Sort:        field,
 				Ascending:   ascending,
 				IncludeDone: all || status != "",
+				Archived:    archived, // --archived shows only archived tasks (incl. done)
 			})
 			if err != nil {
 				return mapError(err)
@@ -77,5 +78,6 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().IntVar(&limit, "limit", 0, "max results (0 = unlimited)")
 	cmd.Flags().StringVar(&sort, "sort", "updated", "sort field: created|updated|status|progress|title; suffix - ascending, + or none descending")
 	cmd.Flags().BoolVar(&all, "all", false, "include done tasks")
+	cmd.Flags().BoolVar(&archived, "archived", false, "show archived tasks only (default lists hide them)")
 	return cmd
 }

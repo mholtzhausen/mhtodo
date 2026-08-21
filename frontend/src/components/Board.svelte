@@ -8,6 +8,7 @@
     selectedId,
     onSelect,
     onQuickAdd,
+    onArchived,
     onError
   }: {
     tasks: any[]
@@ -15,6 +16,8 @@
     selectedId: string | null
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
+    // v0.2: called with the number of archived tasks after a Done-column archive.
+    onArchived?: (n: number) => void
     onError?: (msg: string) => void
   } = $props()
 
@@ -99,6 +102,23 @@
     if (suppressClick) return
     onSelect(t.id)
   }
+
+  // --- v0.2 archive: one click moves the whole Done column to the archive.
+  // Reversible from the list view's Archived filter, so no confirm dialog.
+  let archiving = $state(false)
+
+  async function archiveAll() {
+    if (archiving || byStatus.done.length === 0) return
+    archiving = true
+    try {
+      const archived = await api.archiveDone()
+      onArchived?.(archived.length) // tasks:changed refetch empties the column
+    } catch (err) {
+      onError?.(errMsg(err))
+    } finally {
+      archiving = false
+    }
+  }
 </script>
 
 {#if tasks.length === 0}
@@ -132,6 +152,29 @@
             {byStatus[col.status].length}
           </span>
           <div class="flex-1"></div>
+          {#if col.status === 'done'}
+            <button
+              title="Archive all done tasks (reversible from List → Archived)"
+              disabled={byStatus.done.length === 0 || archiving}
+              onclick={archiveAll}
+              class="rounded p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"
+            >
+              <svg
+                class="h-3.5 w-3.5 {archiving ? 'animate-pulse text-accent' : 'text-ink-3'}"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="5" rx="1" />
+                <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
+                <path d="M10 13h4" />
+              </svg>
+            </button>
+          {/if}
           <button
             title={`New ${col.label.toLowerCase()} task`}
             onclick={() => onQuickAdd(col.status)}

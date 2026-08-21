@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, status, progress, created_at, updated_at, completed_at`
+const taskColumns = `id, title, description, status, progress, created_at, updated_at, completed_at, archived_at`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -43,9 +43,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		createdAt string
 		updatedAt string
 		completed sql.NullString
+		archived  sql.NullString
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed); err != nil {
+		&createdAt, &updatedAt, &completed, &archived); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
@@ -63,6 +64,13 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		}
 		t.CompletedAt = &ct
 	}
+	if archived.Valid {
+		at, err := parseTS(archived.String)
+		if err != nil {
+			return core.Task{}, err
+		}
+		t.ArchivedAt = &at
+	}
 	return t, nil
 }
 
@@ -70,9 +78,9 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, string(t.Status), t.Progress,
-		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt))
+		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt))
 	return err
 }
 
@@ -110,8 +118,15 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 	if f.Status != "" {
 		conds = append(conds, "status = ?")
 		args = append(args, string(f.Status))
-	} else if !f.IncludeDone {
+	} else if !f.IncludeDone && !f.Archived {
+		// The archived view shows everything that is archived (almost always
+		// done), so the default done-exclusion does not apply there.
 		conds = append(conds, `status <> 'done'`)
+	}
+	if f.Archived {
+		conds = append(conds, "archived_at IS NOT NULL")
+	} else {
+		conds = append(conds, "archived_at IS NULL") // archived tasks are hidden unless explicitly requested
 	}
 	if strings.TrimSpace(f.Search) != "" {
 		pat := "%" + escapeLike(strings.TrimSpace(f.Search)) + "%"
@@ -147,9 +162,9 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, status = ?, progress = ?,
-		 completed_at = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, string(t.Status), t.Progress,
-		nullTS(t.CompletedAt), formatTS(t.UpdatedAt), t.ID)
+		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
@@ -172,6 +187,32 @@ func (r *TaskRepo) Delete(ctx context.Context, id string) (core.Task, error) {
 		return core.Task{}, core.ErrNotFound
 	}
 	return t, err
+}
+
+// ArchiveDone archives every non-archived done task and returns them. One
+// UPDATE ... RETURNING statement: atomic under WAL even while the other
+// frontend is writing (single-statement rule, AGENTS.md). The "done only"
+// predicate is part of this method's contract — core.ArchiveDone exposes it
+// as-is; there is no per-task archive in v0.2.
+func (r *TaskRepo) ArchiveDone(ctx context.Context, at time.Time) ([]core.Task, error) {
+	ts := formatTS(at)
+	rows, err := r.db.QueryContext(ctx,
+		`UPDATE tasks SET archived_at = ?, updated_at = ?
+		 WHERE status = 'done' AND archived_at IS NULL
+		 RETURNING `+taskColumns, ts, ts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []core.Task
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
 }
 
 // CountOpen counts tasks not in done status (tray tooltip; no CLI equivalent).

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -49,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 1 {
-		t.Fatalf("schema_version = %d, want 1", version)
+	if version != 2 {
+		t.Fatalf("schema_version = %d, want 2", version)
 	}
 	repo.Close()
 
@@ -61,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 1 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 1", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 2 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 2", version, err)
 	}
 
 	// WAL must be active.
@@ -294,4 +295,104 @@ func ids(ts []core.Task) []string {
 		out[i] = t.ID
 	}
 	return out
+}
+
+// TestV1ToV2Upgrade simulates a pre-v0.2 database (schema v1 only, no
+// archived_at) and verifies Open migrates it forward in place.
+func TestV1ToV2Upgrade(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mhtodo.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	if _, err := db.Exec(schemaV1); err != nil { // v1 DDL verbatim (same as a real old DB)
+		t.Fatalf("apply v1: %v", err)
+	}
+	db.Close()
+
+	repo, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open upgraded db: %v", err)
+	}
+	defer repo.Close()
+
+	var version int
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 2 {
+		t.Fatalf("schema_version = %d (err=%v), want 2", version, err)
+	}
+	var cols []string
+	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			t.Fatal(err)
+		}
+		cols = append(cols, name)
+	}
+	rows.Close()
+	found := false
+	for _, c := range cols {
+		if c == "archived_at" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("tasks table missing archived_at after upgrade: %v", cols)
+	}
+
+	// Existing rows survive the upgrade with NULL archived_at.
+	ctx := context.Background()
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	if err := repo.Create(ctx, core.Task{ID: "old-1", Title: "pre-v0.2 task", Status: core.StatusDone, Progress: 100, CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatalf("Create on upgraded db: %v", err)
+	}
+	got, err := repo.GetByID(ctx, "old-1")
+	if err != nil || got.ArchivedAt != nil {
+		t.Errorf("upgraded row wrong: (%+v, %v)", got, err)
+	}
+}
+
+// TestArchiveDoneRepo verifies the single-statement bulk archive: only done
+// tasks are touched, already-archived ones stay put, and timestamps advance.
+func TestArchiveDoneRepo(t *testing.T) {
+	ctx := context.Background()
+	r := openTestRepo(t)
+	mustCreate(t, r, "d1", "done one", core.StatusDone, 100)
+	mustCreate(t, r, "d2", "done two", core.StatusDone, 100)
+	mustCreate(t, r, "w1", "wip task", core.StatusWIP, 50)
+
+	at := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+	got, err := r.ArchiveDone(ctx, at)
+	if err != nil {
+		t.Fatalf("ArchiveDone: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("archived %d tasks, want 2: %+v", len(got), got)
+	}
+	for _, tsk := range got {
+		if tsk.ArchivedAt == nil || !tsk.ArchivedAt.Equal(at) {
+			t.Errorf("%s archived_at = %v, want %v", tsk.ID, tsk.ArchivedAt, at)
+		}
+		if tsk.Status != core.StatusDone {
+			t.Errorf("%s status = %s after archive, want done (unchanged)", tsk.ID, tsk.Status)
+		}
+	}
+
+	// Idempotent: second call archives nothing.
+	again, err := r.ArchiveDone(ctx, at.Add(time.Second))
+	if err != nil || len(again) != 0 {
+		t.Errorf("second ArchiveDone = (%d tasks, %v), want (0, nil)", len(again), err)
+	}
+
+	// The wip task was never touched.
+	w, err := r.GetByID(ctx, "w1")
+	if err != nil || w.ArchivedAt != nil {
+		t.Errorf("wip task archived: (%+v, %v)", w, err)
+	}
 }

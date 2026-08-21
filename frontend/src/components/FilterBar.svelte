@@ -12,17 +12,21 @@
     onSortChange,
     onToggleAsc
   }: {
-    status: string
+    // '' = all (hides archived); 'archived' = archive view; else a status chip.
+    status: Status | '' | 'archived'
     search: string
     sort: string
     ascending: boolean
-    onStatusChange: (s: Status | '') => void
+    onStatusChange: (s: Status | '' | 'archived') => void
     onSearchInput: (v: string) => void
     onSortChange: (f: string) => void
     onToggleAsc: () => void
   } = $props()
 
-  const chips: { value: Status | ''; label: string; active: string }[] = [
+  // Archived is a neutral chip (no status color): it is a storage state, not
+  // a workflow state. Single-select with the rest — picking any other chip
+  // leaves the archive view and vice versa.
+  const chips: { value: Status | '' | 'archived'; label: string; active: string }[] = [
     { value: '', label: 'All', active: 'border-accent/60 bg-accent/15 text-accent-hi' },
     {
       value: 'pending',
@@ -35,7 +39,8 @@
       label: STATUS_LABELS.waiting,
       active: 'border-st-waiting/60 bg-st-waiting/15 text-st-waiting'
     },
-    { value: 'done', label: STATUS_LABELS.done, active: 'border-st-done/60 bg-st-done/15 text-st-done' }
+    { value: 'done', label: STATUS_LABELS.done, active: 'border-st-done/60 bg-st-done/15 text-st-done' },
+    { value: 'archived', label: 'Archived', active: 'border-line bg-white/10 text-ink' }
   ]
 
   const sortFields = ['updated', 'created', 'status', 'progress', 'title'] as const

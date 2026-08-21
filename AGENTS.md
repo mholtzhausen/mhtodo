@@ -22,6 +22,9 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 - Desktop notifications on →done and →waiting (`notify-send`).
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 
+**Post-v0.1 (v0.2, shipped 2026-08-20):** archive/unarchive for done tasks — bulk archive from the
+board's Done column, `mhtodo archive` / `unarchive`, archived filter in list view; see plan docs + `.agent/plan/PROGRESS.md`.
+
 **Out of scope for v0.1 (stretch only):** drag-and-drop kanban, markdown rendering in descriptions,
 light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
 
@@ -38,27 +41,19 @@ light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 ## The plan
 
-Full implementation plan lives in **[`.agent/plan/`](.agent/plan/README.md)**:
+The current implementation plan lives in **[`.agent/plan/README.md`](.agent/plan/README.md)** (start here).
+Task detail files are numbered and live in the same folder — see [`.agent/plan/AGENTS.md`](.agent/plan/AGENTS.md)
+for how this folder is organized.
 
-| File | Contents |
-|---|---|
-| `.agent/plan/README.md` | Key decisions summary (start here) |
-| `01-stack-and-environment.md` | Stack choices + machine-specific facts |
-| `02-architecture.md` | Project layout, process model, parity contract |
-| `03-data-model.md` | SQLite schema, IDs, storage path, concurrency rules |
-| `04-cli-spec.md` | CLI command/flag spec, JSON shapes, exit codes |
-| `05-gui-spec.md` | Views, tray behavior, notifications, live sync |
-| `06-makefile.md` | Complete draft Makefile |
-| `07-milestones-and-risks.md` | M0–M6 build order + risk register |
-
-**Build in milestone order (M0 → M6).** M0 is a system-tray integration spike and must pass before any
+**Build in milestone order.** The first milestone is a system-tray integration spike and must pass before any
 other work — tray + Wails dual GTK main loops on Linux are the top project risk.
 
 ## Progress tracking
 
-Progress against this plan lives in **[`.agent/PROGRESS.md`](.agent/PROGRESS.md)**: a checkbox summary of
-every milestone task, kept current as work lands (tick boxes, update the date/status line). It is written to be
-copy-pasted into Slack verbatim for team updates — keep it plain-text pasteable.
+Progress against this plan lives in **[`.agent/plan/PROGRESS.md`](.agent/plan/PROGRESS.md)**: a checkbox
+summary of every task, kept current as work lands (tick boxes, update the date/status line). It is written to be
+copy-pasted into Slack verbatim for team updates — keep it plain-text pasteable. See [`.agent/plan/AGENTS.md`](.agent/plan/AGENTS.md)
+for how this file and the plan folder are structured.
 
 ## Working agreements for agents
 
