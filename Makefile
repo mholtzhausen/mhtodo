@@ -136,12 +136,12 @@ publish: release ## cross-build, then gh release create v$(VERSION) + push main 
 	@gh release create v$(VERSION) --title "v$(VERSION)" \
 	  --notes "$(APP) v$(VERSION) (linux amd64$([ -f $(DIST)/$(APP)_$(VERSION)_linux_arm64.tar.gz ] && echo ', arm64'))" \
 	dist/$(APP)_$(VERSION)_linux_*.tar.gz
-	@remote="$$(git remote get-url origin 2>/dev/null || true)"; \
+	@remote="$$(git remote get-url origin 2>/dev/null || true)"; repo_url=""; \
 	case "$$remote" in \
-	  git@github.com:*/*) echo "→ published https://github.com/$${remote#git@github.com:}/releases/tag/v$(VERSION)" ;; \
-	  https://github.com/*) echo "→ published $$remote/releases/tag/v$(VERSION)" ;; \
-	  *) echo "→ published v$(VERSION)" ;; \
-	esac
+	  git@github.com:*/*) repo_url="https://github.com/$${remote#git@github.com:}" ;; \
+	  https://github.com/*) repo_url="$$remote" ;; \
+	esac; repo_url="$${repo_url%.git}"; \
+	[ -n "$$repo_url" ] && echo "→ published $$repo_url/releases/tag/v$(VERSION)" || echo "→ published v$(VERSION)"
 
 ## --- install ---------------------------------------------------------------
 
