@@ -89,7 +89,7 @@ warn() { printf "${R}warning:${N} %s\n" "$*" >&2; }
 
 # ---------- tty for the prompt (stdin is consumed by `curl | bash`) ----------
 TTYFD=""
-exec {TTYFD}<> /dev/tty 2>/dev/null || TTYFD=""
+{ exec {TTYFD}<> /dev/tty; } 2>/dev/null || TTYFD=""
 ask() { # $1 = default answer; result in REPLY_
   if [[ -n "$TTYFD" ]]; then read -r REPLY_ <&"$TTYFD"; else printf "(no tty — using default)\n"; fi
   REPLY_="${REPLY_:-$1}"
@@ -129,7 +129,8 @@ esac
 TOKEN=""
 if [[ -n "${GH_TOKEN:-}" ]]; then
   TOKEN="$GH_TOKEN"
-elif command -v gh >/dev/null 2>&1 && gh auth status github.com >/dev/null 2>&1; then
+elif command -v gh >/dev/null 2>&1; then
+  # local keyring read (no API round-trip); empty if gh is not logged in
   TOKEN="$(gh auth token 2>/dev/null || true)"
 fi
 
@@ -149,7 +150,7 @@ VER="$(latest_version)"
 if [[ -n "$VER" ]]; then
   URL="https://github.com/$OWNER_REPO/releases/download/v$VER/${APP}_${VER}_linux_${ARCH}.tar.gz"
   say "found release v$VER — downloading prebuilt $ARCH binary (no toolchain needed)…"
-  if curl -fL ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$URL" -o "$WORK/$APP.tar.gz"; then
+  if curl -fsSL ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$URL" -o "$WORK/$APP.tar.gz"; then
     SRC_MODE=release; INST_DIR="$WORK/app"
     mkdir -p "$INST_DIR" && tar xzf "$WORK/$APP.tar.gz" -C "$INST_DIR" --strip-components=1
   fi
@@ -158,7 +159,7 @@ if [[ -z "$SRC_MODE" ]]; then
   if [[ -n "$VER" ]]; then warn "release download failed for v$VER"; else warn "no release reachable (not authenticated, or none published yet)"; fi
   say "falling back to building from source (needs go + wails + webkit2gtk-4.1)…"
   SRC_MODE=source; INST_DIR="$WORK/app"
-  if command -v gh >/dev/null 2>&1 && gh auth status github.com >/dev/null 2>&1; then
+  if command -v gh >/dev/null 2>&1 && [[ -n "$(gh auth token 2>/dev/null || true)" ]]; then
     git clone --quiet "$REPO_SSH" "$INST_DIR"   # SSH: works anywhere gh is logged in (private repo OK)
   else
     warn "gh not authenticated — cannot fetch the private repo. Set GH_TOKEN, run 'gh auth login', or make the repo public."
