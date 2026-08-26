@@ -43,6 +43,16 @@ install -Dm644 icon.png ~/.local/share/icons/hicolor/512x512/apps/mhtodo.png
 update-desktop-database ~/.local/share/applications
 ```
 
+### From the installer script (`install.sh`)
+
+A one-shot installer that fetches source, builds, and installs — with a prompt for **folder app** vs **systemd service**, and it detects an existing install to update in place. Pipe it directly into bash:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/mholtzhausen/mhtodo/main/install.sh | bash
+```
+
+Pass `--service` (user systemd unit at login) or `--app` (binary on PATH) to skip the prompt when piping, e.g. `… | bash -s -- --service`. See `install.sh --help` for flags (`--force`, `--no-build`, `--prefix`, `--repo-url`).
+
 ## CLI reference (agent contract)
 
 Bare `mhtodo` opens the GUI; any subcommand runs the CLI and exits. All commands are safe to run
