@@ -22,7 +22,7 @@ AARCH64_CC ?= aarch64-linux-gnu-gcc
 LINTER     := $(shell command -v golangci-lint 2>/dev/null)
 GOFORMT    := $(shell command -v gofmt || echo "$$(go env GOROOT)/bin/gofmt")
 
-.PHONY: help all dev build test lint fmt tidy fe-install fe-bindings fe-build fe-dev release install install-files uninstall service-install service-remove path clean
+.PHONY: help all dev build test lint fmt tidy fe-install fe-bindings fe-build fe-dev release _bump release-tag publish install install-files uninstall service-install service-remove path clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -97,6 +97,50 @@ release: ## cross-build linux tarballs → dist/ (arm64 needs $(AARCH64_CC))
 	fi
 	@rm -rf $(DIST)/stage
 	@echo "→ $(DIST)/"
+
+# --- release process -------------------------------------------------------
+# Full flow (interactive):    make release-tag            # asks major/minor/patch
+# Non-interactive:            make release-tag BUMP=minor
+#   _bump     prompt for major/minor/patch (unless BUMP is set) → update VERSION in this
+#             file, commit the Makefile, tag v<new>
+#   publish   re-run with the new $(VERSION): cross-build tarballs (release), gh release
+#             create v<new> with them as assets, push main + tag to origin
+
+BUMP ?=    # major | minor | patch — omit to be asked interactively by _bump
+
+_bump: ## @internal — bump VERSION in this file by BUMP (prompt if unset); commit Makefile; tag
+	@if [ -n "$(BUMP)" ]; then pick="$(BUMP)"; else \
+	  printf "\nbump version  [%s]ajor / [m]inor / [p]atch (default p): " M < /dev/tty; \
+	  read -r pick < /dev/tty || { echo "no tty — re-run with BUMP=major|minor|patch"; exit 1; }; fi; \
+	pick="$${pick:-p}"; old="$(VERSION)"; IFS='.' set -- $$old; major=$$1 minor=$$2 patch=$$3; \
+	case "$$pick" in \
+	  M|maj*) major=$$((major+1)); minor=0; patch=0 ;; \
+	  m|mi*)  minor=$$((minor+1)); patch=0 ;; \
+	  p|pa*)  patch=$$((patch+1)) ;; \
+	  *) echo "bad bump: '$$(pick)' (want major | minor | patch)"; exit 2 ;; \
+	esac; new="$$major.$$minor.$$patch"; echo "$$old → $$new"; \
+	sed -i "s|^VERSION[[:space:]]*\?[[:space:]]*=.*|VERSION    ?= $$new|" $(firstword $(MAKEFILE_LIST)); \
+	git add -- $(firstword $(MAKEFILE_LIST)) && git commit -m "v$$new"; \
+	git tag v$$new
+
+release-tag: ## prompt major/minor/patch (or BUMP=...) → bump+tag → build tarballs → publish GitHub Release
+	@$(MAKE) _bump
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish
+
+publish: release ## cross-build, then gh release create v$(VERSION) + push main and the tag to origin
+	@command -v gh >/dev/null 2>&1 || { echo "error: gh not found — install GitHub CLI"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "error: gh is not authenticated — run 'gh auth login'"; exit 1; }
+	@gh release create v$(VERSION) --title "v$(VERSION)" \
+	  --notes "$(APP) v$(VERSION) (linux amd64$([ -f $(DIST)/$(APP)_$(VERSION)_linux_arm64.tar.gz ] && echo ', arm64'))" \
+	dist/$(APP)_$(VERSION)_linux_*.tar.gz
+	@git push origin HEAD:main 2>/dev/null || true
+	@git push origin v$(VERSION)
+	@remote="$$(git remote get-url origin 2>/dev/null || true)"; \
+	case "$$remote" in \
+	  git@github.com:*/*) echo "→ published https://github.com/$${remote#git@github.com:}/releases/tag/v$(VERSION)" ;; \
+	  https://github.com/*) echo "→ published $$remote/releases/tag/v$(VERSION)" ;; \
+	  *) echo "→ published v$(VERSION)" ;; \
+	esac
 
 ## --- install ---------------------------------------------------------------
 

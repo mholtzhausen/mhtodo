@@ -29,6 +29,8 @@ Other useful targets:
 | `make dev` | Wails hot-reload development (GUI) |
 | `make test` / `make lint` | Go tests (incl. CLI golden tests) / golangci-lint or go vet fallback |
 | `make release` | cross-build linux tarballs → `dist/` (arm64 needs `aarch64-linux-gnu-gcc`; without it, amd64 only + warning) |
+| `make release-tag [BUMP=major\|minor\|patch]` | **release process** — asks for major/minor/patch (or takes `BUMP=`), bumps `VERSION`, commits + tags, builds tarballs, publishes a GitHub Release and pushes main + tag |
+| `make publish` | cross-build with the current version, then `gh release create v$(VERSION)` + push main and the tag |
 | `make install` / `uninstall` | user-local install into `$PREFIX` (default `~/.local`) |
 | `make service-install` / `service-remove` | build + install, then run as a user systemd service at login (re-running replaces the installed version) |
 | `make path` | print where the DB lives |
@@ -45,7 +47,7 @@ update-desktop-database ~/.local/share/applications
 
 ### From the installer script (`install.sh`)
 
-A one-shot installer that fetches source, builds, and installs — with a prompt for **folder app** vs **systemd service**, and it detects an existing install to update in place. Pipe it directly into bash:
+A one-shot installer that downloads the latest prebuilt release binary (no Go/wails/node needed), or falls back to cloning + `make` if no release is reachable — with a prompt for **folder app** vs **systemd service**, and it detects an existing install to update in place. Pipe it directly into bash:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/mholtzhausen/mhtodo/main/install.sh | bash
