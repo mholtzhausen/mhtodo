@@ -151,8 +151,12 @@ if [[ -n "$VER" ]]; then
   URL="https://github.com/$OWNER_REPO/releases/download/v$VER/${APP}_${VER}_linux_${ARCH}.tar.gz"
   say "found release v$VER — downloading prebuilt $ARCH binary (no toolchain needed)…"
   if curl -fsSL ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$URL" -o "$WORK/$APP.tar.gz"; then
-    SRC_MODE=release; INST_DIR="$WORK/app"
-    mkdir -p "$INST_DIR" && tar xzf "$WORK/$APP.tar.gz" -C "$INST_DIR" --strip-components=1
+    if gzip -t "$WORK/$APP.tar.gz" 2>/dev/null; then
+      SRC_MODE=release; INST_DIR="$WORK/app"
+      mkdir -p "$INST_DIR" && tar xzf "$WORK/$APP.tar.gz" -C "$INST_DIR" --strip-components=1
+    else
+      warn "downloaded file is not a gzip archive — likely an HTML error page (unauthenticated download of a private repo?). Set GH_TOKEN or run 'gh auth login'."
+    fi
   fi
 fi
 if [[ -z "$SRC_MODE" ]]; then

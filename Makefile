@@ -86,12 +86,27 @@ release: ## cross-build linux tarballs → dist/ (arm64 needs $(AARCH64_CC))
 	cp packaging/$(APP).desktop assets/icon.png README.md $(DIST)/stage/
 	tar czf $(DIST)/$(APP)_$(VERSION)_linux_amd64.tar.gz --transform 's|^|$(APP)_$(VERSION)/|' \
 	    -C $(DIST)/stage $(APP) $(APP).desktop icon.png README.md
+	@if command -v zip >/dev/null 2>&1; then \
+	  echo "→ zip (amd64)"; \
+	  rm -rf $(DIST)/ztmp; mkdir -p $(DIST)/ztmp/$(APP)_$(VERSION); \
+	  cp $(DIST)/stage/$(APP) $(DIST)/stage/$(APP).desktop $(DIST)/stage/icon.png $(DIST)/stage/README.md $(DIST)/ztmp/$(APP)_$(VERSION)/; \
+	  ( cd $(DIST)/ztmp && zip -r -q ../$(APP)_$(VERSION)_linux_amd64.zip $(APP)_$(VERSION) ); \
+	  rm -rf $(DIST)/ztmp; \
+	else \
+	  echo "warning: zip not found — skipping .zip asset"; \
+	fi
 	@if command -v $(AARCH64_CC) >/dev/null 2>&1; then \
 	  echo "→ arm64 (CC=$(AARCH64_CC))"; \
 	  GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=$(AARCH64_CC) wails build $(GOFLAGS) -ldflags "$(STAMP)" -o mhtodo-arm64; \
 	  cp build/bin/mhtodo-arm64 $(DIST)/stage/$(APP); \
 	  tar czf $(DIST)/$(APP)_$(VERSION)_linux_arm64.tar.gz --transform 's|^|$(APP)_$(VERSION)/|' \
 	    -C $(DIST)/stage $(APP) $(APP).desktop icon.png README.md; \
+	  if command -v zip >/dev/null 2>&1; then \
+	    rm -rf $(DIST)/ztmp; mkdir -p $(DIST)/ztmp/$(APP)_$(VERSION); \
+	    cp $(DIST)/stage/$(APP) $(DIST)/stage/$(APP).desktop $(DIST)/stage/icon.png $(DIST)/stage/README.md $(DIST)/ztmp/$(APP)_$(VERSION)/; \
+	    ( cd $(DIST)/ztmp && zip -r -q ../$(APP)_$(VERSION)_linux_arm64.zip $(APP)_$(VERSION) ); \
+	    rm -rf $(DIST)/ztmp; \
+	  fi; \
 	else \
 	  echo "warning: $(AARCH64_CC) not found — skipping arm64 (install gcc-aarch64-linux-gnu to enable)"; \
 	fi
@@ -133,9 +148,10 @@ publish: release ## cross-build, then gh release create v$(VERSION) + push main 
 	@gh auth status >/dev/null 2>&1 || { echo "error: gh is not authenticated — run 'gh auth login'"; exit 1; }
 	@git push origin HEAD:main 2>/dev/null || true
 	@git push origin "v$(VERSION)" 2>/dev/null || echo "note: tag v$(VERSION) not pushed (already on remote?); continuing"
-	@gh release create v$(VERSION) --title "v$(VERSION)" \
+	@assets=$$(ls $(DIST)/$(APP)_$(VERSION)_linux_*.tar.gz $(DIST)/$(APP)_$(VERSION)_linux_*.zip 2>/dev/null); \
+	gh release create v$(VERSION) --title "v$(VERSION)" \
 	  --notes "$(APP) v$(VERSION) (linux amd64$([ -f $(DIST)/$(APP)_$(VERSION)_linux_arm64.tar.gz ] && echo ', arm64'))" \
-	dist/$(APP)_$(VERSION)_linux_*.tar.gz
+	$$assets
 	@remote="$$(git remote get-url origin 2>/dev/null || true)"; repo_url=""; \
 	case "$$remote" in \
 	  git@github.com:*/*) repo_url="https://github.com/$${remote#git@github.com:}" ;; \
