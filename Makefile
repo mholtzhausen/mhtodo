@@ -112,16 +112,17 @@ _bump: ## @internal — bump VERSION in this file by BUMP (prompt if unset); com
 	@if [ -n "$(BUMP)" ]; then pick="$(BUMP)"; else \
 	  printf "\nbump version  [%s]ajor / [m]inor / [p]atch (default p): " M < /dev/tty; \
 	  read -r pick < /dev/tty || { echo "no tty — re-run with BUMP=major|minor|patch"; exit 1; }; fi; \
-	pick="$${pick:-p}"; old="$(VERSION)"; IFS='.' set -- $$old; major=$$1 minor=$$2 patch=$$3; \
+	pick="$${pick:-p}"; old="$(VERSION)"; \
+	major=$$(printf %s "$$old" | cut -d. -f1); minor=$$(printf %s "$$old" | cut -d. -f2); patch=$$(printf %s "$$old" | cut -d. -f3); \
 	case "$$pick" in \
 	  M|maj*) major=$$((major+1)); minor=0; patch=0 ;; \
 	  m|mi*)  minor=$$((minor+1)); patch=0 ;; \
 	  p|pa*)  patch=$$((patch+1)) ;; \
 	  *) echo "bad bump: '$$(pick)' (want major | minor | patch)"; exit 2 ;; \
 	esac; new="$$major.$$minor.$$patch"; echo "$$old → $$new"; \
-	sed -i "s|^VERSION[[:space:]]*\?[[:space:]]*=.*|VERSION    ?= $$new|" $(firstword $(MAKEFILE_LIST)); \
+	sed -i "s|^VERSION.*|VERSION    ?= $$new|" $(firstword $(MAKEFILE_LIST)); \
 	git add -- $(firstword $(MAKEFILE_LIST)) && git commit -m "v$$new"; \
-	git tag v$$new
+	git tag "v$$new"
 
 release-tag: ## prompt major/minor/patch (or BUMP=...) → bump+tag → build tarballs → publish GitHub Release
 	@$(MAKE) _bump
