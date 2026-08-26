@@ -131,11 +131,11 @@ release-tag: ## prompt major/minor/patch (or BUMP=...) → bump+tag → build ta
 publish: release ## cross-build, then gh release create v$(VERSION) + push main and the tag to origin
 	@command -v gh >/dev/null 2>&1 || { echo "error: gh not found — install GitHub CLI"; exit 1; }
 	@gh auth status >/dev/null 2>&1 || { echo "error: gh is not authenticated — run 'gh auth login'"; exit 1; }
+	@git push origin HEAD:main 2>/dev/null || true
+	@git push origin "v$(VERSION)" 2>/dev/null || echo "note: tag v$(VERSION) not pushed (already on remote?); continuing"
 	@gh release create v$(VERSION) --title "v$(VERSION)" \
 	  --notes "$(APP) v$(VERSION) (linux amd64$([ -f $(DIST)/$(APP)_$(VERSION)_linux_arm64.tar.gz ] && echo ', arm64'))" \
 	dist/$(APP)_$(VERSION)_linux_*.tar.gz
-	@git push origin HEAD:main 2>/dev/null || true
-	@git push origin v$(VERSION)
 	@remote="$$(git remote get-url origin 2>/dev/null || true)"; \
 	case "$$remote" in \
 	  git@github.com:*/*) echo "→ published https://github.com/$${remote#git@github.com:}/releases/tag/v$(VERSION)" ;; \
