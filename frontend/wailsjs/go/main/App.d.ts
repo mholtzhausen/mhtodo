@@ -16,6 +16,8 @@ export function DeleteActivity(arg1:string):Promise<core.Activity>;
 
 export function DeleteTask(arg1:string):Promise<core.Task>;
 
+export function GetAlwaysOnTop():Promise<boolean>;
+
 export function GetTask(arg1:string):Promise<core.Task>;
 
 export function HideWindow():Promise<void>;
@@ -25,6 +27,8 @@ export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activi
 export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 
 export function Quit():Promise<void>;
+
+export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetStatus(arg1:string,arg2:core.Status):Promise<core.Task>;
 

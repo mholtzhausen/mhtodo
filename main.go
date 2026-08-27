@@ -162,6 +162,7 @@ func runGUI(args []string) {
 			Assets: assets, // embedded frontend/dist; ignored under -tags dev (vite server)
 		},
 		OnStartup:     app.startup,
+		OnDomReady:    app.domReady,
 		OnShutdown:    app.shutdown,
 		OnBeforeClose: app.beforeClose, // hide-to-tray unless Quit() was called first
 		Bind:          []interface{}{app},

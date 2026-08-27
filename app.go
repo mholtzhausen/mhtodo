@@ -5,11 +5,16 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"mhtodo/internal/core"
+	"mhtodo/internal/globalhk"
 	"mhtodo/internal/notify"
 	"mhtodo/internal/store"
 	mhsync "mhtodo/internal/sync"
@@ -24,13 +29,20 @@ var assets embed.FS
 // touches SQL or business rules; new capability = core method + CLI command +
 // bound method here.
 type App struct {
-	ctx      context.Context // Wails lifecycle context; all runtime calls go through it
-	svc      *core.Service
-	repo     *store.TaskRepo
-	visible  atomic.Bool // window visibility, self-tracked (Wails v2 emits no show/hide events)
-	quitting atomic.Bool // set by Quit() so OnBeforeClose allows a real exit
-	notifier *notify.Notifier
-	watcher  *mhsync.Watcher // external (CLI-side) DB changes → tasks:changed
+	ctx         context.Context // Wails lifecycle context; all runtime calls go through it
+	svc         *core.Service
+	repo        *store.TaskRepo
+	visible     atomic.Bool // window visibility, self-tracked (Wails v2 emits no show/hide events)
+	alwaysOnTop atomic.Bool // persisted in meta; applied via WindowSetAlwaysOnTop
+	quitting    atomic.Bool // set by Quit() so OnBeforeClose allows a real exit
+	notifier    *notify.Notifier
+	watcher     *mhsync.Watcher // external (CLI-side) DB changes → tasks:changed
+	hotkey      *globalhk.Handle
+
+	posMu sync.Mutex
+	posX  int
+	posY  int
+	posOK bool // true once we have a captured or loaded position
 }
 
 var app = &App{}
@@ -49,6 +61,26 @@ func (a *App) startup(ctx context.Context) {
 	// and the runtime only exposes WindowIsMinimised — not hidden state.
 	a.visible.Store(!startHidden) // first launch shows the window unless StartHidden (dev)
 
+	// Restore always-on-top from meta (default off). Applied once the window
+	// exists; StartHidden builds still get the flag for the first Show.
+	if v, ok, err := a.repo.GetMeta(ctx, store.MetaAlwaysOnTop); err != nil {
+		log.Printf("read always_on_top: %v", err)
+	} else if ok && v == "true" {
+		a.alwaysOnTop.Store(true)
+	}
+	a.applyAlwaysOnTop()
+
+	if v, ok, err := a.repo.GetMeta(ctx, store.MetaWindowPos); err != nil {
+		log.Printf("read window_pos: %v", err)
+	} else if ok {
+		if x, y, perr := parseWindowPos(v); perr != nil {
+			log.Printf("parse window_pos %q: %v", v, perr)
+		} else {
+			a.posMu.Lock()
+			a.posX, a.posY, a.posOK = x, y, true
+			a.posMu.Unlock()
+		}
+	}
 
 	// Live sync (05-gui-spec.md): external writes (CLI) → same tasks:changed
 	// event as local mutations. A watcher failure degrades to local-only sync;
@@ -62,10 +94,27 @@ func (a *App) startup(ctx context.Context) {
 		a.watcher = w
 	}
 	a.refreshTooltip()
+	a.registerGlobalHotkey()
 	log.Printf("mhtodo started (db %s)", store.DBPath())
 }
 
+// domReady re-applies window prefs after the window is fully up (Wails docs:
+// runtime window calls are not guaranteed during OnStartup).
+func (a *App) domReady(_ context.Context) {
+	a.applyAlwaysOnTop()
+	if a.visible.Load() {
+		a.restoreWindowPos()
+	}
+}
+
 func (a *App) shutdown(_ context.Context) {
+	if a.visible.Load() {
+		a.captureWindowPos()
+	}
+	if a.hotkey != nil {
+		a.hotkey.Close()
+		a.hotkey = nil
+	}
 	if a.watcher != nil {
 		a.watcher.Close()
 	}
@@ -238,16 +287,121 @@ func (a *App) refreshTooltip() {
 // --- window lifecycle ---------------------------------------------------------
 
 func (a *App) showWindow() {
-	if a.ctx != nil {
-		wruntime.WindowShow(a.ctx)
-		a.visible.Store(true)
+	if a.ctx == nil {
+		return
+	}
+	// Place before show so the WM maps at the remembered spot (avoids a jump
+	// from the default/centered position). Re-apply after show for WMs that
+	// ignore moves on unmapped windows.
+	a.restoreWindowPos()
+	// Raise + focus: unminimise, show/present, then nudge z-order. When the
+	// user preference is off, a brief always-on-top pulse helps stubborn WMs
+	// bring the window forward without leaving it pinned.
+	wruntime.WindowUnminimise(a.ctx)
+	wruntime.WindowShow(a.ctx)
+	a.restoreWindowPos()
+	if a.alwaysOnTop.Load() {
+		wruntime.WindowSetAlwaysOnTop(a.ctx, true)
+	} else {
+		wruntime.WindowSetAlwaysOnTop(a.ctx, true)
+		wruntime.WindowSetAlwaysOnTop(a.ctx, false)
+	}
+	a.visible.Store(true)
+}
+
+func (a *App) hideWindow() {
+	if a.ctx == nil {
+		return
+	}
+	a.captureWindowPos() // must run while still mapped
+	wruntime.WindowHide(a.ctx)
+	a.visible.Store(false)
+}
+
+// captureWindowPos reads the current position into memory and persists it.
+func (a *App) captureWindowPos() {
+	if a.ctx == nil {
+		return
+	}
+	x, y := wruntime.WindowGetPosition(a.ctx)
+	a.posMu.Lock()
+	a.posX, a.posY, a.posOK = x, y, true
+	a.posMu.Unlock()
+	a.persistWindowPos(x, y)
+}
+
+func (a *App) restoreWindowPos() {
+	if a.ctx == nil {
+		return
+	}
+	a.posMu.Lock()
+	ok, x, y := a.posOK, a.posX, a.posY
+	a.posMu.Unlock()
+	if !ok {
+		return
+	}
+	wruntime.WindowSetPosition(a.ctx, x, y)
+}
+
+func (a *App) persistWindowPos(x, y int) {
+	if a.repo == nil {
+		return
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if err := a.repo.SetMeta(ctx, store.MetaWindowPos, formatWindowPos(x, y)); err != nil {
+		log.Printf("save window_pos: %v", err)
 	}
 }
-func (a *App) hideWindow() {
-	if a.ctx != nil {
-		wruntime.WindowHide(a.ctx)
-		a.visible.Store(false)
+
+func formatWindowPos(x, y int) string { return fmt.Sprintf("%d,%d", x, y) }
+
+func parseWindowPos(s string) (x, y int, err error) {
+	parts := strings.Split(strings.TrimSpace(s), ",")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("want x,y")
 	}
+	x, err = strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return 0, 0, err
+	}
+	y, err = strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return 0, 0, err
+	}
+	return x, y, nil
+}
+
+func (a *App) toggleWindow() {
+	if a.visible.Load() {
+		a.hideWindow()
+	} else {
+		a.showWindow()
+	}
+}
+
+func (a *App) applyAlwaysOnTop() {
+	if a.ctx == nil {
+		return
+	}
+	wruntime.WindowSetAlwaysOnTop(a.ctx, a.alwaysOnTop.Load())
+}
+
+func (a *App) registerGlobalHotkey() {
+	h, err := globalhk.Register(
+		[]globalhk.Modifier{globalhk.ModCtrl, globalhk.ModShift, globalhk.ModAlt},
+		globalhk.KeyT,
+		a.toggleWindow,
+	)
+	if err != nil {
+		log.Printf("global hotkey (Ctrl+Shift+Alt+T): %v", err)
+		return
+	}
+	a.hotkey = h
 }
 
 // Quit is the real exit path: tray "Quit" menu item or Ctrl+Q in the window.
@@ -255,6 +409,10 @@ func (a *App) hideWindow() {
 // tray, then removes the indicator and quits Wails on the shared GTK loop.
 func (a *App) Quit() {
 	a.quitting.Store(true)
+	if a.hotkey != nil {
+		a.hotkey.Close()
+		a.hotkey = nil
+	}
 	tray.Quit() // queues indicator removal + gtk_main_quit on the shared loop
 	if a.ctx != nil {
 		wruntime.Quit(a.ctx)
@@ -269,8 +427,7 @@ func (a *App) beforeClose(_ context.Context) bool {
 	if a.quitting.Load() {
 		return false // allow real quit
 	}
-	wruntime.WindowHide(a.ctx)
-	a.visible.Store(false)
+	a.hideWindow() // captures position, then hides to tray
 	return true
 }
 
@@ -286,3 +443,28 @@ func (a *App) openNewTaskFromTray() {
 // Bound to JS for manual testing from the window itself.
 func (a *App) ShowWindow() error { a.showWindow(); return nil }
 func (a *App) HideWindow() error { a.hideWindow(); return nil }
+
+// GetAlwaysOnTop returns the persisted always-on-top preference.
+func (a *App) GetAlwaysOnTop() bool { return a.alwaysOnTop.Load() }
+
+// SetAlwaysOnTop updates the preference, applies it to the window, and stores
+// it in the DB meta table for future launches.
+func (a *App) SetAlwaysOnTop(on bool) error {
+	a.alwaysOnTop.Store(on)
+	a.applyAlwaysOnTop()
+	if a.repo == nil {
+		return nil
+	}
+	val := "false"
+	if on {
+		val = "true"
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Bound a short timeout so a stuck DB cannot hang the UI toggle.
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return a.repo.SetMeta(ctx, store.MetaAlwaysOnTop, val)
+}

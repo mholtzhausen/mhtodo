@@ -120,6 +120,15 @@ export const api = {
   },
   quit(): void {
     App.Quit()
+  },
+  hideWindow(): Promise<void> {
+    return App.HideWindow()
+  },
+  getAlwaysOnTop(): Promise<boolean> {
+    return App.GetAlwaysOnTop()
+  },
+  setAlwaysOnTop(on: boolean): Promise<void> {
+    return App.SetAlwaysOnTop(on)
   }
 }
 

@@ -30,6 +30,10 @@ export function DeleteTask(arg1) {
   return window['go']['main']['App']['DeleteTask'](arg1);
 }
 
+export function GetAlwaysOnTop() {
+  return window['go']['main']['App']['GetAlwaysOnTop']();
+}
+
 export function GetTask(arg1) {
   return window['go']['main']['App']['GetTask'](arg1);
 }
@@ -48,6 +52,10 @@ export function ListTasks(arg1) {
 
 export function Quit() {
   return window['go']['main']['App']['Quit']();
+}
+
+export function SetAlwaysOnTop(arg1) {
+  return window['go']['main']['App']['SetAlwaysOnTop'](arg1);
 }
 
 export function SetStatus(arg1, arg2) {

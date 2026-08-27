@@ -40,6 +40,7 @@
     }
   })()
   let detailPinned = $state(storedPin === 'true')
+  let alwaysOnTop = $state(false)
 
   let tasks = $state<any[]>([])
   let activities = $state<Activity[]>([])
@@ -101,6 +102,17 @@
       localStorage.setItem('mhtodo.detailPinned', detailPinned ? 'true' : 'false')
     } catch {
       /* ignore */
+    }
+  }
+
+  async function toggleAlwaysOnTop() {
+    const next = !alwaysOnTop
+    alwaysOnTop = next
+    try {
+      await api.setAlwaysOnTop(next)
+    } catch (e) {
+      alwaysOnTop = !next
+      showToast(errMsg(e))
     }
   }
 
@@ -166,9 +178,13 @@
     const el = e.target as HTMLElement | null
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     if (e.key === 'Escape') {
+      e.preventDefault()
       if (confirmTask) confirmTask = null
-      else if (dialogOpen) dialogOpen = false
-      else selectedId = null
+      else if (dialogOpen) {
+        dialogOpen = false
+        dialogParentId = ''
+      } else if (selectedId && !detailPinned) selectedId = null
+      else api.hideWindow()
       return
     }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
@@ -244,6 +260,11 @@
     }
     const { EventsOn } = await import('../wailsjs/runtime/runtime.js')
     dbPath = await api.dbPath()
+    try {
+      alwaysOnTop = await api.getAlwaysOnTop()
+    } catch {
+      /* ignore */
+    }
     unbindChanged = EventsOn('tasks:changed', () => load())
     unbindTrayNewTask = EventsOn('tray:new-task', () => {
       dialogInitialStatus = ''
@@ -288,6 +309,33 @@
     </nav>
 
     <div class="flex-1"></div>
+
+    <button
+      type="button"
+      onclick={toggleAlwaysOnTop}
+      title={alwaysOnTop ? 'Always on top (on)' : 'Always on top (off)'}
+      aria-pressed={alwaysOnTop}
+      class="grid h-8 w-8 place-items-center rounded border transition-colors
+        {alwaysOnTop
+          ? 'border-accent/50 bg-accent/15 text-accent-hi'
+          : 'border-line-soft text-ink-3 hover:text-ink'}"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill={alwaysOnTop ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 17v5" />
+        <path
+          d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1z"
+        />
+      </svg>
+    </button>
 
     {#if view === 'board' || view === 'list'}
       <button
@@ -450,7 +498,7 @@
       ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
       <kbd>s</kbd> sub-tasks
       {#if view === 'list'}· <kbd>1–5</kbd> filter · <kbd>6</kbd> archived{/if} · <kbd>del</kbd> delete ·
-      <kbd>esc</kbd> close · <kbd>ctrl+q</kbd> quit</span
+      <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle · <kbd>ctrl+q</kbd> quit</span
     >
   </footer>
 

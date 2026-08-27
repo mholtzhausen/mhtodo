@@ -168,11 +168,14 @@ status transitions → activity → delete) using only this CLI.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), filterable
   by ticket checkbox dropdown.
 - **Detail pane:** edit fields, activity composer, Add sub-task (roots only). **Pin** switches from
-  overlay drawer to an in-flow right pane (persisted). Esc clears selection.
+  overlay drawer to an in-flow right pane (persisted). Esc closes modals/unpinned detail, otherwise hides to tray.
 - **Sub-tasks toggle:** header control or `s` (persisted).
-- **Keyboard:** `/` search · `n` new · `s` sub-tasks · `esc` close · `1–5` status filter · `6` archived
-  (list) · `b`/`l`/`a` views · `Ctrl+Q` quit.
+- **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
+- **Window position:** last position is saved on hide/quit (`meta.window_pos`) and restored on show.
+- **Keyboard:** `/` search · `n` new · `s` sub-tasks · `esc` dismiss/hide · `1–5` status filter · `6` archived
+  (list) · `b`/`l`/`a` views · `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
 - **System tray:** Show/Hide, New Task, Quit; close hides to tray; label shows open-task count.
+  Global hotkey (X11) toggles the window and raises it on show.
 - **Notifications:** on real →done and →waiting only (not →review).
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
@@ -197,6 +200,7 @@ status transitions → activity → delete) using only this CLI.
 | `DeleteTask(id)` | `rm` | cascades to children |
 | `CountChildren(id)` | (confirm helper) | GUI delete confirm |
 | `AddActivity` / `ListActivity` / `DeleteActivity` | `activity add\|list\|rm` | agent-authored |
+| `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
 
 After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
