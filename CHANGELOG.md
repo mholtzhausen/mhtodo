@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 (e6dfa47)
+
+### Features and Improvements
+- Agent-authored `feedback` field on tasks (CLI `--feedback` on add/edit; GUI shows when non-empty)
+- Markdown rendering for description, feedback, and activity comments in the GUI (detail panes grow up to 500px, then scroll)
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.1.0 (ed977a6)
 
 ### Features and Improvements
