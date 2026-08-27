@@ -4,6 +4,7 @@
   import { absShort, relTime } from '../lib/format'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
+  import Markdown from './Markdown.svelte'
 
   let {
     task,
@@ -31,6 +32,9 @@
   let description = $state(task.description)
   let progress = $state(task.progress)
 
+  let editingDesc = $state(false)
+  let descEl = $state<HTMLTextAreaElement | null>(null)
+
   let activities = $state<Activity[]>([])
   let actText = $state('')
   let commentText = $state('')
@@ -46,8 +50,33 @@
 
   $effect(() => {
     void task.id
+    editingDesc = false
     loadActivity()
   })
+
+  // Keep local fields in sync with live task updates; don't clobber an in-progress edit.
+  $effect(() => {
+    title = task.title
+    progress = task.progress
+    if (!editingDesc) {
+      description = task.description ?? ''
+    }
+  })
+
+  /** Grow textarea with content up to 500px, then scroll. */
+  function fitTextarea(el: HTMLTextAreaElement | null) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 500)}px`
+  }
+
+  function startEditDesc() {
+    editingDesc = true
+    queueMicrotask(() => {
+      fitTextarea(descEl)
+      descEl?.focus()
+    })
+  }
 
   async function saveTitle() {
     const v = title.trim()
@@ -60,6 +89,7 @@
   }
 
   async function saveDescription() {
+    editingDesc = false
     if (description === task.description) return
     try {
       await api.update(task.id, { description })
@@ -166,16 +196,58 @@
       <StatusPicker value={task.status} onPick={(s) => setStatus(s)} />
     </div>
 
-    <label class="block">
+    <div class="block">
       <span class="micro mb-1.5">Description</span>
-      <textarea
-        bind:value={description}
-        onblur={saveDescription}
-        rows="4"
-        placeholder="Notes, links, context…"
-        class="w-full resize-y rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-      ></textarea>
-    </label>
+      {#if editingDesc}
+        <textarea
+          bind:this={descEl}
+          bind:value={description}
+          oninput={() => fitTextarea(descEl)}
+          onblur={saveDescription}
+          onkeydown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation()
+              description = task.description ?? ''
+              editingDesc = false
+            }
+          }}
+          rows="3"
+          placeholder="Notes, links, context… (markdown)"
+          class="ta-autogrow w-full rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        ></textarea>
+      {:else}
+        <div
+          role="button"
+          tabindex="0"
+          class="md-scroll w-full cursor-text rounded border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
+          title="Click to edit"
+          onclick={(e) => {
+            // Keep markdown links clickable.
+            if ((e.target as HTMLElement).closest('a')) return
+            startEditDesc()
+          }}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              startEditDesc()
+            }
+          }}
+        >
+          <Markdown source={description} empty="Notes, links, context…" class="text-ink-2" />
+        </div>
+      {/if}
+    </div>
+
+    {#if task.feedback}
+      <div>
+        <span class="micro mb-1.5">Feedback</span>
+        <div
+          class="md-scroll rounded border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
+        >
+          <Markdown source={task.feedback} />
+        </div>
+      </div>
+    {/if}
 
     <div>
       <span class="micro mb-1.5">Progress</span>
@@ -203,7 +275,7 @@
         <textarea
           bind:value={commentText}
           rows="2"
-          placeholder="Optional comment…"
+          placeholder="Optional comment… (markdown)"
           class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
         ></textarea>
         <button
@@ -219,7 +291,9 @@
           <li class="rounded border border-line-soft bg-field/50 px-2.5 py-2">
             <p class="mb-0.5 text-[10px] text-ink-3">{relTime(a.created_at)}</p>
             {#if a.activity}<p class="text-xs text-ink">{a.activity}</p>{/if}
-            {#if a.comment}<p class="text-xs text-ink-2">{a.comment}</p>{/if}
+            {#if a.comment}
+              <Markdown source={a.comment} class="mt-0.5 text-xs text-ink-2" />
+            {/if}
           </li>
         {:else}
           <li class="text-xs text-ink-3">No activity yet.</li>

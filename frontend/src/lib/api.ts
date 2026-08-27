@@ -10,6 +10,7 @@ export interface Task {
   id: string
   title: string
   description: string
+  feedback: string
   status: Status
   progress: number
   created_at: string
@@ -34,6 +35,8 @@ export interface ListFilterInput {
   sort?: 'created' | 'updated' | 'status' | 'progress' | 'title'
   ascending?: boolean
   rootsOnly?: boolean
+  /** When set, overrides the default (include done if no status filter / archived view). */
+  includeDone?: boolean
 }
 
 export interface ActivityFilterInput {
@@ -48,7 +51,7 @@ const toGoFilter = (f: ListFilterInput) => ({
   Limit: 0,
   Sort: f.sort ?? 'updated',
   Ascending: !!f.ascending,
-  IncludeDone: !f.status || !!f.archived,
+  IncludeDone: f.includeDone ?? (!f.status || !!f.archived),
   Archived: !!f.archived,
   RootsOnly: !!f.rootsOnly
 })
@@ -69,6 +72,7 @@ export const api = {
   create(input: {
     title: string
     description?: string
+    feedback?: string
     status?: Status
     progress?: number
     parentId?: string
@@ -76,15 +80,17 @@ export const api = {
     return App.CreateTask({
       Title: input.title,
       Description: input.description ?? '',
+      Feedback: input.feedback ?? '',
       Status: (input.status ?? 'pending') as unknown as string,
       Progress: input.progress ?? 0,
       ParentID: input.parentId ?? ''
     })
   },
-  update(id: string, patch: { title?: string; description?: string; progress?: number }) {
+  update(id: string, patch: { title?: string; description?: string; feedback?: string; progress?: number }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
       Desc: patch.description ?? null,
+      Feedback: patch.feedback ?? null,
       Progress: patch.progress ?? null
     })
   },

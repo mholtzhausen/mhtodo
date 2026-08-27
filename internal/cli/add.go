@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, status, parent string
+	var desc, feedback, status, parent string
 	var progress int
 	cmd := &cobra.Command{
 		Use:   "add TITLE",
@@ -30,6 +30,7 @@ func newAddCmd() *cobra.Command {
 			t, err := svc.Create(context.Background(), core.CreateInput{
 				Title:       args[0],
 				Description: desc,
+				Feedback:    feedback,
 				Status:      core.Status(status), // "" → pending; invalid → exit 1
 				Progress:    progress,
 				ParentID:    parent,
@@ -50,6 +51,7 @@ func newAddCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&desc, "desc", "", "task description")
+	cmd.Flags().StringVar(&feedback, "feedback", "", "agent feedback (shown in GUI when set)")
 	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|done; default pending)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")

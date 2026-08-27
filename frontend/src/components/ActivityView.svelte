@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { absList, relTime, shortId } from '../lib/format'
+  import { absList, absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import type { Activity, Task } from '../lib/api'
+  import Markdown from './Markdown.svelte'
 
   let {
     activities,
@@ -20,22 +21,66 @@
 
   let filterOpen = $state(false)
 
+  /** Mouse-following ticket tooltip (null when not hovering a title link). */
+  let tip = $state<{
+    x: number
+    y: number
+    task: Task
+  } | null>(null)
+
+  let tipEl = $state<HTMLDivElement | null>(null)
+  /** Measured tip box; used so flip-above doesn't leave a huge gap. */
+  let tipH = $state(0)
+
+  const TIP_W = 320
+  const TIP_GAP = 8 // cursor ↔ tip edge (same whether above or below)
+
   const taskById = $derived.by(() => {
     const m: Record<string, Task> = {}
     for (const t of tasks) m[t.id] = t
     return m
   })
 
-  /** Root title, or `parent > child` when the ticket is a sub-task. */
-  function ticketLabel(task: Task | undefined, taskId: string): string {
-    if (!task) return shortId(taskId)
-    if (!task.parent_id) return task.title
-    const parent = taskById[task.parent_id]
-    const parentTitle = parent?.title ?? shortId(task.parent_id)
-    return `${parentTitle} > ${task.title}`
+  $effect(() => {
+    if (!tip || !tipEl) {
+      tipH = 0
+      return
+    }
+    // Re-measure whenever the hovered task (content) changes.
+    void tip.task.id
+    void tip.task.description
+    void tip.task.feedback
+    tipH = tipEl.offsetHeight
+  })
+
+  function tipStyle(t: NonNullable<typeof tip>): string {
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+    // Prefer measured height; fall back to a tight estimate until first paint.
+    const h = tipH > 0 ? tipH : 72
+    let left = t.x + TIP_GAP
+    let top = t.y + TIP_GAP
+    if (left + TIP_W + 8 > vw) left = t.x - TIP_W - TIP_GAP
+    if (left < 8) left = 8
+    if (top + h + TIP_GAP > vh) top = t.y - h - TIP_GAP
+    if (top < 8) top = 8
+    return `left:${left}px;top:${top}px;width:${TIP_W}px`
   }
 
-  // Ticket picker lists non-archived roots + children currently in `tasks`.
+  function showTip(e: MouseEvent, task: Task | undefined) {
+    if (!task) return
+    tip = { x: e.clientX, y: e.clientY, task }
+  }
+
+  function moveTip(e: MouseEvent) {
+    if (!tip) return
+    tip = { ...tip, x: e.clientX, y: e.clientY }
+  }
+
+  function hideTip() {
+    tip = null
+  }
+
   const ticketOptions = $derived(
     [...tasks].sort((a, b) => a.title.localeCompare(b.title))
   )
@@ -108,14 +153,14 @@
                 <span class="text-xs text-ink-2">{relTime(a.created_at)}</span>
                 <span class="font-mono text-[10px] text-ink-3">{absList(a.created_at)}</span>
               </div>
-              <div
-                class="flex min-w-0 flex-1 items-baseline gap-1.5 truncate text-sm font-medium"
-                title={ticketLabel(task, a.task_id)}
-              >
+              <div class="flex min-w-0 flex-1 items-baseline gap-1.5 truncate text-sm font-medium">
                 {#if task?.parent_id}
                   <button
                     type="button"
                     onclick={() => onSelectTask(task.parent_id!)}
+                    onmouseenter={(e) => showTip(e, parent)}
+                    onmousemove={moveTip}
+                    onmouseleave={hideTip}
                     class="max-w-[55%] shrink truncate text-left text-accent-hi hover:underline"
                   >
                     {parent?.title ?? shortId(task.parent_id)}
@@ -124,6 +169,9 @@
                   <button
                     type="button"
                     onclick={() => onSelectTask(a.task_id)}
+                    onmouseenter={(e) => showTip(e, task)}
+                    onmousemove={moveTip}
+                    onmouseleave={hideTip}
                     class="min-w-0 truncate text-left text-accent-hi hover:underline"
                   >
                     {task.title}
@@ -132,6 +180,9 @@
                   <button
                     type="button"
                     onclick={() => onSelectTask(a.task_id)}
+                    onmouseenter={(e) => showTip(e, task)}
+                    onmousemove={moveTip}
+                    onmouseleave={hideTip}
                     class="truncate text-left text-accent-hi hover:underline"
                   >
                     {task?.title ?? shortId(a.task_id)}
@@ -140,20 +191,21 @@
               </div>
             </div>
             {#if a.activity || a.comment}
-              <div class="flex min-w-0 items-baseline gap-2">
+              <div class="flex min-w-0 items-start gap-2">
                 {#if a.activity}
                   <span
-                    class="inline-flex max-w-[40%] shrink-0 truncate rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-hi"
-                    title={a.activity}
+                    class="inline-block max-w-full shrink-0 break-words rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-xs font-medium leading-snug text-accent-hi"
                   >
                     {a.activity}
                   </span>
                   {#if a.comment}
-                    <span class="shrink-0 text-ink-3" aria-hidden="true">—</span>
+                    <span class="shrink-0 self-baseline text-ink-3" aria-hidden="true">—</span>
                   {/if}
                 {/if}
                 {#if a.comment}
-                  <span class="min-w-0 flex-1 truncate text-sm text-ink-2" title={a.comment}>{a.comment}</span>
+                  <div class="min-w-0 flex-1 text-sm text-ink-2">
+                    <Markdown source={a.comment} />
+                  </div>
                 {/if}
               </div>
             {/if}
@@ -163,3 +215,36 @@
     {/if}
   </div>
 </div>
+
+{#if tip}
+  {@const t = tip.task}
+  <div
+    bind:this={tipEl}
+    class="pointer-events-none fixed z-50 max-h-[min(360px,70vh)] overflow-hidden rounded-md border border-line bg-card shadow-2xl ring-1 ring-black/30"
+    style={tipStyle(tip)}
+    role="tooltip"
+  >
+    <div class="border-b border-line-soft bg-chrome px-3 py-2">
+      <p class="font-mono text-[11px] leading-snug text-ink-2">
+        <span class="text-accent-hi">{shortId(t.id)}</span>
+        <span class="text-ink-3"> - </span>
+        <span>{absShort(t.created_at)}</span>
+        <span class="text-ink-3"> - </span>
+        <span class="capitalize">{STATUS_LABELS[t.status] ?? t.status}</span>
+        <span class="text-ink-3"> - </span>
+        <span>{t.progress}%</span>
+      </p>
+    </div>
+    <div class="max-h-[300px] overflow-y-auto px-3 py-2.5">
+      {#if t.description?.trim()}
+        <Markdown source={t.description} class="text-xs text-ink-2" />
+      {:else}
+        <p class="text-xs italic text-ink-3">No description</p>
+      {/if}
+      {#if t.feedback?.trim()}
+        <hr class="my-2.5 border-0 border-t border-line-soft" />
+        <Markdown source={t.feedback} class="text-xs text-accent-hi/90" />
+      {/if}
+    </div>
+  </div>
+{/if}

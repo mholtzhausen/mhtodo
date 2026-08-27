@@ -89,6 +89,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		ID:          id.String(),
 		Title:       title,
 		Description: in.Description,
+		Feedback:    in.Feedback,
 		Status:      st,
 		Progress:    in.Progress,
 		CreatedAt:   now,
@@ -153,7 +154,7 @@ func (s *Service) ResolveID(ctx context.Context, ref string) (string, error) {
 	}
 }
 
-// Edit applies the set fields (title/description/progress). Status is not
+// Edit applies the set fields (title/description/feedback/progress). Status is not
 // changed here — use SetStatus. created_at is immutable; updated_at always bumps.
 func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, error) {
 	if !in.hasFields() {
@@ -175,6 +176,9 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	if in.Desc != nil {
 		t.Description = *in.Desc
+	}
+	if in.Feedback != nil {
+		t.Feedback = *in.Feedback
 	}
 	if in.Progress != nil {
 		t.Progress = *in.Progress

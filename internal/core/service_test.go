@@ -173,12 +173,12 @@ func TestEdit(t *testing.T) {
 		t.Fatalf("empty edit: %v", err)
 	}
 
-	title, desc, prog := "new title", "", 77
-	got, err := svc.Edit(ctx, "cccc", core.UpdateInput{Title: &title, Desc: &desc, Progress: &prog})
+	title, desc, feedback, prog := "new title", "", "shipped cleanly", 77
+	got, err := svc.Edit(ctx, "cccc", core.UpdateInput{Title: &title, Desc: &desc, Feedback: &feedback, Progress: &prog})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Title != "new title" || got.Description != "" || got.Progress != 77 || got.Status != core.StatusPending {
+	if got.Title != "new title" || got.Description != "" || got.Feedback != "shipped cleanly" || got.Progress != 77 || got.Status != core.StatusPending {
 		t.Errorf("edit result: %+v", got)
 	}
 

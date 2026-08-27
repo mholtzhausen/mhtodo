@@ -17,6 +17,7 @@ var migrations = []migration{
 	{version: 1, up: schemaV1},
 	{version: 2, up: schemaV2},
 	{version: 3, up: schemaV3},
+	{version: 4, up: schemaV4},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -67,6 +68,11 @@ CREATE TABLE activity (
 );
 CREATE INDEX idx_activity_created ON activity(created_at DESC);
 CREATE INDEX idx_activity_task    ON activity(task_id);
+`
+
+// v4: agent-authored feedback shown in the GUI when non-empty.
+const schemaV4 = `
+ALTER TABLE tasks ADD COLUMN feedback TEXT NOT NULL DEFAULT '';
 `
 
 const schemaV1 = `

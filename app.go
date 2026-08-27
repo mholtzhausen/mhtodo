@@ -154,7 +154,7 @@ func (a *App) CreateTask(in core.CreateInput) (core.Task, error) {
 	return t, err
 }
 
-// UpdateTask maps to CLI `edit` (title/description/progress; status goes via
+// UpdateTask maps to CLI `edit` (title/description/feedback/progress; status goes via
 // SetStatus). Nil patch fields are left unchanged.
 func (a *App) UpdateTask(id string, patch core.UpdateInput) (core.Task, error) {
 	t, err := a.svc.Edit(a.ctx, id, patch)

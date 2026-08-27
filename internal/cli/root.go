@@ -130,6 +130,9 @@ func (o opts) printTask(t core.Task) error {
 		if t.Description != "" {
 			fmt.Fprintf(w, "Description\t%s\n", t.Description)
 		}
+		if t.Feedback != "" {
+			fmt.Fprintf(w, "Feedback   \t%s\n", t.Feedback)
+		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)
 		if t.ParentID != nil {

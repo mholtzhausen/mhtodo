@@ -16,7 +16,8 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 ## Scope
 
 **In scope (v0.1):**
-- Task fields: title, description, status (`pending | wip | done | waiting`), progress 0–100,
+- Task fields: title, description, feedback (agent-authored; GUI shows when non-empty),
+  status (`pending | wip | waiting | review | done`), progress 0–100,
   created_at / updated_at / completed_at. UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock.
@@ -35,8 +36,12 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
 interpolated at emit time).
 
-**Out of scope for v0.1 (stretch only):** drag-and-drop kanban, markdown rendering in descriptions,
+**Out of scope for v0.1 (stretch only):** drag-and-drop kanban,
 light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
+
+**GUI display:** description, feedback, and activity comments are markdown-rendered
+(when not in an input/textarea). Detail-pane description & feedback grow with content
+up to 500px, then scroll.
 
 ## Hard constraints
 

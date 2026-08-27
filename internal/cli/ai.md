@@ -52,8 +52,8 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--status S] [--progress N] [--parent ID]
-mhtodo edit ID [--title S] [--desc S] [--progress N]      # at least one flag
+mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID]
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
@@ -86,7 +86,7 @@ mhtodo ai                                                 # this document
 | `review` | Delivered, waiting on the user's judgement. |
 | `done` | Complete and verified. |
 
-**Task fields:** `id`, `title`, `description`, `status`, `progress` (0–100),
+**Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
 `parent_id`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
 
@@ -125,6 +125,7 @@ activity already shown to the agent, for the comment relay in §3.6.
 |---|---|---|
 | Title | Never change. It is how they find it. | Agent may refine. |
 | Description | **Never overwrite.** It is their brief, possibly the whole spec. | Agent's; keep it a current-state snapshot. |
+| Feedback | Agent may set/update (`--feedback`). Shown in the GUI when non-empty. | Same. |
 | Status / progress | Agent moves it. | Agent moves it. |
 | Narration | **Activities only.** | Activities (and the description). |
 | Closing | Take to `review`. **The user** marks it done. | Agent may mark `done`. |

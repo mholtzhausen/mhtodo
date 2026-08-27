@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, status, progress, created_at, updated_at, completed_at, archived_at, parent_id`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -46,7 +46,7 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		archived  sql.NullString
 		parent    sql.NullString
 	)
-	if err := row.Scan(&t.ID, &t.Title, &t.Description, &status, &t.Progress,
+	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
 		&createdAt, &updatedAt, &completed, &archived, &parent); err != nil {
 		return core.Task{}, err
 	}
@@ -83,8 +83,8 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		t.ID, t.Title, t.Description, string(t.Status), t.Progress,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
 		nullStr(t.ParentID))
 	return err
@@ -170,9 +170,9 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE tasks SET title = ?, description = ?, status = ?, progress = ?,
+		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
 		 completed_at = ?, archived_at = ?, parent_id = ?, updated_at = ? WHERE id = ?`,
-		t.Title, t.Description, string(t.Status), t.Progress,
+		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err

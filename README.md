@@ -3,7 +3,9 @@
 A personal todo manager in Go. **One binary, two frontends over one shared core:**
 
 - **CLI** — the scriptable, agentic interface: `--json` everywhere, stable exit codes and JSON field names.
-- **GUI** — Wails v2 webview + system tray: board (kanban) and list views, task detail editing, desktop notifications, live sync so CLI changes appear without a restart.
+- **GUI** — Wails v2 webview + system tray: board (kanban) and list views, task detail editing
+  (description/feedback/activity comments are markdown-rendered outside inputs), desktop
+  notifications, live sync so CLI changes appear without a restart.
 
 Both frontends call the same `core.Service`; neither contains business rules or SQL of its own. Every CLI command has an exact GUI equivalent and vice versa (parity table below). All data lives in one SQLite database — safe to drive from both at once.
 
@@ -86,10 +88,10 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--desc TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task |
+| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set) |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots]` | default: excludes done **and archived**, sorted `updated_at desc`; `--all` includes done; `--archived` shows archived only; `--roots` top-level only; list stays flat for agents (`parent_id` field); sort fields: `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--progress 0-100]` | at least one flag required; never changes status |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100]` | at least one flag required; never changes status |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps) |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
 | `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step; reversible via `unarchive` |
@@ -109,6 +111,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "id": "01958b2e-4c1a-7f3d-9a6b-2c8e4f5a6b7c",
   "title": "Ship mhtodo v0.1",
   "description": "Ship mhtodo v0.1 (see .agent/plan/)",
+  "feedback": "",
   "status": "wip",
   "progress": 40,
   "created_at": "2025-08-19T07:59:00Z",
@@ -194,7 +197,7 @@ status transitions → activity → delete) using only this CLI.
 | `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly |
 | `GetTask(id)` | `show` | prefix match allowed |
 | `CreateTask(in)` | `add` | optional ParentID |
-| `UpdateTask(id, patch)` | `edit` | title/description/progress only |
+| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress only |
 | `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting |
 | `ArchiveDone()` | `archive` | bulk done → archive |
 | `Unarchive(id)` | `unarchive` | |

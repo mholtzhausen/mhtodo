@@ -72,6 +72,7 @@ export namespace core {
 	export class CreateInput {
 	    Title: string;
 	    Description: string;
+	    Feedback: string;
 	    Status: string;
 	    Progress: number;
 	    ParentID: string;
@@ -84,6 +85,7 @@ export namespace core {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Title = source["Title"];
 	        this.Description = source["Description"];
+	        this.Feedback = source["Feedback"];
 	        this.Status = source["Status"];
 	        this.Progress = source["Progress"];
 	        this.ParentID = source["ParentID"];
@@ -119,6 +121,7 @@ export namespace core {
 	    id: string;
 	    title: string;
 	    description: string;
+	    feedback: string;
 	    status: string;
 	    progress: number;
 	    // Go type: time
@@ -140,6 +143,7 @@ export namespace core {
 	        this.id = source["id"];
 	        this.title = source["title"];
 	        this.description = source["description"];
+	        this.feedback = source["feedback"];
 	        this.status = source["status"];
 	        this.progress = source["progress"];
 	        this.created_at = this.convertValues(source["created_at"], null);
@@ -170,6 +174,7 @@ export namespace core {
 	export class UpdateInput {
 	    Title?: string;
 	    Desc?: string;
+	    Feedback?: string;
 	    Progress?: number;
 	
 	    static createFrom(source: any = {}) {
@@ -180,6 +185,7 @@ export namespace core {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Title = source["Title"];
 	        this.Desc = source["Desc"];
+	        this.Feedback = source["Feedback"];
 	        this.Progress = source["Progress"];
 	    }
 	}

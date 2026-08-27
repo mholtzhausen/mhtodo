@@ -61,7 +61,7 @@ func mustJSON(t *testing.T, b []byte, v any) {
 func TestAddHumanAndJSON(t *testing.T) {
 	out, _, run := newCLI(t)
 
-	if code := run("add", "Ship v0.1", "--desc", "see plan"); code != 0 {
+	if code := run("add", "Ship v0.1", "--desc", "see plan", "--feedback", "agent note"); code != 0 {
 		t.Fatalf("exit %d", code)
 	}
 	fields := strings.Fields(out.String()) // title may contain spaces → id, status, rest...
@@ -70,13 +70,13 @@ func TestAddHumanAndJSON(t *testing.T) {
 	}
 
 	out.Reset()
-	if code := run("add", "JSON task", "--status", "wip", "--progress", "40", "--json"); code != 0 {
+	if code := run("add", "JSON task", "--status", "wip", "--progress", "40", "--feedback", "ok", "--json"); code != 0 {
 		t.Fatalf("exit %d", code)
 	}
 	var task core.Task
 	mustJSON(t, out.Bytes(), &task)
 	if task.Title != "JSON task" || task.Status != core.StatusWIP || task.Progress != 40 ||
-		task.CompletedAt != nil || len(task.ID) != 36 {
+		task.Feedback != "ok" || task.CompletedAt != nil || len(task.ID) != 36 {
 		t.Errorf("json add wrong: %+v", task)
 	}
 	if !strings.Contains(out.String(), `"created_at": "20`) { // RFC3339, second precision
@@ -329,11 +329,11 @@ func TestEdit(t *testing.T) {
 	var task core.Task
 	out.Reset()
 	errb.Reset()
-	if code := run("edit", id, "--title", "Renamed2", "--progress", "60", "--json"); code != 0 {
+	if code := run("edit", id, "--title", "Renamed2", "--progress", "60", "--feedback", "looks good", "--json"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
 	mustJSON(t, out.Bytes(), &task)
-	if task.Title != "Renamed2" || task.Progress != 60 || task.Status != core.StatusPending {
+	if task.Title != "Renamed2" || task.Progress != 60 || task.Feedback != "looks good" || task.Status != core.StatusPending {
 		t.Errorf("edit wrong: %+v", task)
 	}
 

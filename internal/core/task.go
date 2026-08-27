@@ -37,6 +37,7 @@ type Task struct {
 	ID          string     `json:"id"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
+	Feedback    string     `json:"feedback"` // agent-authored; GUI shows only when non-empty
 	Status      Status     `json:"status"`
 	Progress    int        `json:"progress"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -50,6 +51,7 @@ type Task struct {
 type CreateInput struct {
 	Title       string
 	Description string
+	Feedback    string
 	Status      Status // zero value → pending
 	Progress    int    // zero value → 0
 	ParentID    string // optional; empty = root. Must resolve to a root task.
@@ -60,11 +62,12 @@ type CreateInput struct {
 type UpdateInput struct {
 	Title    *string
 	Desc     *string
+	Feedback *string
 	Progress *int
 }
 
 func (in UpdateInput) hasFields() bool {
-	return in.Title != nil || in.Desc != nil || in.Progress != nil
+	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:

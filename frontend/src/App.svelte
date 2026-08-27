@@ -119,9 +119,9 @@
   async function load() {
     try {
       if (view === 'activity') {
-        // Include done so the ticket filter covers the full non-archived set.
+        // Include done so ticket filter + hover tooltips cover the full non-archived set.
         const [t, a] = await Promise.all([
-          api.list({ sort: 'title', ascending: true }),
+          api.list({ sort: 'title', ascending: true, includeDone: true }),
           api.listActivity({})
         ])
         tasks = t

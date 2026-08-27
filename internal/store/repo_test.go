@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 3 {
-		t.Fatalf("schema_version = %d, want 3", version)
+	if version != 4 {
+		t.Fatalf("schema_version = %d, want 4", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 3 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 3", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 4 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 4", version, err)
 	}
 
 	// WAL must be active.
@@ -95,7 +95,7 @@ func TestCRUDRoundtrip(t *testing.T) {
 	now := time.Date(2026, 8, 19, 12, 30, 5, 0, time.UTC)
 	completed := now.Add(time.Hour)
 
-	task := core.Task{ID: "id-1", Title: "T", Description: "D", Status: core.StatusDone,
+	task := core.Task{ID: "id-1", Title: "T", Description: "D", Feedback: "F", Status: core.StatusDone,
 		Progress: 100, CreatedAt: now, UpdatedAt: now, CompletedAt: &completed}
 	if err := r.Create(ctx, task); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -105,7 +105,7 @@ func TestCRUDRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Title != "T" || got.Description != "D" || got.Status != core.StatusDone ||
+	if got.Title != "T" || got.Description != "D" || got.Feedback != "F" || got.Status != core.StatusDone ||
 		got.Progress != 100 || !got.CreatedAt.Equal(now) || got.CompletedAt == nil || !got.CompletedAt.Equal(completed) {
 		t.Fatalf("roundtrip mismatch: %+v", got)
 	}
@@ -297,9 +297,9 @@ func ids(ts []core.Task) []string {
 	return out
 }
 
-// TestV1ToV3Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
-// Open migrates it forward through v2 and v3 in place.
-func TestV1ToV3Upgrade(t *testing.T) {
+// TestV1ToV4Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
+// Open migrates it forward through v2–v4 in place.
+func TestV1ToV4Upgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mhtodo.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -317,8 +317,8 @@ func TestV1ToV3Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 3 {
-		t.Fatalf("schema_version = %d (err=%v), want 3", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 4 {
+		t.Fatalf("schema_version = %d (err=%v), want 4", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
@@ -336,7 +336,7 @@ func TestV1ToV3Upgrade(t *testing.T) {
 		cols = append(cols, name)
 	}
 	rows.Close()
-	for _, want := range []string{"archived_at", "parent_id"} {
+	for _, want := range []string{"archived_at", "parent_id", "feedback"} {
 		found := false
 		for _, c := range cols {
 			if c == want {
