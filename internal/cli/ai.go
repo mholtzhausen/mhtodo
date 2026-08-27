@@ -14,10 +14,16 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 3
+const IntegrationVersion = 4
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v3  Sub-tasks (--parent, one level) and activities. review status added.
+const integrationChangelog = `v4  Activity labels are Title Case noun phrases (2-4 words), not sentences; all
+    detail moves to --comment. REVERSES v3's "do not post per tool call": the
+    unit is now one activity per step forward, and fine-grained is preferred.
+    Upgraders must delete the old wording, not just add the new — see §6.
+    Feedback (--feedback) is a short post-work summary + notes/takeaways at
+    hand-back. Description, feedback, and activity comments are markdown in the GUI.
+v3  Sub-tasks (--parent, one level) and activities. review status added.
     Ownership split: never rewrite a user-authored title or description.
     Search-then-adopt replaces register-always. Comment relay from the GUI.
 v2  waiting status; SessionEnd ghost cleanup.
@@ -57,12 +63,12 @@ func renderAIDoc(version string) (aiDoc, error) {
 	ts := aiNow().Format(time.RFC3339)
 	db := store.DBPath()
 	repl := map[string]string{
-		"{{INTEGRATION_VERSION}}":  fmt.Sprintf("%d", IntegrationVersion),
-		"{{MHTODO_VERSION}}":       version,
-		"{{MHTODO_DB_PATH}}":       db,
-		"{{TIMESTAMP}}":            ts,
-		"{{STATUS_ENUM}}":          statusEnum(),
-		"{{SORT_FIELDS}}":          strings.Join(sortFields, "|"),
+		"{{INTEGRATION_VERSION}}":   fmt.Sprintf("%d", IntegrationVersion),
+		"{{MHTODO_VERSION}}":        version,
+		"{{MHTODO_DB_PATH}}":        db,
+		"{{TIMESTAMP}}":             ts,
+		"{{STATUS_ENUM}}":           statusEnum(),
+		"{{SORT_FIELDS}}":           strings.Join(sortFields, "|"),
 		"{{INTEGRATION_CHANGELOG}}": integrationChangelog,
 	}
 	content := string(raw)

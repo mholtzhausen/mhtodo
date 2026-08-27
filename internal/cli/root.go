@@ -228,6 +228,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(),
 		newActivityCmd(), newRmCmd(), newPathCmd(), newAICmd(version),
+		newUpdateCmd(version),
 	} {
 		root.AddCommand(c)
 	}

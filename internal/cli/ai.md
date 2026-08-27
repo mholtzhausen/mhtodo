@@ -25,9 +25,9 @@ is open on the user's screen while agents work.
 
 - **User → agent.** They write tasks and comments in the GUI, then point an agent
   at one: *"do that one"*, *"what's next?"*.
-- **Agent → user.** The agent reports through status, progress, sub-tasks and
-  **activities**, which render as a live running commentary in the GUI's activity
-  pane.
+- **Agent → user.** The agent reports through status, progress, sub-tasks,
+  **activities** (live running commentary), and **feedback** (a short post-work
+  summary with notes and takeaways on the task itself).
 
 Every design decision below follows from that. An integration that treats mhtodo
 as a place to dump status lines has failed, even if every command succeeds.
@@ -65,6 +65,7 @@ mhtodo rm ID --yes                                        # CASCADES to sub-task
 mhtodo archive | mhtodo unarchive ID
 mhtodo path
 mhtodo ai                                                 # this document
+mhtodo update [--check] [--force]                         # self-update from GitHub Releases
 ```
 
 - Global flags: `--json`, `-q/--quiet`.
@@ -89,6 +90,20 @@ mhtodo ai                                                 # this document
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
 `parent_id`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
+
+### Markdown fields
+
+The GUI **markdown-renders** these when not in an input/textarea:
+
+| Field | Flag / channel | Notes |
+|---|---|---|
+| Description | `--desc` | User brief (don't overwrite on adopted tasks) or agent's current-state snapshot |
+| Feedback | `--feedback` | Post-work summary — see §3.2 / §3.7 |
+| Activity comment | `--comment` on `activity add` | Detail under a chip label |
+
+Use light markdown where it helps (short lists, `` `paths` ``, **emphasis**). Do **not**
+put markdown in `--activity` labels — those are plain Title Case chips. Titles stay
+plain text.
 
 ---
 
@@ -124,14 +139,21 @@ activity already shown to the agent, for the comment relay in §3.6.
 | | **User's task** | **Agent's task** |
 |---|---|---|
 | Title | Never change. It is how they find it. | Agent may refine. |
-| Description | **Never overwrite.** It is their brief, possibly the whole spec. | Agent's; keep it a current-state snapshot. |
-| Feedback | Agent may set/update (`--feedback`). Shown in the GUI when non-empty. | Same. |
+| Description | **Never overwrite.** It is their brief, possibly the whole spec. | Agent's; keep it a current-state snapshot (markdown OK). |
+| Feedback | Agent sets/updates at hand-back (`--feedback`). | Same. |
 | Status / progress | Agent moves it. | Agent moves it. |
-| Narration | **Activities only.** | Activities (and the description). |
+| Narration | **Activities only** while working. | Activities (and the description). |
 | Closing | Take to `review`. **The user** marks it done. | Agent may mark `done`. |
 | Decomposition | Add sub-tasks beneath it. Never narrow their row. | Sub-tasks as useful. |
 
-Unifying habit: **progress narration always goes to activities.**
+**Feedback** is a short **post-work summary**: outcome in a sentence or two, plus any
+notes and takeaways the user should keep (gotchas, follow-ups, decisions). It lives
+on the task card (GUI shows it when non-empty). It is **not** a running log —
+that is activities. Write or refresh feedback when handing back (§3.7); do not drip
+mid-job updates into it.
+
+Unifying habit: **progress narration always goes to activities.** Closing summary
+goes to **feedback**.
 
 ### 3.3 Starting work — search, then adopt or register
 
@@ -151,7 +173,7 @@ Adopt:
 ```bash
 mhtodo status <id> wip
 mhtodo edit <id> --progress 5          # progress only — never --desc, never --title
-mhtodo activity add <id> --activity "Picked up in a session" \
+mhtodo activity add <id> --activity "Task Picked Up" \
   --comment "<how the brief was read and what happens first>"
 printf '%s\norigin=user\n' <id> > "$pointer"
 ```
@@ -177,18 +199,53 @@ already covered by the session's open task.
 ### 3.4 Activities — the primary reporting channel
 
 ```bash
-mhtodo activity add <id> --activity "<what just happened>" [--comment "<detail>"]
+mhtodo activity add <id> --activity "<Short Label>" [--comment "<detail>"]
 ```
 
-`--activity` is the at-a-glance headline (short, past tense). `--comment` carries
-detail — a path, a finding, a decision and its reasoning.
+**`--activity` is a label, not a sentence.** Two to four words, Title Case, a noun
+phrase — the kind of thing that fits on a chip in a list. The GUI renders it as a
+label beside the task, so a sentence overflows and stops being scannable.
 
-Post one when: adopting/registering; finishing investigation; touching a
-significant file; making a decision the user might challenge; hitting a surprise;
-committing, pushing or opening a PR; handing back.
+**`--comment` carries everything else** — numbers, paths, queries, findings, a
+decision and its reasoning. Detail belongs here (markdown OK), never in the label.
+
+```bash
+# Bad — the whole finding jammed into the label
+--activity "Infra clean: 0 restarts in 2d, 0 not-ready, 0 OOMKills. Memory: app 151MiB, exporter 132MiB"
+
+# Still bad — a sentence, just a shorter one
+--activity "Infra checks came back clean"
+
+# Good — the label is a chip, the comment carries the finding
+--activity "Infra Checks Clean" \
+  --comment "0 container restarts over 2d, 0 pods not ready, 0 OOMKills. Working set: app 151 MiB, exporter 132 MiB."
+```
+
+Post one when:
+
+| Moment | Label |
+|---|---|
+| Adopting or registering the task | `Task Picked Up` |
+| Finishing investigation, shape now known | `Root Cause Found` |
+| Touching a significant file | `GCS Loader Rewritten` |
+| Making a decision the user might challenge | `Patching Upstream` |
+| Hitting a surprise | `Pillow-SIMD Gap` |
+| Committing, pushing or opening a PR | `PR #142 Opened` |
+| Handing back | `Handed Back` |
+
+**Granularity: one activity per step forward.** The unit is a step that moved the
+job along, not a tool call. Sometimes that is a single tool call; more often it is a
+small run of them that together settled one thing. If the agent can say what
+changed because of it, it is an activity. If it cannot, fold it into the next one.
+
+**Lean fine-grained rather than coarse.** A log that shows *how* the agent got there
+is worth more on the board than four summary paragraphs posted at the end. The
+failed attempt, the stale cache, the label that turned out not to exist — those are
+steps forward and they belong in the log. Two dozen short labelled entries across a
+long job is a healthy trace, not noise.
 
 Roughly one every few minutes of real work. **Twenty minutes of silence reads as a
-stalled agent.** Do not post per tool call — `Ran a grep` is noise.
+stalled agent.**
 
 ### 3.5 Sub-tasks — decomposition, one level
 
@@ -198,8 +255,8 @@ without touching their row, and let them object to it.
 
 > **Sub-task or activity?** A sub-task is a *unit of work with its own lifecycle*.
 > An activity is *something that happened*. "Migrate the loader" is a sub-task;
-> "finished migrating the loader" is an activity. If it doesn't deserve its own
-> progress bar, it's an activity.
+> `Loader Migrated` is an activity. If it doesn't deserve its own progress bar,
+> it's an activity.
 
 Three or four sub-tasks is a breakdown; twelve is a checklist nobody reads.
 
@@ -217,15 +274,21 @@ mhtodo activity list --task <id> --json
 Never end a turn leaving a task on `wip` — that claims a live agent is on it.
 
 ```bash
-mhtodo activity add <id> --activity "<what landed>" --comment "<files, PR, outcome>"
-mhtodo edit <id> --progress 100
+mhtodo activity add <id> --activity "Handed Back" --comment "<files, PR, outcome>"
+mhtodo edit <id> --progress 100 --feedback "<short summary + notes/takeaways>"
 mhtodo status <id> review     # user's task — they close it
 # or, for the agent's own task:
-mhtodo edit <id> --desc "<what was delivered, past tense>" && mhtodo done <id>
+mhtodo edit <id> --desc "<what was delivered, past tense>" \
+  --feedback "<short summary + notes/takeaways>" && mhtodo done <id>
 ```
 
+**`--feedback` at hand-back** is required whenever substantive work happened: a
+brief outcome plus notes and takeaways (markdown OK — e.g. a short bullet list).
+Keep it scannable; put the blow-by-blow in activities, not here.
+
 Use `waiting` instead when blocked on an answer. The closing activity is the
-record the user reads later — files, PRs, outcomes, not "finished the task".
+step-trace the user can skim; **feedback** is what they read later for the
+digest — files, PRs, outcomes, gotchas — not "finished the task".
 
 ### 3.8 Answering "what's on my list?"
 
@@ -278,7 +341,7 @@ agent remembering:
 
 | Behaviour | Trigger | Effect |
 |---|---|---|
-| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates. Flip a `waiting` task back to `wip`. |
+| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks, feedback, and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates. Flip a `waiting` task back to `wip`. |
 | **B. Ghost cleanup** | Session ends | If the task is still `wip`, set `waiting` and post an activity saying why. **Leave the pointer file in place** so a resumed session picks it back up. |
 | **C. Idle detection** | Runtime goes idle awaiting user input | If the task is `wip`, set `waiting`. **Skip permission/approval prompts** — nothing reliably fires when one is granted mid-turn, so the task would strand on `waiting` through an hour of real work. |
 
@@ -317,7 +380,9 @@ The context-injection hook should also:
 - track a `.seen` marker so activities are relayed once, not replayed every turn —
   and treat a *missing* marker as "baseline, show nothing" while an *empty* marker
   means "show everything", or the very first activity is silently swallowed;
-- display 13-character id prefixes (see §2).
+- display 13-character id prefixes (see §2);
+- surface non-empty `feedback` when injecting task state (it is the last hand-back
+  digest, not live narration).
 
 ---
 
@@ -368,7 +433,8 @@ overwrite — the user may have hand-tuned things.
    - commands or flags used that no longer exist in §2;
    - hook behaviours A/B/C that are absent, or wired to the wrong event;
    - **any mechanism that lets the agent start work autonomously** — that
-     violates §1 and must be removed.
+     violates §1 and must be removed;
+   - missing **`--feedback` at hand-back** and missing **markdown-field** guidance.
 3. **Preserve local customisation.** If an artifact contains user-authored
    material outside this contract, keep it and merge rather than replace.
 4. **Present the diff** as a short plan: for each file, what changes and why.
@@ -379,6 +445,24 @@ overwrite — the user may have hand-tuned things.
 Removed features are the dangerous case: if a previous contract version told the
 agent to do something this one no longer mentions, delete that instruction rather
 than leaving it to rot into a stale habit.
+
+#### Known reversals to check for
+
+Earlier contract versions carried the opposite of some rules now in §3. An upgrade
+that only *adds* the new wording, leaving the old wording in place further up the
+file, produces a self-contradicting contract — and the agent will follow whichever
+it reads first. Search the installed artifact for these and **delete them**:
+
+| Old wording (delete it) | Now says |
+|---|---|
+| "Do not post per tool call", "`Ran a grep` is noise" | §3.4: one activity per **step forward**; lean fine-grained |
+| "`--activity` is the headline … short and past tense" | §3.4: `--activity` is a **Title Case label, not a sentence** — 2–4 words, noun phrase |
+| Sentence-style example labels (`Picked up in a session`, `Traced it to the async GCS loader`, `Handed back for review — 3 files changed`) | Chip-style labels (`Task Picked Up`, `Root Cause Found`, `Handed Back`) |
+| Hand-back that only sets progress/status with no `--feedback` | §3.7: set `--feedback` with summary + notes/takeaways |
+
+Example labels matter more than they look: they sit above the rule in the file and
+are what an agent actually copies. A correct rule underneath a table of sentences
+will not change behaviour.
 
 ---
 

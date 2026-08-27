@@ -14,6 +14,7 @@ import (
 	"mhtodo/internal/cli"
 	"mhtodo/internal/core"
 	"mhtodo/internal/store"
+	"mhtodo/internal/update"
 )
 
 // newCLI points MHTODO_DB_PATH at a temp DB and returns (stdout, stderr, run).
@@ -546,13 +547,16 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 3",
+		"Integration contract version: 4",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
 		"created|updated|status|progress|title",
-		"v3  Sub-tasks",
+		"v4  Activity labels",
+		"--feedback",
+		"Markdown fields",
+		"Task Picked Up",
 		"mhtodo ai", // listed in §2 CLI surface
 	} {
 		if !strings.Contains(body, want) {
@@ -575,9 +579,45 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 3 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 4 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
+	}
+}
+
+func TestUpdateCheckJSON(t *testing.T) {
+	prev := cli.UpdateRunForTest(func(opts update.Options) (update.Result, error) {
+		if !opts.CheckOnly || opts.CurrentVersion != "test" {
+			t.Fatalf("unexpected opts: %+v", opts)
+		}
+		return update.Result{
+			CurrentVersion: "test",
+			LatestVersion:  "9.9.9",
+			UpToDate:       false,
+			CheckOnly:      true,
+			InstallPath:    "/tmp/mhtodo",
+			Service:        true,
+			Message:        "update available: vtest → v9.9.9",
+		}, nil
+	})
+	defer prev()
+
+	out, errb, run := newCLI(t)
+	if code := run("update", "--check", "--json"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	var res update.Result
+	mustJSON(t, out.Bytes(), &res)
+	if res.LatestVersion != "9.9.9" || res.UpToDate || !res.Service {
+		t.Fatalf("json: %+v", res)
+	}
+
+	out.Reset()
+	if code := run("update", "--check"); code != 0 {
+		t.Fatalf("human: exit %d", code)
+	}
+	if !strings.Contains(out.String(), "update available") {
+		t.Errorf("human: %q", out.String())
 	}
 }
 
@@ -591,6 +631,9 @@ func TestUnknownCommandAndVersion(t *testing.T) {
 	got := errb.String()
 	if !strings.Contains(got, `mhtodo: unknown command "frobnicate"`) || !strings.Contains(got, "available commands:") {
 		t.Errorf("unknown command stderr wrong: %q", got)
+	}
+	if !strings.Contains(got, "update") {
+		t.Errorf("available commands missing update: %q", got)
 	}
 
 	out.Reset()

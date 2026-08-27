@@ -57,6 +57,13 @@ curl -fsSL https://raw.githubusercontent.com/mholtzhausen/mhtodo/main/install.sh
 
 Pass `--service` (user systemd unit at login) or `--app` (binary on PATH) to skip the prompt when piping, e.g. `… | bash -s -- --service`. See `install.sh --help` for flags (`--force`, `--no-build`, `--prefix`, `--repo-url`).
 
+Once installed, upgrade in place with:
+
+```sh
+mhtodo update          # download + install if a newer release exists
+mhtodo update --check  # report only
+```
+
 ## CLI reference (agent contract)
 
 Bare `mhtodo` opens the GUI; any subcommand runs the CLI and exits. All commands are safe to run
@@ -82,7 +89,7 @@ concurrently with the GUI.
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `parent_is_child`, `empty_activity`,
-`usage`, `storage`.
+`usage`, `storage`, `update`.
 
 ### Commands
 
@@ -102,6 +109,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums) |
+| `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is present, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
 ### Canonical JSON object

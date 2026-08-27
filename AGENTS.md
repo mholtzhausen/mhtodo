@@ -4,9 +4,10 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|rm|path|ai`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|rm|path|ai|update`) — the interface for **agentic tool
   access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
   `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
+  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
 - **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
@@ -34,7 +35,7 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 [`.agent/plan/`](.agent/plan/README.md).
 
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
-interpolated at emit time).
+interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (see README).
 
 **Out of scope for v0.1 (stretch only):** drag-and-drop kanban,
 light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
