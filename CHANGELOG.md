@@ -1,13 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (1ae273f)
 
 ### Features and Improvements
 - `mhtodo update` checks GitHub Releases for a newer linux binary, verifies the asset sha256, installs over the current binary (and desktop/icon when under `$PREFIX/bin/mhtodo`), and restarts the user systemd unit when `mhtodo.service` is present (`--check`, `--force`, `--json`)
 - Agent integration contract **v4** (`mhtodo ai`): Title Case activity chip labels + one activity per step forward (reverses v3 coarse/tool-call guidance); `--feedback` as post-work summary + notes/takeaways at hand-back; markdown guidance for description/feedback/activity comments
 
 ### Bugfixes
-- (none yet)
+- (none in this release range)
 
 ### Deprecations
 - (none)
