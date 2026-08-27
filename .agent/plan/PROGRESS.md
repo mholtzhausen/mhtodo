@@ -15,3 +15,4 @@
 - SQLite CHECK rebuild for `review` + `parent_id` requires table copy (migration v3).
 - `foreign_keys=ON` required for cascade delete of sub-tasks and activity rows.
 - Wails `generate module` may focus a running GUI instance; bindings updated by hand when needed.
+- `mhtodo ai` (integration contract v3) embeds `internal/cli/ai.md` and interpolates version/DB/enums at emit time.

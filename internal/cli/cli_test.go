@@ -532,6 +532,55 @@ func TestPath(t *testing.T) {
 	}
 }
 
+func TestAI(t *testing.T) {
+	fixed := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
+	prev := cli.AINowForTest(func() time.Time { return fixed })
+	t.Cleanup(prev)
+
+	out, _, run := newCLI(t)
+	db := os.Getenv("MHTODO_DB_PATH")
+
+	if code := run("ai"); code != 0 {
+		t.Fatalf("ai: exit %d", code)
+	}
+	body := out.String()
+	for _, want := range []string{
+		"mhtodo — agent integration instructions",
+		"Integration contract version: 3",
+		"mhtodo binary version:        test",
+		"Database:                     " + db,
+		"Generated:                    2026-08-27T12:00:00Z",
+		"pending|wip|waiting|review|done",
+		"created|updated|status|progress|title",
+		"v3  Sub-tasks",
+		"mhtodo ai", // listed in §2 CLI surface
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("ai output missing %q", want)
+		}
+	}
+	if strings.Contains(body, "{{") {
+		t.Errorf("uninterpolated placeholder left in output")
+	}
+
+	out.Reset()
+	if code := run("ai", "--json"); code != 0 {
+		t.Fatalf("ai --json: exit %d", code)
+	}
+	var doc struct {
+		IntegrationVersion int    `json:"integration_version"`
+		MhtodoVersion      string `json:"mhtodo_version"`
+		DBPath             string `json:"db_path"`
+		Generated          string `json:"generated"`
+		Content            string `json:"content"`
+	}
+	mustJSON(t, out.Bytes(), &doc)
+	if doc.IntegrationVersion != 3 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
+		t.Errorf("ai --json envelope wrong: %+v", doc)
+	}
+}
+
 func TestUnknownCommandAndVersion(t *testing.T) {
 	out, errb, run := newCLI(t)
 

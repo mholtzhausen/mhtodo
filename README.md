@@ -99,6 +99,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `activity rm` | `mhtodo activity rm ID [--yes]` | non-TTY requires `--yes` |
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
+| `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums) |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
 ### Canonical JSON object

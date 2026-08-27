@@ -1,0 +1,434 @@
+<!-- Emitted by: mhtodo ai
+     Integration contract version: {{INTEGRATION_VERSION}}
+     mhtodo binary version:        {{MHTODO_VERSION}}
+     Database:                     {{MHTODO_DB_PATH}}
+     Generated:                    {{TIMESTAMP}}
+     Everything in double-brace placeholders is interpolated by the CLI at emit time. -->
+
+# mhtodo — agent integration instructions
+
+You are reading this because someone ran `mhtodo ai`. This document is the
+**complete, authoritative specification** for wiring mhtodo into an AI coding
+agent's workflow. Read all of it before doing anything.
+
+Your job now is to **install or upgrade that integration on this machine** — but
+not silently. Follow the flow in [§7](#7-what-to-do-right-now).
+
+---
+
+## 1. What mhtodo is, and why the integration exists
+
+`mhtodo` is a personal task manager with a CLI and a GUI dashboard. The dashboard
+is open on the user's screen while agents work.
+
+**It is a two-way channel between the user and their agents, not a log file.**
+
+- **User → agent.** They write tasks and comments in the GUI, then point an agent
+  at one: *"do that one"*, *"what's next?"*.
+- **Agent → user.** The agent reports through status, progress, sub-tasks and
+  **activities**, which render as a live running commentary in the GUI's activity
+  pane.
+
+Every design decision below follows from that. An integration that treats mhtodo
+as a place to dump status lines has failed, even if every command succeeds.
+
+### The one hard rule
+
+> **An agent may read the board freely. An agent may NEVER adopt or start a task
+> because it found one there.**
+
+Work begins in exactly two ways: the user asks for something in the session (and
+the agent then searches mhtodo for a matching existing task), or the user points
+at a specific task. There is no third way. Listing is not starting.
+
+Any integration that lets an agent pick up work autonomously is wrong and must be
+corrected during upgrade.
+
+---
+
+## 2. CLI surface
+
+Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
+every upgrade; commands and flags change between versions.
+
+```
+mhtodo add TITLE [--desc S] [--status S] [--progress N] [--parent ID]
+mhtodo edit ID [--title S] [--desc S] [--progress N]      # at least one flag
+mhtodo status ID {{STATUS_ENUM}}
+mhtodo done ID [--notify]
+mhtodo show ID
+mhtodo list [--all] [--archived] [--roots] [--status S] [--search S] [--sort F] [--limit N]
+mhtodo activity add ID [--activity S] [--comment S]       # at least one
+mhtodo activity list [--task ID ...] [--limit N]
+mhtodo activity rm ID --yes
+mhtodo rm ID --yes                                        # CASCADES to sub-tasks
+mhtodo archive | mhtodo unarchive ID
+mhtodo path
+mhtodo ai                                                 # this document
+```
+
+- Global flags: `--json`, `-q/--quiet`.
+- IDs accept any unique prefix of **4+ characters**. Prefixes are time-ordered, so
+  tasks created seconds apart share long prefixes — **display 13 characters** in
+  any generated listing, not 8.
+- `--sort` fields: `{{SORT_FIELDS}}`; suffix `-` ascending, `+`/none descending.
+- Sub-tasks are **one level deep**. Passing a sub-task to `--parent` is rejected
+  with `parent_is_child`.
+- `mhtodo list` excludes `done` and archived tasks by default.
+
+**Statuses:** `{{STATUS_ENUM}}`
+
+| Status | Meaning |
+|---|---|
+| `pending` | Not started. The user's queue of work waiting for an agent. |
+| `wip` | **A live session is working on this right now.** |
+| `waiting` | Blocked on the user. A question was asked and cannot proceed. |
+| `review` | Delivered, waiting on the user's judgement. |
+| `done` | Complete and verified. |
+
+**Task fields:** `id`, `title`, `description`, `status`, `progress` (0–100),
+`parent_id`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
+**Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
+
+---
+
+## 3. The behavioural contract
+
+This is what must end up in the agent's always-on instructions (a skill, a rules
+file, a system prompt — see [§4](#4-host-mapping)). Encode all of it.
+
+### 3.1 Session state
+
+One pointer file per agent session:
+
+```
+${XDG_STATE_HOME:-$HOME/.local/state}/mhtodo-agent/<session_id>
+```
+
+Two lines:
+
+```
+01a0426d-8d19-7066-b1ca-8de5128f60f8
+origin=user
+```
+
+`origin=user` means the human wrote the task and the agent adopted it.
+`origin=agent` means the agent registered it. A file with only line 1 is treated
+as `origin=agent`.
+
+A sibling `<session_id>.seen` file holds the RFC3339 timestamp of the newest
+activity already shown to the agent, for the comment relay in §3.6.
+
+### 3.2 Ownership — who may touch what
+
+| | **User's task** | **Agent's task** |
+|---|---|---|
+| Title | Never change. It is how they find it. | Agent may refine. |
+| Description | **Never overwrite.** It is their brief, possibly the whole spec. | Agent's; keep it a current-state snapshot. |
+| Status / progress | Agent moves it. | Agent moves it. |
+| Narration | **Activities only.** | Activities (and the description). |
+| Closing | Take to `review`. **The user** marks it done. | Agent may mark `done`. |
+| Decomposition | Add sub-tasks beneath it. Never narrow their row. | Sub-tasks as useful. |
+
+Unifying habit: **progress narration always goes to activities.**
+
+### 3.3 Starting work — search, then adopt or register
+
+Before investigating anything substantive:
+
+```bash
+mhtodo list --roots --json --search "<2-3 distinctive keywords from the request>"
+```
+
+- **A result is the same job** → adopt it. A duplicate row beside the user's is
+  worse than no task at all.
+- **Nothing matches** → register a new one.
+- **Genuinely unsure** → ask, in one line.
+
+Adopt:
+
+```bash
+mhtodo status <id> wip
+mhtodo edit <id> --progress 5          # progress only — never --desc, never --title
+mhtodo activity add <id> --activity "Picked up in a session" \
+  --comment "<how the brief was read and what happens first>"
+printf '%s\norigin=user\n' <id> > "$pointer"
+```
+
+That opening activity is the user's chance to correct a misread brief before
+anything is built.
+
+Register:
+
+```bash
+mhtodo add "[<context>] <short imperative title>" \
+  --desc "<one-line goal>" --status wip --progress 5 --json
+printf '%s\norigin=agent\n' <id> > "$pointer"
+```
+
+**Titles** are `[<context>] <imperative phrase>`, where context is the working
+directory basename or a short label like `[cloudflare]`. The bracket prefix is how
+the user tells concurrent agents apart on the board. Keep titles under ~60 chars.
+
+Skip registration entirely for conversational turns, one-line lookups, and work
+already covered by the session's open task.
+
+### 3.4 Activities — the primary reporting channel
+
+```bash
+mhtodo activity add <id> --activity "<what just happened>" [--comment "<detail>"]
+```
+
+`--activity` is the at-a-glance headline (short, past tense). `--comment` carries
+detail — a path, a finding, a decision and its reasoning.
+
+Post one when: adopting/registering; finishing investigation; touching a
+significant file; making a decision the user might challenge; hitting a surprise;
+committing, pushing or opening a PR; handing back.
+
+Roughly one every few minutes of real work. **Twenty minutes of silence reads as a
+stalled agent.** Do not post per tool call — `Ran a grep` is noise.
+
+### 3.5 Sub-tasks — decomposition, one level
+
+Use when the job has **three or more distinct pieces** with their own lifecycles,
+especially when the user wrote a coarse task: sub-tasks show the agent's breakdown
+without touching their row, and let them object to it.
+
+> **Sub-task or activity?** A sub-task is a *unit of work with its own lifecycle*.
+> An activity is *something that happened*. "Migrate the loader" is a sub-task;
+> "finished migrating the loader" is an activity. If it doesn't deserve its own
+> progress bar, it's an activity.
+
+Three or four sub-tasks is a breakdown; twelve is a checklist nobody reads.
+
+### 3.6 Reading the user's comments
+
+The user writes comments on tasks in the GUI mid-job. Treat a comment from them as
+an instruction, and acknowledge it with an activity so they can see it landed.
+
+```bash
+mhtodo activity list --task <id> --json
+```
+
+### 3.7 Handing back
+
+Never end a turn leaving a task on `wip` — that claims a live agent is on it.
+
+```bash
+mhtodo activity add <id> --activity "<what landed>" --comment "<files, PR, outcome>"
+mhtodo edit <id> --progress 100
+mhtodo status <id> review     # user's task — they close it
+# or, for the agent's own task:
+mhtodo edit <id> --desc "<what was delivered, past tense>" && mhtodo done <id>
+```
+
+Use `waiting` instead when blocked on an answer. The closing activity is the
+record the user reads later — files, PRs, outcomes, not "finished the task".
+
+### 3.8 Answering "what's on my list?"
+
+**Read-only.** List, let them pick, adopt only after they choose.
+
+```bash
+mhtodo list --status pending --roots --sort created-   # next up — nobody is on these
+mhtodo list --status waiting --roots                   # agents blocked on the user
+mhtodo list --status review  --roots                   # awaiting their sign-off
+```
+
+Present in three groups in that order. Only the first is work they can hand out.
+
+Exclude `wip` — a live session is on it. But also run:
+
+```bash
+mhtodo list --status wip --roots --sort updated-
+```
+
+and show anything untouched for several hours as a fourth group, **"possibly
+abandoned"**. Hard-killed sessions leak `wip` rows that the session-end hook
+(§4) cannot catch.
+
+### 3.9 Subagents
+
+Subagents share the parent session's task and pointer, and must **not** register
+their own — that fragments one job into several dashboard rows. A subagent may
+post an activity against the shared task; the orchestrator owns statuses.
+
+### 3.10 Never narrate the bookkeeping
+
+No "let me create a task for this", no "I've updated the task", no reciting ids
+back. It happens silently alongside the real work. **The dashboard is the
+notification** — that is the entire point. The only exception is when the user
+asks about the board directly.
+
+### 3.11 Housekeeping is the user's call
+
+`mhtodo archive` and `mhtodo rm` are never run unprompted. A `done` task staying
+visible is how the user sees what just finished, and `rm` cascades to sub-tasks.
+An agent may only `rm` a task it created in error.
+
+---
+
+## 4. Host mapping
+
+The contract above is host-agnostic. Map it onto whatever the agent runtime
+offers. Three behaviours must be automated, because they cannot be left to the
+agent remembering:
+
+| Behaviour | Trigger | Effect |
+|---|---|---|
+| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates. Flip a `waiting` task back to `wip`. |
+| **B. Ghost cleanup** | Session ends | If the task is still `wip`, set `waiting` and post an activity saying why. **Leave the pointer file in place** so a resumed session picks it back up. |
+| **C. Idle detection** | Runtime goes idle awaiting user input | If the task is `wip`, set `waiting`. **Skip permission/approval prompts** — nothing reliably fires when one is granted mid-turn, so the task would strand on `waiting` through an hour of real work. |
+
+### Claude Code (reference implementation)
+
+| Behaviour | Hook event | Script |
+|---|---|---|
+| Contract (§3) | — | Skill at `~/.claude/skills/mhtodo/SKILL.md` (or a plugin skill) |
+| A | `UserPromptSubmit` | `~/.claude/hooks/mhtodo-reminder.sh` |
+| B | `SessionEnd` | `~/.claude/hooks/mhtodo-session-end.sh` |
+| C | `Notification` | `~/.claude/hooks/mhtodo-notification.sh` |
+
+Hooks receive a JSON payload on stdin (`session_id`, `cwd`, `prompt`, `message`,
+`reason` depending on event). A `UserPromptSubmit` hook's stdout is injected into
+the turn's context. Register them in `~/.claude/settings.json` under `hooks`,
+**appending to** any existing array for that event — never replacing it.
+
+### Other hosts
+
+- **Cursor / Windsurf / Copilot-style rules files** — write §3 into the rules
+  file. Behaviours A–C are usually unavailable; instead add an explicit
+  instruction to run `mhtodo show <id>` at the start of each turn and to set a
+  terminal status before replying. Tell the user which parts could not be
+  automated.
+- **Agent SDKs / custom harnesses** — map A/B/C onto the pre-turn, session-teardown
+  and idle callbacks.
+- **No hook mechanism at all** — install the contract only, and say so plainly.
+
+### Hook implementation notes
+
+Every hook must be **defensive**: `command -v mhtodo || exit 0`, wrap `mhtodo`
+calls with a timeout, swallow parse failures, and **always exit 0**. A task
+tracker that breaks the user's agent is worse than no task tracker.
+
+The context-injection hook should also:
+- track a `.seen` marker so activities are relayed once, not replayed every turn —
+  and treat a *missing* marker as "baseline, show nothing" while an *empty* marker
+  means "show everything", or the very first activity is silently swallowed;
+- display 13-character id prefixes (see §2).
+
+---
+
+## 5. Installation state and versioning
+
+Record what was installed, so a later `mhtodo ai` can tell an upgrade from a fresh
+install:
+
+```
+${XDG_STATE_HOME:-$HOME/.local/state}/mhtodo-agent/integration.json
+```
+
+```json
+{
+  "integration_version": {{INTEGRATION_VERSION}},
+  "mhtodo_version": "{{MHTODO_VERSION}}",
+  "installed_at": "<RFC3339>",
+  "host": "claude-code",
+  "artifacts": [
+    {"path": "~/.claude/skills/mhtodo/SKILL.md", "role": "contract"},
+    {"path": "~/.claude/hooks/mhtodo-reminder.sh", "role": "context-injection"},
+    {"path": "~/.claude/hooks/mhtodo-session-end.sh", "role": "ghost-cleanup"},
+    {"path": "~/.claude/hooks/mhtodo-notification.sh", "role": "idle-detection"}
+  ],
+  "settings_touched": ["~/.claude/settings.json"],
+  "settings_backup": "~/.claude/settings.json.bak-mhtodo-<stamp>"
+}
+```
+
+Write it after a successful install or upgrade.
+
+---
+
+## 6. Upgrading an existing integration
+
+If `integration.json` exists, or the artifacts above are present, this is an
+**upgrade**, not an install. Do not start from scratch and do not blindly
+overwrite — the user may have hand-tuned things.
+
+1. **Compare** `integration_version` in the manifest against
+   `{{INTEGRATION_VERSION}}` at the top of this document. Equal *and* artifacts
+   present and healthy → report "already current at v{{INTEGRATION_VERSION}}" and
+   stop. No confirmation prompt needed for a no-op.
+2. **Read every installed artifact** and diff its behaviour against §3 and §4.
+   Note specifically:
+   - contract rules that are missing, and rules present that this document has
+     since **changed or reversed** — removals matter as much as additions;
+   - commands or flags used that no longer exist in §2;
+   - hook behaviours A/B/C that are absent, or wired to the wrong event;
+   - **any mechanism that lets the agent start work autonomously** — that
+     violates §1 and must be removed.
+3. **Preserve local customisation.** If an artifact contains user-authored
+   material outside this contract, keep it and merge rather than replace.
+4. **Present the diff** as a short plan: for each file, what changes and why.
+   Then confirm (§7).
+5. **Back up** anything you modify (`<file>.bak-mhtodo-<stamp>`) before writing.
+6. **Update the manifest** to the new version.
+
+Removed features are the dangerous case: if a previous contract version told the
+agent to do something this one no longer mentions, delete that instruction rather
+than leaving it to rot into a stale habit.
+
+---
+
+## 7. What to do right now
+
+1. **Detect the host.** Which agent runtime is this? Look for `~/.claude`,
+   `.cursor/rules`, `AGENTS.md`, an SDK harness, and so on. If ambiguous, ask.
+2. **Detect existing state.** Read `integration.json` and probe for the artifacts
+   in §4. Decide: fresh install, upgrade, or already current.
+3. **Verify the CLI.** Run `mhtodo --version` and `mhtodo --help`, plus
+   `--help` on any subcommand you will generate calls for. **If the real CLI
+   disagrees with §2, the CLI wins** — this document may lag the binary.
+4. **Present a plan and STOP.** List every file to be created or modified, one
+   line each, and what changes. Then ask for explicit confirmation.
+   **Write nothing before the user says yes.** They may not have expected `mhtodo
+   ai` to modify their machine.
+5. **On confirmation, apply it.** Back up first. Merge into existing config arrays
+   rather than replacing them.
+6. **Verify.** For a hook-capable host, feed each hook a synthetic JSON payload on
+   stdin and check the output and any resulting state change. At minimum:
+   - context-injection hook with a registered task → prints task state;
+   - same hook with no task and a prompt matching an existing task → offers it as
+     a candidate;
+   - idle hook with a permission-style message → **no** status change;
+   - idle hook with an idle-style message → `wip` becomes `waiting`;
+   - context-injection hook afterwards → `waiting` returns to `wip`;
+   - session-end hook on a `wip` task → becomes `waiting` with an activity.
+
+   Create a throwaway task and pointer for this, and delete both afterwards.
+7. **Write the manifest** (§5).
+8. **Report** what was installed or changed, what was verified, and — honestly —
+   anything the host could not support.
+
+Do not narrate steps 1–3 at length. A short plan, a confirmation, then the work.
+
+---
+
+## 8. Uninstalling
+
+Remove the artifacts listed in the manifest, remove the corresponding entries from
+the host's config (leaving other entries untouched), and delete the manifest.
+Leave `${XDG_STATE_HOME}/mhtodo-agent/` pointer files and the task database alone
+unless explicitly asked — the tasks are the user's data.
+
+---
+
+## 9. Changelog
+
+The CLI should render its own history here so an upgrading agent can see what
+changed rather than diffing blind.
+
+```
+{{INTEGRATION_CHANGELOG}}
+```

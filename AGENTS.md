@@ -4,8 +4,9 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|rm|path`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|rm|path|ai`) — the interface for **agentic tool
   access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
+  `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
 - **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
@@ -27,9 +28,12 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 **Post-v0.1 (v0.2, shipped 2026-08-20):** archive/unarchive for done tasks — bulk archive from the
 board's Done column, `mhtodo archive` / `unarchive`, archived filter in list view; see plan docs + `.agent/plan/PROGRESS.md`.
 
-**v0.3 (in progress):** one-level sub-tasks (`parent_id`), agent-authored activity/comment entries +
+**v0.3 (shipped):** one-level sub-tasks (`parent_id`), agent-authored activity/comment entries +
 Activity view, detail-pane pin, `review` status (after waiting), rebalanced list columns. See
 [`.agent/plan/`](.agent/plan/README.md).
+
+**Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
+interpolated at emit time).
 
 **Out of scope for v0.1 (stretch only):** drag-and-drop kanban, markdown rendering in descriptions,
 light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
