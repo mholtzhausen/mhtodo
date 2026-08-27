@@ -24,6 +24,13 @@ type TaskRepository interface {
 	// returns the archived tasks (v0.2). at is the service clock (tests inject it).
 	ArchiveDone(ctx context.Context, at time.Time) ([]Task, error)
 	CountOpen(ctx context.Context) (int, error) // non-done tasks; tray tooltip only
+	CountChildren(ctx context.Context, parentID string) (int, error)
+
+	CreateActivity(ctx context.Context, a Activity) error
+	GetActivityByID(ctx context.Context, id string) (Activity, error)
+	FindActivityByPrefix(ctx context.Context, prefix string) ([]Activity, error)
+	ListActivity(ctx context.Context, f ActivityFilter) ([]Activity, error)
+	DeleteActivity(ctx context.Context, id string) (Activity, error)
 }
 
 // Service holds all business rules shared by CLI and GUI. Neither frontend
@@ -43,7 +50,8 @@ func NewService(repo TaskRepository) *Service {
 func (s *Service) SetNowFunc(f func() time.Time) { s.now = f }
 
 // Create validates input and stores a new task. →done at creation applies the
-// done effects (progress 100, completed_at set).
+// done effects (progress 100, completed_at set). ParentID (if set) must resolve
+// to a top-level task (one-level nesting only).
 func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
@@ -59,6 +67,19 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		return Task{}, &ProgressRangeError{Value: in.Progress}
 	}
 
+	var parentID *string
+	if ref := strings.TrimSpace(in.ParentID); ref != "" {
+		parent, err := s.Get(ctx, ref)
+		if err != nil {
+			return Task{}, err
+		}
+		if parent.ParentID != nil {
+			return Task{}, ErrParentIsChild
+		}
+		pid := parent.ID
+		parentID = &pid
+	}
+
 	now := s.now()
 	id, err := uuid.NewV7() // time-ordered, lowercase — ORDER BY id ≈ creation order
 	if err != nil {
@@ -72,6 +93,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		Progress:    in.Progress,
 		CreatedAt:   now,
 		UpdatedAt:   now,
+		ParentID:    parentID,
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -227,7 +249,17 @@ func (s *Service) Unarchive(ctx context.Context, ref string) (Task, error) {
 	return t, nil
 }
 
-// Delete removes a task and returns it (callers print the ID).
+// CountChildren returns how many direct sub-tasks a task has (for delete confirm).
+func (s *Service) CountChildren(ctx context.Context, ref string) (int, error) {
+	id, err := s.ResolveID(ctx, ref)
+	if err != nil {
+		return 0, err
+	}
+	return s.repo.CountChildren(ctx, id)
+}
+
+// Delete removes a task (and cascades to children via FK) and returns the
+// deleted parent task.
 func (s *Service) Delete(ctx context.Context, ref string) (Task, error) {
 	id, err := s.ResolveID(ctx, ref)
 	if err != nil {
@@ -239,3 +271,83 @@ func (s *Service) Delete(ctx context.Context, ref string) (Task, error) {
 // CountOpen returns the number of non-done tasks. Tray tooltip only — not part
 // of the CLI parity surface (no business rules involved).
 func (s *Service) CountOpen(ctx context.Context) (int, error) { return s.repo.CountOpen(ctx) }
+
+// AddActivity records an agent/user-authored activity entry on a task.
+func (s *Service) AddActivity(ctx context.Context, taskRef string, in ActivityInput) (Activity, error) {
+	act := strings.TrimSpace(in.Activity)
+	cmt := strings.TrimSpace(in.Comment)
+	if act == "" && cmt == "" {
+		return Activity{}, ErrEmptyActivity
+	}
+	taskID, err := s.ResolveID(ctx, taskRef)
+	if err != nil {
+		return Activity{}, err
+	}
+	id, err := uuid.NewV7()
+	if err != nil {
+		return Activity{}, fmt.Errorf("generate id: %w", err)
+	}
+	a := Activity{
+		ID:        id.String(),
+		TaskID:    taskID,
+		Activity:  act,
+		Comment:   cmt,
+		CreatedAt: s.now(),
+	}
+	if err := s.repo.CreateActivity(ctx, a); err != nil {
+		return Activity{}, err
+	}
+	return a, nil
+}
+
+// ListActivity returns activity entries newest-first.
+func (s *Service) ListActivity(ctx context.Context, f ActivityFilter) ([]Activity, error) {
+	resolved := make([]string, 0, len(f.TaskIDs))
+	for _, ref := range f.TaskIDs {
+		id, err := s.ResolveID(ctx, ref)
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, id)
+	}
+	f.TaskIDs = resolved
+	return s.repo.ListActivity(ctx, f)
+}
+
+// ResolveActivityID maps a full ID or unique prefix to an activity ID.
+func (s *Service) ResolveActivityID(ctx context.Context, ref string) (string, error) {
+	if _, err := s.repo.GetActivityByID(ctx, ref); err == nil {
+		return ref, nil
+	} else if !errors.Is(err, ErrNotFound) {
+		return "", err
+	}
+	if len(ref) < MinPrefixLen {
+		return "", fmt.Errorf("%w: %q", ErrNotFound, ref)
+	}
+	matches, err := s.repo.FindActivityByPrefix(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("%w: %q", ErrNotFound, ref)
+	case 1:
+		return matches[0].ID, nil
+	default:
+		ids := make([]string, len(matches))
+		for i, m := range matches {
+			ids[i] = m.ID
+		}
+		sort.Strings(ids)
+		return "", &AmbiguousIDError{Ref: ref, Candidates: ids}
+	}
+}
+
+// DeleteActivity removes an activity entry by ID or unique prefix.
+func (s *Service) DeleteActivity(ctx context.Context, ref string) (Activity, error) {
+	id, err := s.ResolveActivityID(ctx, ref)
+	if err != nil {
+		return Activity{}, err
+	}
+	return s.repo.DeleteActivity(ctx, id)
+}

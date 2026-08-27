@@ -34,7 +34,7 @@ func newListCmd() *cobra.Command {
 	var status, search string
 	var limit int
 	var sort string
-	var all, archived bool
+	var all, archived, roots bool
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -66,6 +66,7 @@ func newListCmd() *cobra.Command {
 				Ascending:   ascending,
 				IncludeDone: all || status != "",
 				Archived:    archived, // --archived shows only archived tasks (incl. done)
+				RootsOnly:   roots,
 			})
 			if err != nil {
 				return mapError(err)
@@ -73,11 +74,12 @@ func newListCmd() *cobra.Command {
 			return o.printTasks(tasks)
 		},
 	}
-	cmd.Flags().StringVar(&status, "status", "", "filter by status (pending|wip|done|waiting)")
+	cmd.Flags().StringVar(&status, "status", "", "filter by status (pending|wip|waiting|review|done)")
 	cmd.Flags().StringVar(&search, "search", "", "case-insensitive substring over title + description")
 	cmd.Flags().IntVar(&limit, "limit", 0, "max results (0 = unlimited)")
 	cmd.Flags().StringVar(&sort, "sort", "updated", "sort field: created|updated|status|progress|title; suffix - ascending, + or none descending")
 	cmd.Flags().BoolVar(&all, "all", false, "include done tasks")
 	cmd.Flags().BoolVar(&archived, "archived", false, "show archived tasks only (default lists hide them)")
+	cmd.Flags().BoolVar(&roots, "roots", false, "show top-level tasks only (exclude sub-tasks)")
 	return cmd
 }

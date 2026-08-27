@@ -7,15 +7,21 @@
   let {
     open,
     initialStatus = 'pending',
+    parentId = '',
     onClose,
     onError
-  }: { open: boolean; initialStatus?: Status; onClose: () => void; onError?: (msg: string) => void } = $props()
+  }: {
+    open: boolean
+    initialStatus?: Status
+    parentId?: string
+    onClose: () => void
+    onError?: (msg: string) => void
+  } = $props()
 
   let title = $state('')
   let description = $state('')
   let status = $state<Status>('pending')
 
-  // Board column quick-add presets the status; applied each time the dialog opens.
   $effect(() => {
     if (open) status = initialStatus
   })
@@ -27,14 +33,20 @@
     if (!title.trim() || submitting) return
     submitting = true
     try {
-      await api.create({ title, description, status, progress })
+      await api.create({
+        title,
+        description,
+        status,
+        progress,
+        parentId: parentId || undefined
+      })
       title = ''
       description = ''
       status = 'pending'
       progress = 0
       onClose()
     } catch (err) {
-      onError(errMsg(err))
+      onError?.(errMsg(err))
     } finally {
       submitting = false
     }
@@ -61,7 +73,9 @@
       class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-2xl"
     >
       <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
-        <h2 class="flex-1 text-base font-semibold text-ink">New task</h2>
+        <h2 class="flex-1 text-base font-semibold text-ink">
+          {parentId ? 'New sub-task' : 'New task'}
+        </h2>
         <button
           type="button"
           onclick={resetAndClose}
@@ -118,7 +132,7 @@
           disabled={!title.trim() || submitting}
           class="btn-primary rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Create task
+          Create {parentId ? 'sub-task' : 'task'}
         </button>
       </div>
     </form>

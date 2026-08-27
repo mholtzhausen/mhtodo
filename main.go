@@ -149,11 +149,12 @@ func runGUI(args []string) {
 	}
 
 	err := wails.Run(&options.App{
-		Title:     "mhtodo",
-		Width:     1100,
-		Height:    720,
-		MinWidth:  800,
-		MinHeight: 560,
+		Title:       "mhtodo",
+		Width:       1100,
+		Height:      720,
+		MinWidth:    800,
+		MinHeight:   560,
+		StartHidden: startHidden, // true under -tags dev (make dev); tray can still show
 		Linux: &linux.Options{
 			Icon: appIcon, // window/taskbar icon (M6)
 		},

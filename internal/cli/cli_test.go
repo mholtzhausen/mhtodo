@@ -693,3 +693,79 @@ func TestArchiveAndUnarchive(t *testing.T) {
 		t.Fatalf("exit %d, want 2 (stderr: %s)", code, errb.String())
 	}
 }
+
+func TestParentAndReviewAndActivity(t *testing.T) {
+	out, errb, run := newCLI(t)
+	db := os.Getenv("MHTODO_DB_PATH")
+
+	parentID := "aaaa1111-0000-7000-8000-000000000001"
+	childID := "bbbb2222-0000-7000-8000-000000000001"
+	seedTasks(t, db,
+		fixedTask(parentID, "Parent", core.StatusPending, 0),
+		func() core.Task {
+			t := fixedTask(childID, "Child", core.StatusPending, 0)
+			pid := parentID
+			t.ParentID = &pid
+			return t
+		}(),
+	)
+
+	if code := run("add", "Grand", "--parent", childID, "--json"); code != 1 {
+		t.Fatalf("nest under child exit %d want 1 (%s)", code, errb.String())
+	}
+	errb.Reset()
+	out.Reset()
+
+	if code := run("status", parentID, "review", "--json"); code != 0 {
+		t.Fatalf("review: %d %s", code, errb.String())
+	}
+	var reviewed core.Task
+	mustJSON(t, out.Bytes(), &reviewed)
+	if reviewed.Status != core.StatusReview {
+		t.Fatalf("status: %+v", reviewed)
+	}
+	out.Reset()
+
+	if code := run("list", "--roots", "--json"); code != 0 {
+		t.Fatalf("roots: %d", code)
+	}
+	var roots []core.Task
+	mustJSON(t, out.Bytes(), &roots)
+	for _, tsk := range roots {
+		if tsk.ParentID != nil {
+			t.Fatalf("--roots returned child: %+v", tsk)
+		}
+	}
+	out.Reset()
+
+	if code := run("activity", "add", parentID, "--activity", "Agent did X", "--comment", "note", "--json"); code != 0 {
+		t.Fatalf("activity add: %d %s", code, errb.String())
+	}
+	var act core.Activity
+	mustJSON(t, out.Bytes(), &act)
+	if act.Activity != "Agent did X" || act.Comment != "note" {
+		t.Fatalf("activity: %+v", act)
+	}
+	out.Reset()
+
+	if code := run("activity", "list", "--json"); code != 0 {
+		t.Fatalf("activity list: %d", code)
+	}
+	var acts []core.Activity
+	mustJSON(t, out.Bytes(), &acts)
+	if len(acts) != 1 {
+		t.Fatalf("want 1 activity, got %d", len(acts))
+	}
+	out.Reset()
+
+	if code := run("activity", "rm", act.ID, "--yes", "--json"); code != 0 {
+		t.Fatalf("activity rm: %d %s", code, errb.String())
+	}
+
+	if code := run("rm", parentID, "--yes"); code != 0 {
+		t.Fatalf("rm parent: %d %s", code, errb.String())
+	}
+	if code := run("show", childID); code != 2 {
+		t.Fatalf("child should be gone: exit %d", code)
+	}
+}

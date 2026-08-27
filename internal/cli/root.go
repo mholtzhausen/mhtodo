@@ -61,6 +61,10 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "no_fields", msg: err.Error()}
 		case errors.Is(err, core.ErrNotArchived):
 			return &errExit{code: ExitUsage, name: "not_archived", msg: err.Error()}
+		case errors.Is(err, core.ErrParentIsChild):
+			return &errExit{code: ExitUsage, name: "parent_is_child", msg: err.Error()}
+		case errors.Is(err, core.ErrEmptyActivity):
+			return &errExit{code: ExitUsage, name: "empty_activity", msg: err.Error()}
 		default:
 			return &errExit{code: ExitStorage, name: "storage", msg: err.Error()}
 		}
@@ -128,6 +132,9 @@ func (o opts) printTask(t core.Task) error {
 		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)
+		if t.ParentID != nil {
+			fmt.Fprintf(w, "Parent     \t%s\n", *t.ParentID)
+		}
 		fmt.Fprintf(w, "Created    \t%s\n", absTS(t.CreatedAt))
 		fmt.Fprintf(w, "Updated    \t%s\n", absTS(t.UpdatedAt))
 		if t.CompletedAt != nil {
@@ -217,7 +224,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(),
-		newRmCmd(), newPathCmd(),
+		newActivityCmd(), newRmCmd(), newPathCmd(),
 	} {
 		root.AddCommand(c)
 	}

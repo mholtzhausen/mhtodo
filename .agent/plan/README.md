@@ -1,35 +1,41 @@
-# mhtodo — Implementation Plan
-
-A todo app in Go with two frontends over one shared core:
-
-- **CLI** (`mhtodo add|list|show|edit|status|done|rm|archive|unarchive`) — for agentic tool access, JSON-friendly.
-- **GUI** (Wails v2 webview + system tray) — the human view: board/list views, task detail editing,
-  desktop notifications, live sync so CLI changes appear without restart.
-
-One binary, one SQLite database in the XDG data dir. Linux-first. Full details in `AGENTS.md`.
+# mhtodo — Implementation Plan (v0.3)
 
 ## Goal
 
-Build and maintain mhtodo as a single Go binary with full CLI ↔ GUI parity over one shared core
-(`internal/core.Service`), plus system tray, desktop notifications, live sync, packaging, and docs.
+Ship **v0.3**: one-level nested sub-tasks with show/hide, agent-authored activity/comment
+entries plus a global Activity view, detail-pane pin, new `review` status, and a rebalanced
+list layout — full CLI ↔ GUI parity over `internal/core.Service`.
 
-## Initial planning discussion
+## Decisions (locked)
 
-v0.1 (M0–M6) shipped 2026-08-19 and v0.2 (archive/unarchive) shipped 2026-08-20. The detailed
-implementation plan for those releases has been **archived** to `.agent/archive/plans/` — this keeps
-the active plan folder focused on what comes next rather than a completed build.
-
-This folder is now reset and ready for the next phase of work. Fill in `README.md` with the concrete
-goal for the upcoming release, add numbered task detail files (`01-*.md`, …) under it, and track
-checkbox progress in `PROGRESS.md`. See `AGENTS.md` for how this folder is organized.
-
-<!-- TODO: state the goal of the next plan here (feature scope, target version/date), then list tasks
-     as numbered detail files below. -->
+- **Sub-tasks:** One level only. Children are full tasks (`parent_id`) with their own
+  status/progress. Board: children nest under the parent card (never own column cards).
+  List: indent under parent when shown. No progress rollup. Show/hide toggle (persisted).
+- **Activity:** Agent/user-authored only — **no auto events**. Each entry has `activity`
+  and `comment` text fields (at least one required), plus `id`, `task_id`, `created_at`.
+- **Status order:** `pending → wip → waiting → review → done`. Notify on →done / →waiting only.
+- **Delete parent:** Cascade-delete children; confirm dialog names the child count.
 
 ## Files in this plan
 
 | File | Contents |
 |---|---|
-| `README.md` | Goal of this plan + initial-planning discussion (start here) |
-| `PROGRESS.md` | Overall checkbox progress |
-| `01-*.md`, … | Per-task detail files (one numbered file per task) |
+| `README.md` | Goal + decisions (this file) |
+| `PROGRESS.md` | Checkbox progress |
+| `01-schema-and-core.md` | Migration v3, parent_id, review, activity table, Service API |
+| `02-cli-contract.md` | Flags, JSON, exit codes, examples |
+| `03-subtasks-ui.md` | Nesting, show/hide, cascade delete UX |
+| `04-activity-ui.md` | Detail composer + Activity view + ticket filter |
+| `05-detail-pin-and-list.md` | Pin layout + list columns + format helpers |
+| `06-review-status.md` | Enum, board/filter/keys, CHECK rebuild |
+| `07-docs-version.md` | README agent contract, AGENTS.md scope, VERSION bump |
+
+## Milestone order
+
+1. Schema v3 + core + unit tests
+2. CLI + golden tests
+3. GUI: review + list columns
+4. GUI: sub-tasks nesting + show/hide
+5. GUI: detail pin
+6. GUI: activity composer + Activity view
+7. Docs + VERSION + `make test` / `make build`

@@ -26,7 +26,7 @@ Other useful targets:
 | Target | What it does |
 |---|---|
 | `make build` | release-mode local build → `bin/mhtodo` (builds the frontend too) |
-| `make dev` | Wails hot-reload development (GUI) |
+| `make dev` | Wails hot-reload (window starts **hidden**; show from tray) |
 | `make test` / `make lint` | Go tests (incl. CLI golden tests) / golangci-lint or go vet fallback |
 | `make release` | cross-build linux tarballs → `dist/` (arm64 needs `aarch64-linux-gnu-gcc`; without it, amd64 only + warning) |
 | `make release-tag [BUMP=major\|minor\|patch]` | **release process** — asks for major/minor/patch (or takes `BUMP=`), bumps `VERSION`, commits + tags, builds tarballs, publishes a GitHub Release and pushes main + tag |
@@ -79,21 +79,25 @@ concurrently with the GUI.
 
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
-`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `usage`, `storage`.
+`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `parent_is_child`, `empty_activity`,
+`usage`, `storage`.
 
 ### Commands
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--desc TEXT] [--status pending\|wip\|done\|waiting] [--progress 0-100]` | prints the created object (or just the ID with `-q`) |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived]` | default: excludes done **and archived**, sorted `updated_at desc`; `--all` includes done; `--archived` shows archived tasks only (they are hidden everywhere else); `--search` = case-insensitive substring over title + description; sort fields: `created`, `updated`, `status`, `progress`, `title` — suffix `-` ascending, `+` or none descending |
+| `add` | `mhtodo add TITLE [--desc TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots]` | default: excludes done **and archived**, sorted `updated_at desc`; `--all` includes done; `--archived` shows archived only; `--roots` top-level only; list stays flat for agents (`parent_id` field); sort fields: `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--progress 0-100]` | at least one flag required; never changes status |
-| `status` (`set`) | `mhtodo status ID pending\|wip\|done\|waiting` | prints the updated object (transition + timestamps) |
+| `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps) |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
-| `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step (no per-task form); prints the archived objects, nothing when there was none; reversible via `unarchive` |
-| `unarchive` | `mhtodo unarchive ID` | restores an archived task: it goes back to `pending`, progress resets to 0, `completed_at` cleared; non-archived ID → exit 1 (`not_archived`) |
-| `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`** (agents must pass it — exit 1 otherwise); prints only the deleted ID |
+| `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step; reversible via `unarchive` |
+| `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
+| `activity add` | `mhtodo activity add ID --activity TEXT [--comment TEXT]` | agent/user-authored entry (at least one of activity/comment); not auto-logged |
+| `activity list` | `mhtodo activity list [--task ID]… [--limit N]` | newest first; non-archived tasks by default |
+| `activity rm` | `mhtodo activity rm ID [--yes]` | non-TTY requires `--yes` |
+| `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
@@ -109,73 +113,95 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "created_at": "2025-08-19T07:59:00Z",
   "updated_at": "2025-08-19T08:30:12Z",
   "completed_at": null,
-  "archived_at": null
+  "archived_at": null,
+  "parent_id": null
 }
 ```
 
-`--json list` returns an array of these. Timestamps are RFC3339 UTC; `completed_at` is set on the
-→done transition and cleared when a task leaves done; `archived_at` is set by `archive` and cleared
-by `unarchive`. IDs are UUIDv7 (time-ordered).
+Activity entry:
+
+```json
+{
+  "id": "01958b2e-aaaa-7f3d-9a6b-2c8e4f5a6b7c",
+  "task_id": "01958b2e-4c1a-7f3d-9a6b-2c8e4f5a6b7c",
+  "activity": "Ran migration dry-run",
+  "comment": "No schema diffs",
+  "created_at": "2025-08-19T08:45:00Z"
+}
+```
+
+`--json list` returns an array of task objects. Timestamps are RFC3339 UTC; `completed_at` is set on
+→done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
+`parent_id` is set for one-level sub-tasks. IDs are UUIDv7 (time-ordered).
 
 ### Agent usage examples
 
 ```bash
 mhtodo add "Refactor auth" --desc "Split token + session" --json | jq -r .id
+mhtodo add "Write tests" --parent 01958b2e --json
 mhtodo list --status wip --json
+mhtodo list --roots --json
 mhtodo show 01958b2e --json
 mhtodo edit 01958b2e --progress 60
-mhtodo status 01958b2e waiting
+mhtodo status 01958b2e review
+mhtodo activity add 01958b2e --activity "Opened PR #42" --comment "awaiting review" --json
+mhtodo activity list --task 01958b2e --json
 mhtodo done 01958b2e
-mhtodo archive --json | jq -r '.[].id'      # sweep the Done column into the archive
-mhtodo list --archived --json               # inspect archived tasks
-mhtodo unarchive 01958b2e                   # back to pending, progress reset
+mhtodo archive --json | jq -r '.[].id'
+mhtodo list --archived --json
+mhtodo unarchive 01958b2e
 ```
 
 **Contract stability:** JSON field names, flags, and exit codes are API. They change deliberately,
 and any change is documented here first. An agent can drive the full task lifecycle (create → edit →
-status transitions → delete) using only this CLI.
+status transitions → activity → delete) using only this CLI.
 
 ## GUI
 
-- **Board view (default):** four kanban columns — pending / wip / waiting / done — with live counts;
-  cards show title, progress bar, and relative update time. Drag a card to another column to change
-  its status (same code path as `mhtodo status`). The per-column **+** button opens the new-task
-  dialog preset to that column's status.
-- **List view:** mirrors the CLI `list` flags — status filter, search, sort + direction. Toggle with
-  the header switch or the `b` / `l` keys; your choice persists across launches.
-- **Detail drawer** (click a card): edit title/description/status/progress, see timestamps, delete
-  with confirmation. New-task dialog from the header button, tray menu, or `n`.
-- **Keyboard:** `/` search · `n` new task · `esc` close · `1–4` toggle status filter (list view) ·
-  `b`/`l` board/list · `Ctrl+Q` quit.
-- **System tray:** Show/Hide window, New Task, Quit. Closing the window hides to tray; the real exit
-  paths are tray → Quit, Ctrl+Q, or SIGINT/SIGTERM. The tray label shows open-task count
-  ("mhtodo (N)").
-- **Notifications:** desktop notification (`notify-send`) on real →done and →waiting transitions.
-- **Live sync:** CLI-side changes appear in the GUI automatically (fsnotify on the DB + a 2s poll
-  safety net); GUI-side changes are immediately visible to the CLI — same database, WAL mode.
-- **Single instance:** launching `mhtodo` while it runs focuses the existing window and exits.
+- **Board view (default):** five kanban columns — pending / wip / waiting / review / done — with live
+  counts; root cards show title, progress, relative time. Sub-tasks nest under the parent card when
+  shown (never own column cards). Drag a **root** card to change status. Per-column **+** opens
+  new-task preset to that status.
+- **List view:** status + progress stacked in one column; title takes remaining width; updated shows
+  elapsed + absolute time. Sub-tasks indent under parents when shown. Toggle Board / List / Activity
+  with `b` / `l` / `a`; choice persists.
+- **Activity view:** feed of agent/user activity across non-archived tickets (newest first), filterable
+  by ticket checkbox dropdown.
+- **Detail pane:** edit fields, activity composer, Add sub-task (roots only). **Pin** switches from
+  overlay drawer to an in-flow right pane (persisted). Esc clears selection.
+- **Sub-tasks toggle:** header control or `s` (persisted).
+- **Keyboard:** `/` search · `n` new · `s` sub-tasks · `esc` close · `1–5` status filter · `6` archived
+  (list) · `b`/`l`/`a` views · `Ctrl+Q` quit.
+- **System tray:** Show/Hide, New Task, Quit; close hides to tray; label shows open-task count.
+- **Notifications:** on real →done and →waiting only (not →review).
+- **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
+- **Single instance:** second launch focuses the existing window.
 
 ## Data & concurrency
 
 - Database: `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override with `MHTODO_DB_PATH`; `mhtodo path` prints it).
-- SQLite in WAL mode with `busy_timeout=5000`; single-statement transactions only — concurrent CLI +
-  GUI use is safe by design.
+- SQLite in WAL mode with `busy_timeout=5000` and `foreign_keys=ON`; single-statement transactions —
+  concurrent CLI + GUI use is safe by design.
 
 ## Parity contract
 
 | Bound method (GUI) | CLI command | Notes |
 |---|---|---|
-| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone |
-| `GetTask(id)` | `show` | prefix match allowed (same helper as the CLI) |
-| `CreateTask(in)` | `add` | |
+| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly |
+| `GetTask(id)` | `show` | prefix match allowed |
+| `CreateTask(in)` | `add` | optional ParentID |
 | `UpdateTask(id, patch)` | `edit` | title/description/progress only |
-| `SetStatus(id, status)` | `status` / `done` | fires notification + event on →done/→waiting |
-| `DeleteTask(id)` | `rm` | |
-| `DBPath()` | `path` | shown in the GUI footer |
+| `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting |
+| `ArchiveDone()` | `archive` | bulk done → archive |
+| `Unarchive(id)` | `unarchive` | |
+| `DeleteTask(id)` | `rm` | cascades to children |
+| `CountChildren(id)` | (confirm helper) | GUI delete confirm |
+| `AddActivity` / `ListActivity` / `DeleteActivity` | `activity add\|list\|rm` | agent-authored |
+| `DBPath()` | `path` | GUI footer |
 
-After every mutation the app emits a Wails event (`tasks:changed`) that the frontend handles with one
-refetch path; an external file watcher emits the same event for CLI-side writes. New capability =
-core method + CLI command + bound method — never business logic in either frontend.
+After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
+watcher emits the same event for CLI-side writes. New capability = core method + CLI command + bound
+method — never business logic in either frontend.
 
 ## Development notes
 
@@ -187,4 +213,4 @@ core method + CLI command + bound method — never business logic in either fron
 - **Frontend:** Vite + Svelte 5 + Tailwind v4 in `frontend/`; Wails bindings are generated into
   `frontend/wailsjs` (`make fe-bindings`).
 - The full implementation plan lives in [`.agent/plan/`](.agent/plan/README.md); progress is tracked
-  in [`.agent/PROGRESS.md`](.agent/PROGRESS.md).
+  in [`.agent/plan/PROGRESS.md`](.agent/plan/PROGRESS.md).

@@ -1,5 +1,5 @@
 APP        := mhtodo
-VERSION    ?= 0.1.1
+VERSION    ?= 0.3.0
 COMMIT     := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 BIN        := bin/$(APP)
 DIST       := dist
@@ -31,7 +31,7 @@ all: build
 
 ## --- development -----------------------------------------------------------
 
-dev: ## wails dev: hot-reload frontend + go (runs GUI)
+dev: ## wails dev: hot-reload (window starts hidden; show from tray)
 	wails dev $(GOFLAGS)
 
 fe-install: ## install frontend npm deps

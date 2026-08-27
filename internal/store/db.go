@@ -60,6 +60,11 @@ func Open(path string) (*TaskRepo, error) {
 		db.Close()
 		return nil, err
 	}
+	// Required for parent_id / activity ON DELETE CASCADE (off by default in SQLite).
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("enable foreign_keys: %w", err)
+	}
 	repo := NewTaskRepo(db)
 	if err := repo.checkWAL(); err != nil {
 		db.Close()

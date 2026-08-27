@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 2 {
-		t.Fatalf("schema_version = %d, want 2", version)
+	if version != 3 {
+		t.Fatalf("schema_version = %d, want 3", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 2 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 2", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 3 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 3", version, err)
 	}
 
 	// WAL must be active.
@@ -297,9 +297,9 @@ func ids(ts []core.Task) []string {
 	return out
 }
 
-// TestV1ToV2Upgrade simulates a pre-v0.2 database (schema v1 only, no
-// archived_at) and verifies Open migrates it forward in place.
-func TestV1ToV2Upgrade(t *testing.T) {
+// TestV1ToV3Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
+// Open migrates it forward through v2 and v3 in place.
+func TestV1ToV3Upgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mhtodo.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -317,8 +317,8 @@ func TestV1ToV2Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 2 {
-		t.Fatalf("schema_version = %d (err=%v), want 2", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 3 {
+		t.Fatalf("schema_version = %d (err=%v), want 3", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
@@ -336,24 +336,31 @@ func TestV1ToV2Upgrade(t *testing.T) {
 		cols = append(cols, name)
 	}
 	rows.Close()
-	found := false
-	for _, c := range cols {
-		if c == "archived_at" {
-			found = true
+	for _, want := range []string{"archived_at", "parent_id"} {
+		found := false
+		for _, c := range cols {
+			if c == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("tasks table missing %s after upgrade: %v", want, cols)
 		}
 	}
-	if !found {
-		t.Errorf("tasks table missing archived_at after upgrade: %v", cols)
+	var nAct int
+	if err := repo.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='activity'`).Scan(&nAct); err != nil || nAct != 1 {
+		t.Fatalf("activity table missing after upgrade (n=%d err=%v)", nAct, err)
 	}
 
-	// Existing rows survive the upgrade with NULL archived_at.
+	// Existing rows survive the upgrade with NULL archived_at / parent_id.
 	ctx := context.Background()
 	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
 	if err := repo.Create(ctx, core.Task{ID: "old-1", Title: "pre-v0.2 task", Status: core.StatusDone, Progress: 100, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatalf("Create on upgraded db: %v", err)
 	}
 	got, err := repo.GetByID(ctx, "old-1")
-	if err != nil || got.ArchivedAt != nil {
+	if err != nil || got.ArchivedAt != nil || got.ParentID != nil {
 		t.Errorf("upgraded row wrong: (%+v, %v)", got, err)
 	}
 }

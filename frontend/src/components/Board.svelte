@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { relTime } from '../lib/format'
+  import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
 
   let {
     tasks,
     search,
     selectedId,
+    showSubtasks,
     onSelect,
     onQuickAdd,
     onArchived,
@@ -14,15 +15,13 @@
     tasks: any[]
     search: string
     selectedId: string | null
+    showSubtasks: boolean
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
-    // v0.2: called with the number of archived tasks after a Done-column archive.
     onArchived?: (n: number) => void
     onError?: (msg: string) => void
   } = $props()
 
-  // Column order is the workflow order; per-status colors double as the board
-  // legend (dot, progress bar, card left edge) so cards need no redundant badge.
   const COLUMNS: { status: Status; label: string; dot: string; bar: string; edge: string }[] = [
     {
       status: 'pending',
@@ -39,30 +38,58 @@
       bar: 'bg-st-waiting',
       edge: 'border-l-st-waiting'
     },
+    {
+      status: 'review',
+      label: 'Review',
+      dot: 'bg-st-review',
+      bar: 'bg-st-review',
+      edge: 'border-l-st-review'
+    },
     { status: 'done', label: 'Done', dot: 'bg-st-done', bar: 'bg-st-done', edge: 'border-l-st-done' }
   ]
 
+  const childBar: Record<string, string> = {
+    pending: 'bg-st-pending',
+    wip: 'bg-st-wip',
+    waiting: 'bg-st-waiting',
+    review: 'bg-st-review',
+    done: 'bg-st-done'
+  }
+
+  // Only roots occupy columns; children nest under their parent card.
   const byStatus = $derived.by(() => {
     const m: Record<string, any[]> = {}
     for (const c of COLUMNS) m[c.status] = []
-    for (const t of tasks) (m[t.status] ??= []).push(t)
+    for (const t of tasks) {
+      if (t.parent_id) continue
+      ;(m[t.status] ??= []).push(t)
+    }
     return m
   })
 
-  // --- Native HTML5 drag & drop: dropping a card on another column calls
-  // api.setStatus; Go emits tasks:changed and App refetches through its single
-  // refresh path. We never mutate local task state here.
+  const childrenOf = $derived.by(() => {
+    const m: Record<string, any[]> = {}
+    if (!showSubtasks) return m
+    for (const t of tasks) {
+      if (!t.parent_id) continue
+      ;(m[t.parent_id] ??= []).push(t)
+    }
+    return m
+  })
+
   let draggingId = $state<string | null>(null)
   let dragFrom = $state<Status | ''>('')
   let dropTarget = $state<Status | ''>('')
-  // A completed drag can be followed by a stray click on the card; swallow it
-  // so a drag never opens the detail drawer.
   let suppressClick = false
 
   function onCardDragStart(e: DragEvent, t: any) {
+    if (t.parent_id) {
+      e.preventDefault()
+      return
+    }
     draggingId = t.id
     dragFrom = t.status
-    e.dataTransfer?.setData('text/plain', t.id) // required to start a drag in some engines
+    e.dataTransfer?.setData('text/plain', t.id)
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
   }
 
@@ -75,22 +102,22 @@
   }
 
   function onColumnDragOver(e: DragEvent, col: Status) {
-    if (!draggingId || dragFrom === col) return // own column is a no-op
-    e.preventDefault() // allow the drop
+    if (!draggingId || dragFrom === col) return
+    e.preventDefault()
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
     dropTarget = col
   }
 
   function onColumnDragLeave(e: DragEvent, col: Status) {
     const sec = e.currentTarget as HTMLElement | null
-    if (dropTarget === col.status && !(sec?.contains(e.relatedTarget as Node))) dropTarget = ''
+    if (dropTarget === col && !(sec?.contains(e.relatedTarget as Node))) dropTarget = ''
   }
 
   async function onColumnDrop(e: DragEvent, col: Status) {
     e.preventDefault()
     const id = (draggingId ?? e.dataTransfer?.getData('text/plain')) || null
     dropTarget = ''
-    if (!id || dragFrom === col) return // same column → no API call
+    if (!id || dragFrom === col) return
     try {
       await api.setStatus(id, col)
     } catch (err) {
@@ -103,8 +130,6 @@
     onSelect(t.id)
   }
 
-  // --- v0.2 archive: one click moves the whole Done column to the archive.
-  // Reversible from the list view's Archived filter, so no confirm dialog.
   let archiving = $state(false)
 
   async function archiveAll() {
@@ -112,16 +137,18 @@
     archiving = true
     try {
       const archived = await api.archiveDone()
-      onArchived?.(archived.length) // tasks:changed refetch empties the column
+      onArchived?.(archived.length)
     } catch (err) {
       onError?.(errMsg(err))
     } finally {
       archiving = false
     }
   }
+
+  const rootCount = $derived(tasks.filter((t) => !t.parent_id).length)
 </script>
 
-{#if tasks.length === 0}
+{#if rootCount === 0}
   <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
     {#if search}
       <p class="text-sm text-ink-3">No tasks match “{search}”.</p>
@@ -132,7 +159,7 @@
     {/if}
   </div>
 {:else}
-  <div class="grid h-full grid-cols-4 gap-3">
+  <div class="grid h-full grid-cols-5 gap-3">
     {#each COLUMNS as col (col.status)}
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
@@ -191,30 +218,54 @@
             </p>
           {:else}
             {#each byStatus[col.status] as t (t.id)}
-              <button
-                draggable="true"
-                onclick={() => onCardClick(t)}
-                ondragstart={(e) => onCardDragStart(e, t)}
-                ondragend={onCardDragEnd}
-                class="w-full cursor-grab rounded-md border border-l-2 p-2.5 text-left shadow-sm transition-all duration-150
+              <div
+                class="rounded-md border border-l-2 shadow-sm transition-all duration-150
                   {col.edge}
-                  {draggingId === t.id ? 'cursor-grabbing rotate-2 opacity-40' : ''}
+                  {draggingId === t.id ? 'rotate-2 opacity-40' : ''}
                   {selectedId === t.id
                     ? 'border-accent bg-card-hi ring-1 ring-accent/70'
-                    : 'border-line-soft bg-card hover:-translate-y-px hover:bg-card-hi hover:shadow-lg'}"
+                    : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}"
               >
-                <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
-                <div class="flex items-center gap-2">
-                  <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      class="h-full rounded-full {col.bar} transition-all duration-150"
-                      style="width: {t.progress}%"
-                    ></div>
+                <button
+                  draggable="true"
+                  onclick={() => onCardClick(t)}
+                  ondragstart={(e) => onCardDragStart(e, t)}
+                  ondragend={onCardDragEnd}
+                  class="w-full cursor-grab p-2.5 text-left"
+                >
+                  <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
+                  <div class="flex items-center gap-2">
+                    <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        class="h-full rounded-full {col.bar} transition-all duration-150"
+                        style="width: {t.progress}%"
+                      ></div>
+                    </div>
+                    <span class="font-mono text-[10.5px] text-ink-3">{t.progress}%</span>
+                    <span class="text-[10.5px] text-ink-3">{relTime(t.updated_at)}</span>
                   </div>
-                  <span class="font-mono text-[10.5px] text-ink-3">{t.progress}%</span>
-                  <span class="text-[10.5px] text-ink-3">{relTime(t.updated_at)}</span>
-                </div>
-              </button>
+                </button>
+                {#if showSubtasks && (childrenOf[t.id]?.length ?? 0) > 0}
+                  <ul class="space-y-1 border-t border-line-soft px-2 pb-2 pt-1.5">
+                    {#each childrenOf[t.id] as c (c.id)}
+                      <li>
+                        <button
+                          onclick={() => onSelect(c.id)}
+                          class="flex w-full items-center gap-2 rounded border border-transparent px-1.5 py-1 text-left hover:border-line-soft hover:bg-white/5
+                            {selectedId === c.id ? 'bg-accent/10' : ''}"
+                        >
+                          <span
+                            class="h-1.5 w-1.5 flex-none rounded-full {childBar[c.status] ?? childBar.pending}"
+                            title={STATUS_LABELS[c.status] ?? c.status}
+                          ></span>
+                          <span class="min-w-0 flex-1 truncate text-[11px] text-ink-2">{c.title}</span>
+                          <span class="font-mono text-[10px] text-ink-3">{c.progress}%</span>
+                        </button>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
             {/each}
           {/if}
         </div>

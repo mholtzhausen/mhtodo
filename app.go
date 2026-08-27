@@ -47,7 +47,8 @@ func (a *App) startup(ctx context.Context) {
 	// Window visibility is self-tracked in showWindow/hideWindow/beforeClose:
 	// Wails v2 emits no window:shown/hidden events (verified against v2.11 source),
 	// and the runtime only exposes WindowIsMinimised — not hidden state.
-	a.visible.Store(true) // first launch shows the window
+	a.visible.Store(!startHidden) // first launch shows the window unless StartHidden (dev)
+
 
 	// Live sync (05-gui-spec.md): external writes (CLI) → same tasks:changed
 	// event as local mutations. A watcher failure degrades to local-only sync;
@@ -156,13 +157,48 @@ func (a *App) Unarchive(id string) (core.Task, error) {
 	return t, err
 }
 
-// DeleteTask maps to CLI `rm`; returns the deleted task.
+// DeleteTask maps to CLI `rm`; returns the deleted task. Children cascade via FK.
 func (a *App) DeleteTask(id string) (core.Task, error) {
 	t, err := a.svc.Delete(a.ctx, id)
 	if err == nil {
 		a.emitChanged(t.ID, "delete")
 	}
 	return t, err
+}
+
+// CountChildren maps to the cascade-confirm count before deleting a parent.
+func (a *App) CountChildren(id string) (int, error) {
+	return a.svc.CountChildren(a.ctx, id)
+}
+
+// AddActivity maps to CLI `activity add`.
+func (a *App) AddActivity(taskID string, in core.ActivityInput) (core.Activity, error) {
+	act, err := a.svc.AddActivity(a.ctx, taskID, in)
+	if err == nil {
+		a.emitChanged(act.TaskID, "activity")
+	}
+	return act, err
+}
+
+// ListActivity maps to CLI `activity list`.
+func (a *App) ListActivity(filter core.ActivityFilter) ([]core.Activity, error) {
+	list, err := a.svc.ListActivity(a.ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []core.Activity{}
+	}
+	return list, nil
+}
+
+// DeleteActivity maps to CLI `activity rm`.
+func (a *App) DeleteActivity(id string) (core.Activity, error) {
+	act, err := a.svc.DeleteActivity(a.ctx, id)
+	if err == nil {
+		a.emitChanged(act.TaskID, "activity")
+	}
+	return act, err
 }
 
 // DBPath maps to CLI `path`; shown in the GUI footer.

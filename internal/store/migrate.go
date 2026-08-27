@@ -16,6 +16,7 @@ type migration struct {
 var migrations = []migration{
 	{version: 1, up: schemaV1},
 	{version: 2, up: schemaV2},
+	{version: 3, up: schemaV3},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -25,6 +26,47 @@ const schemaV2 = `
 ALTER TABLE tasks ADD COLUMN archived_at TEXT; -- set on archive, cleared on unarchive
 
 CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+`
+
+// v3 (v0.3): rebuild tasks to expand status CHECK + add parent_id; add activity.
+// SQLite cannot ALTER a CHECK constraint, so we copy into a new table.
+const schemaV3 = `
+CREATE TABLE tasks_v3 (
+  id           TEXT PRIMARY KEY,
+  title        TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending','wip','waiting','review','done')),
+  progress     INTEGER NOT NULL DEFAULT 0
+               CHECK (progress BETWEEN 0 AND 100),
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL,
+  completed_at TEXT,
+  archived_at  TEXT,
+  parent_id    TEXT REFERENCES tasks_v3(id) ON DELETE CASCADE
+);
+
+INSERT INTO tasks_v3 (id, title, description, status, progress, created_at, updated_at, completed_at, archived_at, parent_id)
+SELECT id, title, description, status, progress, created_at, updated_at, completed_at, archived_at, NULL
+FROM tasks;
+
+DROP TABLE tasks;
+ALTER TABLE tasks_v3 RENAME TO tasks;
+
+CREATE INDEX idx_tasks_status   ON tasks(status);
+CREATE INDEX idx_tasks_updated  ON tasks(updated_at DESC);
+CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+CREATE INDEX idx_tasks_parent   ON tasks(parent_id);
+
+CREATE TABLE activity (
+  id          TEXT PRIMARY KEY,
+  task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  activity    TEXT NOT NULL DEFAULT '',
+  comment     TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX idx_activity_created ON activity(created_at DESC);
+CREATE INDEX idx_activity_task    ON activity(task_id);
 `
 
 const schemaV1 = `

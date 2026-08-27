@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, status string
+	var desc, status, parent string
 	var progress int
 	cmd := &cobra.Command{
 		Use:   "add TITLE",
@@ -32,6 +32,7 @@ func newAddCmd() *cobra.Command {
 				Description: desc,
 				Status:      core.Status(status), // "" → pending; invalid → exit 1
 				Progress:    progress,
+				ParentID:    parent,
 			})
 			if err != nil {
 				return mapError(err)
@@ -49,7 +50,8 @@ func newAddCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&desc, "desc", "", "task description")
-	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|done|waiting; default pending)")
+	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|done; default pending)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
+	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	return cmd
 }

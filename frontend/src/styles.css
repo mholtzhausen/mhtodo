@@ -46,10 +46,11 @@
   --color-accent-hi: #93a0ff;
   --color-accent-ink: #0e1230;
 
-  /* status legend: pending / wip / waiting / done */
+  /* status legend: pending / wip / waiting / review / done */
   --color-st-pending: #a3adbf;
   --color-st-wip: #7b8cff;
   --color-st-waiting: #e8ab4a;
+  --color-st-review: #c084fc;
   --color-st-done: #4cc48e;
 
   --color-danger: #ff8492;

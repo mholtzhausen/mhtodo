@@ -1,8 +1,17 @@
-# mhtodo — progress
+# mhtodo — progress (updated 26-08-27)
 
-Plan progress tracker. See [AGENTS.md](AGENTS.md) for how this file is structured and kept up to date.
+## v0.3 — Sub-tasks, activity, review, UI polish (complete)
 
-<!--
-  Fill in as work lands: a checkbox summary of each task, with the current date/status line at top.
-  Keep it plain-text pasteable (this file is meant to be copy-pasted into Slack verbatim).
--->
+- [x] Schema v3 + core (parent_id, review, activity table, Service API)
+- [x] CLI contract (--parent, review, activity add/list/rm, goldens)
+- [x] GUI: review status + rebalanced list columns
+- [x] GUI: sub-tasks nesting + show/hide toggle
+- [x] GUI: detail pin (overlay vs right pane)
+- [x] GUI: activity composer + Activity view
+- [x] Docs / VERSION / make test+build
+
+## Notes / blockers
+
+- SQLite CHECK rebuild for `review` + `parent_id` requires table copy (migration v3).
+- `foreign_keys=ON` required for cascade delete of sub-tasks and activity rows.
+- Wails `generate module` may focus a running GUI instance; bindings updated by hand when needed.

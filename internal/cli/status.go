@@ -31,7 +31,7 @@ func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "status ID STATUS",
 		Aliases: []string{"set"},
-		Short:   "Set a task's status (pending|wip|done|waiting)",
+		Short:   "Set a task's status (pending|wip|waiting|review|done)",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			st, err := core.ParseStatus(args[1])

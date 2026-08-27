@@ -15,7 +15,7 @@ func newRmCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "rm ID",
 		Aliases: []string{"remove"},
-		Short:   "Delete a task (non-interactive shells require --yes)",
+		Short:   "Delete a task (non-interactive shells require --yes); cascades to sub-tasks",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o, err := o(cmd)
@@ -32,12 +32,21 @@ func newRmCmd() *cobra.Command {
 			if err != nil {
 				return mapError(err)
 			}
+			nChild, err := svc.CountChildren(context.Background(), t.ID)
+			if err != nil {
+				return mapError(err)
+			}
 
 			if !yes {
 				if !stdinIsTTY() {
 					return usageError("refusing to delete %s without --yes on a non-interactive terminal", shortID(t.ID))
 				}
-				fmt.Fprintf(o.out, "Delete task %s %q? [y/N] ", shortID(t.ID), t.Title)
+				prompt := fmt.Sprintf("Delete task %s %q? [y/N] ", shortID(t.ID), t.Title)
+				if nChild > 0 {
+					prompt = fmt.Sprintf("Delete task %s %q and its %d sub-task(s)? [y/N] ",
+						shortID(t.ID), t.Title, nChild)
+				}
+				fmt.Fprint(o.out, prompt)
 				line, _ := bufio.NewReader(Stdin).ReadString('\n')
 				if a := strings.ToLower(strings.TrimSpace(line)); a != "y" && a != "yes" {
 					_, err := fmt.Fprintln(o.out, "aborted") // user declined: not an error

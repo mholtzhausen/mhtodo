@@ -39,6 +39,11 @@
       label: STATUS_LABELS.waiting,
       active: 'border-st-waiting/60 bg-st-waiting/15 text-st-waiting'
     },
+    {
+      value: 'review',
+      label: STATUS_LABELS.review,
+      active: 'border-st-review/60 bg-st-review/15 text-st-review'
+    },
     { value: 'done', label: STATUS_LABELS.done, active: 'border-st-done/60 bg-st-done/15 text-st-done' },
     { value: 'archived', label: 'Archived', active: 'border-line bg-white/10 text-ink' }
   ]

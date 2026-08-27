@@ -3,7 +3,7 @@
 // contract from .agent/plan/02-architecture.md.
 import * as App from '../../wailsjs/go/main/App'
 
-export type Status = 'pending' | 'wip' | 'done' | 'waiting'
+export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
 
 // JSON field names are a stable agent contract (internal/core/task.go).
 export interface Task {
@@ -15,49 +15,72 @@ export interface Task {
   created_at: string
   updated_at: string
   completed_at: string | null
-  archived_at: string | null // v0.2: set while the task is in the archive
+  archived_at: string | null
+  parent_id: string | null
+}
+
+export interface Activity {
+  id: string
+  task_id: string
+  activity: string
+  comment: string
+  created_at: string
 }
 
 export interface ListFilterInput {
-  status?: string // '' = all (shows done too); never combined with archived
-  archived?: boolean // true → archived tasks only; default false → archived hidden
+  status?: string
+  archived?: boolean
   search?: string
   sort?: 'created' | 'updated' | 'status' | 'progress' | 'title'
   ascending?: boolean
+  rootsOnly?: boolean
 }
 
-// core.ListFilter has no json tags → Go field names verbatim. Keep in sync
-// with internal/core/task.go.
+export interface ActivityFilterInput {
+  taskIds?: string[]
+  limit?: number
+  includeArchived?: boolean
+}
+
 const toGoFilter = (f: ListFilterInput) => ({
   Status: f.status ?? '',
   Search: f.search ?? '',
   Limit: 0,
   Sort: f.sort ?? 'updated',
   Ascending: !!f.ascending,
-  // "all" view includes done; explicit status chips don't need it. The archived
-  // view always shows its (done) tasks — Go enforces that too.
   IncludeDone: !f.status || !!f.archived,
-  Archived: !!f.archived
+  Archived: !!f.archived,
+  RootsOnly: !!f.rootsOnly
+})
+
+const toGoActivityFilter = (f: ActivityFilterInput) => ({
+  TaskIDs: f.taskIds ?? [],
+  Limit: f.limit ?? 0,
+  IncludeArchived: !!f.includeArchived
 })
 
 export const api = {
   list(f: ListFilterInput): Promise<Task[]> {
-    // Defensive: a nil Go slice arrives as null over the Wails bridge; the
-    // app normalizes it, but never trust an external boundary.
     return App.ListTasks(toGoFilter(f)).then((t) => t ?? []) as Promise<Task[]>
   },
   get(ref: string) {
     return App.GetTask(ref)
   },
-  create(input: { title: string; description?: string; status?: Status; progress?: number }) {
+  create(input: {
+    title: string
+    description?: string
+    status?: Status
+    progress?: number
+    parentId?: string
+  }) {
     return App.CreateTask({
       Title: input.title,
       Description: input.description ?? '',
       Status: (input.status ?? 'pending') as unknown as string,
-      Progress: input.progress ?? 0
+      Progress: input.progress ?? 0,
+      ParentID: input.parentId ?? ''
     })
   },
-  // Nil fields are left unchanged on the Go side (*string/*int).
   update(id: string, patch: { title?: string; description?: string; progress?: number }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -68,21 +91,33 @@ export const api = {
   setStatus(id: string, status: Status) {
     return App.SetStatus(id, status as unknown as string)
   },
-  // v0.2 archive: bulk-archive everything in the Done column (board button).
   archiveDone(): Promise<Task[]> {
     return App.ArchiveDone().then((t) => t ?? []) as Promise<Task[]>
   },
-  // Unarchive restores the task to pending (progress reset) — Go owns that rule.
   unarchive(id: string) {
     return App.Unarchive(id)
   },
   remove(id: string) {
     return App.DeleteTask(id)
   },
+  countChildren(id: string): Promise<number> {
+    return App.CountChildren(id)
+  },
+  addActivity(taskId: string, input: { activity?: string; comment?: string }): Promise<Activity> {
+    return App.AddActivity(taskId, {
+      Activity: input.activity ?? '',
+      Comment: input.comment ?? ''
+    }) as Promise<Activity>
+  },
+  listActivity(f: ActivityFilterInput = {}): Promise<Activity[]> {
+    return App.ListActivity(toGoActivityFilter(f)).then((a) => a ?? []) as Promise<Activity[]>
+  },
+  deleteActivity(id: string): Promise<Activity> {
+    return App.DeleteActivity(id) as Promise<Activity>
+  },
   dbPath(): Promise<string> {
     return App.DBPath()
   },
-  // Real exit (Ctrl+Q). Window close hides to tray instead.
   quit(): void {
     App.Quit()
   }

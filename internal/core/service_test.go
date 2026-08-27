@@ -326,3 +326,73 @@ func TestArchiveDoneAndUnarchive(t *testing.T) {
 		t.Errorf("unarchive unknown: %v, want ErrNotFound", err)
 	}
 }
+
+func TestCreateWithParent(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	parent, err := svc.Create(ctx, core.CreateInput{Title: "Parent"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := svc.Create(ctx, core.CreateInput{Title: "Child", ParentID: parent.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.ParentID == nil || *child.ParentID != parent.ID {
+		t.Fatalf("child parent_id: %+v", child)
+	}
+	// One level only: cannot nest under a child.
+	_, err = svc.Create(ctx, core.CreateInput{Title: "Grand", ParentID: child.ID})
+	if !errors.Is(err, core.ErrParentIsChild) {
+		t.Fatalf("nest under child: %v, want ErrParentIsChild", err)
+	}
+	n, err := svc.CountChildren(ctx, parent.ID)
+	if err != nil || n != 1 {
+		t.Fatalf("CountChildren = (%d, %v), want 1", n, err)
+	}
+	// Cascade delete.
+	if _, err := svc.Delete(ctx, parent.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Get(ctx, child.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("child should be cascaded: %v", err)
+	}
+}
+
+func TestReviewStatus(t *testing.T) {
+	svc, repo := newTestService(t)
+	ctx := context.Background()
+	seed(t, repo, "rrrr1111-0000-7000-8000-000000000001", "r", core.StatusPending, 0)
+	got, err := svc.SetStatus(ctx, "rrrr", core.StatusReview)
+	if err != nil || got.Status != core.StatusReview {
+		t.Fatalf("→review: (%+v, %v)", got, err)
+	}
+}
+
+func TestActivityCRUD(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	task, err := svc.Create(ctx, core.CreateInput{Title: "T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.AddActivity(ctx, task.ID, core.ActivityInput{})
+	if !errors.Is(err, core.ErrEmptyActivity) {
+		t.Fatalf("empty: %v", err)
+	}
+	a, err := svc.AddActivity(ctx, task.ID, core.ActivityInput{Activity: " Ran tests ", Comment: " ok "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Activity != "Ran tests" || a.Comment != "ok" || a.TaskID != task.ID {
+		t.Fatalf("activity: %+v", a)
+	}
+	list, err := svc.ListActivity(ctx, core.ActivityFilter{})
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list: (%d, %v)", len(list), err)
+	}
+	del, err := svc.DeleteActivity(ctx, a.ID[:8])
+	if err != nil || del.ID != a.ID {
+		t.Fatalf("delete: (%+v, %v)", del, err)
+	}
+}
