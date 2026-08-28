@@ -203,6 +203,10 @@
 
     try {
       await api.setStatus(id, col)
+      const beforeId = insert?.status === col ? insert.beforeId : null
+      if (beforeId) {
+        await api.reorderTask(id, beforeId)
+      }
     } catch (err) {
       onError?.(errMsg(err))
     }
