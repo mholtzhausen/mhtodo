@@ -14,10 +14,14 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 5
+const IntegrationVersion = 6
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v5  Sub-tasks are a mandatory step plan on root-task start (3+ steps), not optional
+const integrationChangelog = `v6  Task-picker turns ("what's next", todos, etc.) must use AskUserQuestion /
+    AskQuestion with every root task from mhtodo list --roots --json in board
+    order (status visible, no grouping or auto-pick). REVERSES v3-v5 grouped
+    prose list — see §6.
+v5  Sub-tasks are a mandatory step plan on root-task start (3+ steps), not optional
     mini-lifecycles. Activities attach to the step being worked. Blocking sets
     parent waiting (sub-tasks never waiting/review). All sub-tasks must be done
     before parent review. Parallel sub-task wip for subagents. REVERSES v3-v4

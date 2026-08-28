@@ -333,27 +333,51 @@ card moves to the Waiting column (sub-tasks stay nested inside it). The closing
 activity is the step-trace the user can skim; **feedback** is what they read
 later for the digest — files, PRs, outcomes, gotchas — not "finished the task".
 
-### 3.8 Answering "what's on my list?"
+### 3.8 Picking a task — "what's next?", todos, the list
 
-**Read-only.** List, let them pick, adopt only after they choose.
+When the user wants to see their board, pick work, or continue something — e.g.
+*what's next?*, *next task*, *todos*, *todo list*, *what should I work on?*,
+*pick up a task*, *show me my tasks*, *what's on my list?* — treat it as a
+**task-picker turn**, not a guess.
 
-```bash
-mhtodo list --status pending --roots --sort created-   # next up — nobody is on these
-mhtodo list --status waiting --roots                   # agents blocked on the user
-mhtodo list --status review  --roots                   # awaiting their sign-off
-```
+**Read-only until they choose.** Never adopt or start a task from this flow
+without an explicit pick (§1).
 
-Present in three groups in that order. Only the first is work they can hand out.
-
-Exclude `wip` — a live session is on it. But also run:
+1. **Fetch the board** — root tasks only (what appears as cards on the kanban):
 
 ```bash
-mhtodo list --status wip --roots --sort updated-
+mhtodo list --roots --json
 ```
 
-and show anything untouched for several hours as a fourth group, **"possibly
-abandoned"**. Hard-killed sessions leak `wip` rows that the session-end hook
-(§4) cannot catch.
+Use default list behaviour: open tasks (excludes `done` and archived) in **board
+order** — the same order the GUI uses (status workflow → rank → `updated_at`).
+**Do not re-sort, split into groups, or omit rows** (including `wip`).
+
+2. **Present every row with AskUserQuestion** — the host's structured
+   multiple-choice UI. Each option must clearly show:
+
+   - **status** (`pending`, `wip`, `waiting`, `review`)
+   - **title**
+   - **13-character id prefix** (§2)
+
+   List options in **exactly** the order `mhtodo list` returned them. Include at
+   least one escape hatch (e.g. *None of these / something else*) so the user is
+   not forced to pick from the list.
+
+   | Host | Mechanism |
+   |---|---|
+   | Claude Code | `AskUserQuestion` |
+   | Cursor | `AskQuestion` |
+   | Other | Host equivalent — never prose-only when a picker exists |
+
+   Do **not** answer by narrating a single recommendation or auto-picking the
+   first `pending` row.
+
+3. **After they pick** — adopt per §3.3 (or continue if it is already the
+   session's open task). Only then set `wip` and begin work.
+
+If the list is empty, say so and offer to register new work — still do not
+register until they describe what they want.
 
 ### 3.9 Subagents
 
@@ -388,7 +412,7 @@ agent remembering:
 
 | Behaviour | Trigger | Effect |
 |---|---|---|
-| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks, feedback, and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates. Flip a `waiting` task back to `wip`. |
+| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks, feedback, and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates — **unless** the turn is a task-picker request (§3.8), in which case follow §3.8 instead. Flip a `waiting` task back to `wip`. |
 | **B. Ghost cleanup** | Session ends | If the task is still `wip`, set `waiting` and post an activity saying why. **Leave the pointer file in place** so a resumed session picks it back up. |
 | **C. Idle detection** | Runtime goes idle awaiting user input | If the task is `wip`, set `waiting`. **Skip permission/approval prompts** — nothing reliably fires when one is granted mid-turn, so the task would strand on `waiting` through an hour of real work. |
 
@@ -411,7 +435,8 @@ the turn's context. Register them in `~/.claude/settings.json` under `hooks`,
 - **Cursor / Windsurf / Copilot-style rules files** — write §3 into the rules
   file. Behaviours A–C are usually unavailable; instead add an explicit
   instruction to run `mhtodo show <id>` at the start of each turn and to set a
-  terminal status before replying. Tell the user which parts could not be
+  terminal status before replying. **§3.8 task-picker turns must use `AskQuestion`
+  (or equivalent)** — not a prose list. Tell the user which parts could not be
   automated.
 - **Agent SDKs / custom harnesses** — map A/B/C onto the pre-turn, session-teardown
   and idle callbacks.
@@ -508,6 +533,7 @@ it reads first. Search the installed artifact for these and **delete them**:
 | Hand-back that only sets progress/status with no `--feedback` | §3.7: set `--feedback` with summary + notes/takeaways |
 | Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are planned steps, activities are actions within a step |
 | `waiting` or `review` on sub-tasks | §3.5: sub-tasks use `pending` → `wip` → `done` only; blocking moves the **parent** to `waiting` |
+| Task list as prose groups, omitting `wip`, or auto-picking the first `pending` row | §3.8: `mhtodo list --roots --json` in board order → **AskUserQuestion** / **AskQuestion** picker |
 
 Example labels matter more than they look: they sit above the rule in the file and
 are what an agent actually copies. A correct rule underneath a table of sentences
