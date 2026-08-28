@@ -133,6 +133,7 @@ export namespace core {
 	    // Go type: time
 	    archived_at?: any;
 	    parent_id?: string;
+	    board_rank?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -151,6 +152,7 @@ export namespace core {
 	        this.completed_at = this.convertValues(source["completed_at"], null);
 	        this.archived_at = this.convertValues(source["archived_at"], null);
 	        this.parent_id = source["parent_id"];
+	        this.board_rank = source["board_rank"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

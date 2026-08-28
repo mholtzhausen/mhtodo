@@ -1,4 +1,12 @@
-# mhtodo — progress (updated 26-08-27)
+# mhtodo — progress (updated 26-08-28)
+
+## v0.4 — Board reorder (complete)
+
+- [x] Migration v5: `board_rank` column + index
+- [x] Core: `ReorderBoardTask`, rank on create/status/unarchive, `sort=board` default
+- [x] CLI: `reorder` command, `list --sort board` default
+- [x] GUI: same-lane drag reorder + board/list default sort
+- [x] Tests + docs (README, AGENTS.md, ai.md)
 
 ## v0.3 — Sub-tasks, activity, review, UI polish (complete)
 
@@ -32,3 +40,4 @@
 - Wails `generate module` may focus a running GUI instance; bindings updated by hand when needed.
 - `mhtodo ai` (integration contract v4) embeds `internal/cli/ai.md` and interpolates version/DB/enums at emit time.
 - `mhtodo update` is CLI-only (no GUI parity); replaces via write-temp+rename; uses `GH_TOKEN`/`GITHUB_TOKEN` when set.
+- Default list sort changed from `updated` to `board` (agent contract); scripts relying on implicit default should pass `--sort` explicitly.

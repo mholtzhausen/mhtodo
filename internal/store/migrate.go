@@ -18,6 +18,7 @@ var migrations = []migration{
 	{version: 2, up: schemaV2},
 	{version: 3, up: schemaV3},
 	{version: 4, up: schemaV4},
+	{version: 5, up: schemaV5},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -73,6 +74,13 @@ CREATE INDEX idx_activity_task    ON activity(task_id);
 // v4: agent-authored feedback shown in the GUI when non-empty.
 const schemaV4 = `
 ALTER TABLE tasks ADD COLUMN feedback TEXT NOT NULL DEFAULT '';
+`
+
+// v5: persisted board column order for root tasks (GUI reorder).
+const schemaV5 = `
+ALTER TABLE tasks ADD COLUMN board_rank REAL;
+
+CREATE INDEX idx_tasks_status_rank ON tasks(status, board_rank);
 `
 
 const schemaV1 = `

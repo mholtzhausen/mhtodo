@@ -19,6 +19,9 @@ type TaskRepository interface {
 	FindByPrefix(ctx context.Context, prefix string) ([]Task, error)
 	List(ctx context.Context, f ListFilter) ([]Task, error)
 	Update(ctx context.Context, t Task) error // mutable fields by t.ID; ErrNotFound if missing
+	UpdateBoardRank(ctx context.Context, id string, rank float64) error
+	MaxBoardRank(ctx context.Context, status Status) (max float64, ok bool, err error)
+	ListRootsInStatus(ctx context.Context, status Status) ([]Task, error)
 	Delete(ctx context.Context, id string) (Task, error)
 	// ArchiveDone archives every non-archived done task in one statement and
 	// returns the archived tasks (v0.2). at is the service clock (tests inject it).
@@ -100,13 +103,18 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		t.Progress = 100
 		t.CompletedAt = &now
 	}
+	if parentID == nil {
+		if err := s.assignEndBoardRank(ctx, &t); err != nil {
+			return Task{}, err
+		}
+	}
 	if err := s.repo.Create(ctx, t); err != nil {
 		return Task{}, err
 	}
 	return t, nil
 }
 
-// List returns tasks per filter (defaults: exclude done, updated_at desc).
+// List returns tasks per filter (defaults: exclude done, board order).
 func (s *Service) List(ctx context.Context, f ListFilter) ([]Task, error) {
 	if f.Status != "" {
 		if _, err := ParseStatus(string(f.Status)); err != nil {
@@ -203,6 +211,7 @@ func (s *Service) SetStatus(ctx context.Context, ref string, st Status) (Task, e
 	if err != nil {
 		return Task{}, err
 	}
+	oldStatus := t.Status
 	now := s.now()
 	switch {
 	case st == StatusDone && t.Status != StatusDone:
@@ -213,9 +222,73 @@ func (s *Service) SetStatus(ctx context.Context, ref string, st Status) (Task, e
 	}
 	t.Status = st
 	t.UpdatedAt = now
+	if t.ParentID == nil && oldStatus != st {
+		if err := s.assignEndBoardRank(ctx, &t); err != nil {
+			return Task{}, err
+		}
+	}
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
 	}
+	return t, nil
+}
+
+// ReorderBoardTask moves a root task within its current status column.
+// beforeRef nil appends to the end; otherwise inserts immediately before that root.
+func (s *Service) ReorderBoardTask(ctx context.Context, ref string, beforeRef *string) (Task, error) {
+	id, err := s.ResolveID(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.ParentID != nil {
+		return Task{}, ErrNotRoot
+	}
+	if t.ArchivedAt != nil {
+		return Task{}, fmt.Errorf("%w: %q", ErrNotFound, ref)
+	}
+
+	var beforeID *string
+	if beforeRef != nil && strings.TrimSpace(*beforeRef) != "" {
+		bid, err := s.ResolveID(ctx, strings.TrimSpace(*beforeRef))
+		if err != nil {
+			return Task{}, err
+		}
+		before, err := s.repo.GetByID(ctx, bid)
+		if err != nil {
+			return Task{}, err
+		}
+		if before.ParentID != nil {
+			return Task{}, ErrNotRoot
+		}
+		if before.Status != t.Status {
+			return Task{}, ErrReorderStatusMismatch
+		}
+		if before.ID == t.ID {
+			return t, nil
+		}
+		beforeID = &before.ID
+	}
+
+	column, err := s.repo.ListRootsInStatus(ctx, t.Status)
+	if err != nil {
+		return Task{}, err
+	}
+	if !reorderWouldChange(t, beforeID, column) {
+		return t, nil
+	}
+
+	rank, err := s.computeBoardRank(ctx, t, beforeID)
+	if err != nil {
+		return Task{}, err
+	}
+	if err := s.repo.UpdateBoardRank(ctx, t.ID, rank); err != nil {
+		return Task{}, err
+	}
+	t.BoardRank = &rank
 	return t, nil
 }
 
@@ -247,6 +320,11 @@ func (s *Service) Unarchive(ctx context.Context, ref string) (Task, error) {
 	t.CompletedAt = nil // done → other rule
 	t.ArchivedAt = nil
 	t.UpdatedAt = now
+	if t.ParentID == nil {
+		if err := s.assignEndBoardRank(ctx, &t); err != nil {
+			return Task{}, err
+		}
+	}
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
 	}

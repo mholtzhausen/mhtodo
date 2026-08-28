@@ -45,6 +45,7 @@ type Task struct {
 	CompletedAt *time.Time `json:"completed_at"`
 	ArchivedAt  *time.Time `json:"archived_at"` // set on archive, cleared on unarchive (v0.2)
 	ParentID    *string    `json:"parent_id"`   // nil = root; one-level children only (v0.3)
+	BoardRank   *float64   `json:"board_rank"`  // nil = unset; root tasks only; lower = higher on board
 }
 
 // CreateInput carries the fields accepted by add / CreateTask.
@@ -71,12 +72,12 @@ func (in UpdateInput) hasFields() bool {
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
-// exclude done, sort updated_at desc, no limit.
+// exclude done, sort board order, no limit.
 type ListFilter struct {
 	Status      Status // "" = any (subject to IncludeDone)
 	Search      string // case-insensitive substring over title+description
 	Limit       int    // 0 = unlimited
-	Sort        string // created|updated|status|progress|title; default "updated"
+	Sort        string // board|created|updated|status|progress|title; default "board"
 	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
 	IncludeDone bool   // default false → done tasks are hidden unless matched by Status
 	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
@@ -148,6 +149,12 @@ var ErrParentIsChild = errors.New("parent must be a top-level task (sub-tasks ca
 
 // ErrEmptyActivity is returned when both activity and comment are empty.
 var ErrEmptyActivity = errors.New("activity or comment is required")
+
+// ErrNotRoot is returned when a board-only operation targets a sub-task.
+var ErrNotRoot = errors.New("task must be a top-level task")
+
+// ErrReorderStatusMismatch is returned when --before points at a task in another column.
+var ErrReorderStatusMismatch = errors.New("before task must be in the same status column")
 
 // MinPrefixLen is the shortest prefix accepted for ID lookup.
 const MinPrefixLen = 4

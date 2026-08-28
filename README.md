@@ -88,7 +88,8 @@ concurrently with the GUI.
 
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
-`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `parent_is_child`, `empty_activity`,
+`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `parent_is_child`, `not_root`,
+`reorder_status_mismatch`, `empty_activity`,
 `usage`, `storage`, `update`.
 
 ### Commands
@@ -96,10 +97,11 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | Command | Synopsis | Notes |
 |---|---|---|
 | `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set) |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots]` | default: excludes done **and archived**, sorted `updated_at desc`; `--all` includes done; `--archived` shows archived only; `--roots` top-level only; list stays flat for agents (`parent_id` field); sort fields: `created`, `updated`, `status`, `progress`, `title` |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots]` | default: excludes done **and archived**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100]` | at least one flag required; never changes status |
-| `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps) |
+| `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
+| `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
 | `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step; reversible via `unarchive` |
 | `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
@@ -126,7 +128,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "updated_at": "2025-08-19T08:30:12Z",
   "completed_at": null,
   "archived_at": null,
-  "parent_id": null
+  "parent_id": null,
+  "board_rank": 1.0
 }
 ```
 
@@ -144,7 +147,8 @@ Activity entry:
 
 `--json list` returns an array of task objects. Timestamps are RFC3339 UTC; `completed_at` is set on
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
-`parent_id` is set for one-level sub-tasks. IDs are UUIDv7 (time-ordered).
+`parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
+(lower = higher on the board). IDs are UUIDv7 (time-ordered).
 
 ### Agent usage examples
 
@@ -206,7 +210,8 @@ status transitions → activity → delete) using only this CLI.
 | `GetTask(id)` | `show` | prefix match allowed |
 | `CreateTask(in)` | `add` | optional ParentID |
 | `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress only |
-| `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting |
+| `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting; assigns end rank on column change |
+| `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
 | `ArchiveDone()` | `archive` | bulk done → archive |
 | `Unarchive(id)` | `unarchive` | |
 | `DeleteTask(id)` | `rm` | cascades to children |

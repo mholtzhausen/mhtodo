@@ -18,6 +18,7 @@ export interface Task {
   completed_at: string | null
   archived_at: string | null
   parent_id: string | null
+  board_rank: number | null
 }
 
 export interface Activity {
@@ -32,7 +33,7 @@ export interface ListFilterInput {
   status?: string
   archived?: boolean
   search?: string
-  sort?: 'created' | 'updated' | 'status' | 'progress' | 'title'
+  sort?: 'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'
   ascending?: boolean
   rootsOnly?: boolean
   /** When set, overrides the default (include done if no status filter / archived view). */
@@ -49,7 +50,7 @@ const toGoFilter = (f: ListFilterInput) => ({
   Status: f.status ?? '',
   Search: f.search ?? '',
   Limit: 0,
-  Sort: f.sort ?? 'updated',
+  Sort: f.sort ?? 'board',
   Ascending: !!f.ascending,
   IncludeDone: f.includeDone ?? (!f.status || !!f.archived),
   Archived: !!f.archived,
@@ -96,6 +97,9 @@ export const api = {
   },
   setStatus(id: string, status: Status) {
     return App.SetStatus(id, status as unknown as string)
+  },
+  reorderTask(id: string, beforeId?: string | null) {
+    return App.ReorderBoardTask(id, beforeId ?? '') as Promise<Task>
   },
   archiveDone(): Promise<Task[]> {
     return App.ArchiveDone().then((t) => t ?? []) as Promise<Task[]>

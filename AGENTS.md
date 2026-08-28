@@ -4,7 +4,7 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|rm|path|ai|update`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|ai|update`) — the interface for **agentic tool
   access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
   `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
   `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
@@ -37,7 +37,11 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
 interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (see README).
 
-**Out of scope for v0.1 (stretch only):** drag-and-drop kanban,
+**Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
+sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to
+reorder; cross-column drag changes status (appends to target column). CLI: `mhtodo reorder`.
+
+**Out of scope (stretch):** cross-column insert index, sub-task reorder, list-view drag reorder,
 light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered

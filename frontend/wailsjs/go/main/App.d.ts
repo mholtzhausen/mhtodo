@@ -28,6 +28,8 @@ export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 
 export function Quit():Promise<void>;
 
+export function ReorderBoardTask(arg1:string,arg2:string):Promise<core.Task>;
+
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetStatus(arg1:string,arg2:core.Status):Promise<core.Task>;

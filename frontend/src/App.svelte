@@ -95,7 +95,7 @@
 
   let status = $state<Status | '' | 'archived'>('')
   let search = $state('')
-  let sort = $state<'created' | 'updated' | 'status' | 'progress' | 'title'>('updated')
+  let sort = $state<'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'>('board')
   let ascending = $state(false)
 
   const selectedTask = $derived(tasks.find((t) => t.id === selectedId) ?? null)
@@ -219,7 +219,7 @@
       } else {
         const filter =
           view === 'board'
-            ? { search, sort: 'updated' as const, ascending: false }
+            ? { search, sort: 'board' as const, ascending: false }
             : status === 'archived'
               ? { archived: true, search, sort, ascending }
               : { status, search, sort, ascending }

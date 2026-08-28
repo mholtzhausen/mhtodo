@@ -78,9 +78,48 @@
   })
 
   let draggingId = $state<string | null>(null)
+  let dragLifted = $state(false) // defer DOM removal until after dragstart completes
   let dragFrom = $state<Status | ''>('')
   let dropTarget = $state<Status | ''>('')
+  let dropInsert = $state<{ status: Status; beforeId: string | null } | null>(null)
   let suppressClick = false
+
+  // Hide native drag image — the in-column ghost shows placement instead.
+  const emptyDragImage = typeof Image !== 'undefined' ? new Image() : null
+  if (emptyDragImage) emptyDragImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+  const draggingTask = $derived(
+    draggingId ? (tasks.find((t) => t.id === draggingId) ?? null) : null
+  )
+
+  /** Roots shown in a column; the dragged card is hidden once the drag session is active. */
+  function columnRoots(col: Status): any[] {
+    if (!dragLifted || !draggingId) return byStatus[col]
+    return byStatus[col].filter((t) => t.id !== draggingId)
+  }
+
+  function clearDragState() {
+    draggingId = null
+    dragLifted = false
+    dragFrom = ''
+    dropTarget = ''
+    dropInsert = null
+  }
+
+  function setDropInsert(col: Status, beforeId: string | null, crossColumn: boolean) {
+    if (crossColumn) dropTarget = col
+    else dropTarget = ''
+    if (dropInsert?.status === col && dropInsert?.beforeId === beforeId) return
+    dropInsert = { status: col, beforeId }
+  }
+
+  function liftDraggedCard() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (draggingId) dragLifted = true
+      })
+    })
+  }
 
   function onCardDragStart(e: DragEvent, t: any) {
     if (t.parent_id) {
@@ -89,35 +128,79 @@
     }
     draggingId = t.id
     dragFrom = t.status
+    dragLifted = false
     e.dataTransfer?.setData('text/plain', t.id)
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move'
+      if (emptyDragImage) e.dataTransfer.setDragImage(emptyDragImage, 0, 0)
+    }
+    liftDraggedCard()
   }
 
   function onCardDragEnd() {
     suppressClick = true
     setTimeout(() => (suppressClick = false), 0)
-    draggingId = null
-    dragFrom = ''
-    dropTarget = ''
+    clearDragState()
+  }
+
+  function taskCardEl(lane: HTMLElement, id: string): HTMLElement | null {
+    return lane.querySelector(`[data-task-id="${id}"]`)
+  }
+
+  /** Pointer-based insert; in-flow ghost reserves space (cards only — ghost is not a hit target). */
+  function onLaneDragOver(e: DragEvent, col: Status) {
+    if (!draggingId || !dragLifted) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+
+    const lane = e.currentTarget as HTMLElement
+    const roots = columnRoots(col)
+    const y = e.clientY
+    const crossColumn = dragFrom !== col
+
+    let beforeId: string | null = null
+    for (const t of roots) {
+      const el = taskCardEl(lane, t.id)
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (y < rect.top + rect.height / 2) {
+        beforeId = t.id
+        break
+      }
+    }
+
+    setDropInsert(col, beforeId, crossColumn)
   }
 
   function onColumnDragOver(e: DragEvent, col: Status) {
-    if (!draggingId || dragFrom === col) return
+    if (!draggingId) return
     e.preventDefault()
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-    dropTarget = col
   }
 
-  function onColumnDragLeave(e: DragEvent, col: Status) {
-    const sec = e.currentTarget as HTMLElement | null
-    if (dropTarget === col && !(sec?.contains(e.relatedTarget as Node))) dropTarget = ''
+  async function reorderInLane(id: string, col: Status, beforeId: string | null) {
+    try {
+      await api.reorderTask(id, beforeId)
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
   }
 
-  async function onColumnDrop(e: DragEvent, col: Status) {
+  async function onLaneDrop(e: DragEvent, col: Status) {
     e.preventDefault()
+    e.stopPropagation()
     const id = (draggingId ?? e.dataTransfer?.getData('text/plain')) || null
-    dropTarget = ''
-    if (!id || dragFrom === col) return
+    const insert = dropInsert
+    const from = dragFrom
+    clearDragState()
+    if (!id) return
+
+    if (from === col) {
+      await reorderInLane(id, col, insert?.status === col ? insert.beforeId : null)
+      return
+    }
+
     try {
       await api.setStatus(id, col)
     } catch (err) {
@@ -125,9 +208,21 @@
     }
   }
 
+  async function onColumnDrop(e: DragEvent, col: Status) {
+    // Drops on header/chrome bubble here; lane body handles card-area drops.
+    if ((e.target as HTMLElement | null)?.closest('[data-lane-body]')) return
+    await onLaneDrop(e, col)
+  }
+
   function onCardClick(t: any) {
     if (suppressClick) return
     onSelect(t.id)
+  }
+
+  function showGhostAt(col: Status, beforeId: string | null): boolean {
+    return (
+      dragLifted && dropInsert?.status === col && dropInsert.beforeId === beforeId && draggingTask !== null
+    )
   }
 
   let archiving = $state(false)
@@ -148,6 +243,24 @@
   const rootCount = $derived(tasks.filter((t) => !t.parent_id).length)
 </script>
 
+{#snippet ghostCard(t: any, col: (typeof COLUMNS)[number])}
+  <div
+    class="ghost-card pointer-events-none rounded-md border border-dashed border-accent/70 border-l-2 bg-accent/10 shadow-[0_0_16px_rgba(123,140,255,0.25)] ring-2 ring-accent/40 {col.edge}"
+    aria-hidden="true"
+  >
+    <div class="p-2.5 text-left">
+      <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink/90">{t.title}</p>
+      <div class="flex items-center gap-2">
+        <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
+          <div class="h-full rounded-full {col.bar} opacity-80" style="width: {t.progress}%"></div>
+        </div>
+        <span class="font-mono text-[10.5px] text-ink-3/80">{t.progress}%</span>
+        <span class="text-[10.5px] text-ink-3/80">{relTime(t.updated_at)}</span>
+      </div>
+    </div>
+  </div>
+{/snippet}
+
 {#if rootCount === 0}
   <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
     {#if search}
@@ -161,9 +274,9 @@
 {:else}
   <div class="grid h-full grid-cols-5 gap-3">
     {#each COLUMNS as col (col.status)}
+      {@const roots = columnRoots(col.status)}
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
-        ondragleave={(e) => onColumnDragLeave(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
         class="flex min-h-0 flex-col rounded-md border shadow-sm transition-colors duration-150
           {dropTarget === col.status
@@ -176,7 +289,9 @@
           <span
             class="rounded-[3px] border border-line-soft bg-white/5 px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-3"
           >
-            {byStatus[col.status].length}
+            {dragLifted && dragFrom === col.status && draggingId
+              ? columnRoots(col.status).length
+              : byStatus[col.status].length}
           </span>
           <div class="flex-1"></div>
           {#if col.status === 'done'}
@@ -211,26 +326,41 @@
           </button>
         </header>
 
-        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 py-2.5">
-          {#if byStatus[col.status].length === 0}
+        <div
+          data-lane-body
+          class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 py-2.5
+            {draggingId ? 'board-dragging' : ''}"
+          ondragover={(e) => onLaneDragOver(e, col.status)}
+          ondrop={(e) => onLaneDrop(e, col.status)}
+        >
+          {#if roots.length === 0 && !showGhostAt(col.status, null)}
             <p class="rounded border border-dashed border-line px-2 py-4 text-center text-[11px] text-ink-3">
               no tasks
             </p>
           {:else}
-            {#each byStatus[col.status] as t (t.id)}
+            {#each roots as t (t.id)}
+              {#if showGhostAt(col.status, t.id) && draggingTask}
+                <div data-ghost-slot class="pointer-events-none">
+                  {@render ghostCard(draggingTask, col)}
+                </div>
+              {/if}
               <div
-                class="rounded-md border border-l-2 shadow-sm transition-all duration-150
+                role="group"
+                data-task-id={t.id}
+                draggable="true"
+                ondragstart={(e) => onCardDragStart(e, t)}
+                ondragend={onCardDragEnd}
+                class="rounded-md border border-l-2 shadow-sm transition-all duration-150 select-none
                   {col.edge}
-                  {draggingId === t.id ? 'rotate-2 opacity-40' : ''}
                   {selectedId === t.id
                     ? 'border-accent bg-card-hi ring-1 ring-accent/70'
-                    : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}"
+                    : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}
+                  {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
               >
                 <button
-                  draggable="true"
+                  type="button"
                   onclick={() => onCardClick(t)}
-                  ondragstart={(e) => onCardDragStart(e, t)}
-                  ondragend={onCardDragEnd}
+                  ondragstart={(e) => e.preventDefault()}
                   class="w-full cursor-grab p-2.5 text-left"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
@@ -267,6 +397,11 @@
                 {/if}
               </div>
             {/each}
+            {#if showGhostAt(col.status, null) && draggingTask}
+              <div data-ghost-slot class="pointer-events-none">
+                {@render ghostCard(draggingTask, col)}
+              </div>
+            {/if}
           {/if}
         </div>
       </section>

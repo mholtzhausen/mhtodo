@@ -9,7 +9,7 @@ import (
 	"mhtodo/internal/core"
 )
 
-var sortFields = []string{"created", "updated", "status", "progress", "title"}
+var sortFields = []string{"board", "created", "updated", "status", "progress", "title"}
 
 // parseSort parses --sort FIELD[+|-]. Per spec, a "-" suffix means ascending;
 // "+" or no suffix means descending (the default).
@@ -38,7 +38,7 @@ func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List tasks (default: excludes done, updated_at desc)",
+		Short:   "List tasks (default: excludes done, board order)",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o, err := o(cmd)
@@ -77,7 +77,7 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&status, "status", "", "filter by status (pending|wip|waiting|review|done)")
 	cmd.Flags().StringVar(&search, "search", "", "case-insensitive substring over title + description")
 	cmd.Flags().IntVar(&limit, "limit", 0, "max results (0 = unlimited)")
-	cmd.Flags().StringVar(&sort, "sort", "updated", "sort field: created|updated|status|progress|title; suffix - ascending, + or none descending")
+	cmd.Flags().StringVar(&sort, "sort", "board", "sort field: board|created|updated|status|progress|title; suffix - ascending, + or none descending")
 	cmd.Flags().BoolVar(&all, "all", false, "include done tasks")
 	cmd.Flags().BoolVar(&archived, "archived", false, "show archived tasks only (default lists hide them)")
 	cmd.Flags().BoolVar(&roots, "roots", false, "show top-level tasks only (exclude sub-tasks)")

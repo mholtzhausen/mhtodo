@@ -396,3 +396,88 @@ func TestActivityCRUD(t *testing.T) {
 		t.Fatalf("delete: (%+v, %v)", del, err)
 	}
 }
+
+func TestReorderBoardTask(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	a, err := svc.Create(ctx, core.CreateInput{Title: "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := svc.Create(ctx, core.CreateInput{Title: "B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := svc.Create(ctx, core.CreateInput{Title: "C"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	before := b.ID
+	if _, err := svc.ReorderBoardTask(ctx, c.ID, &before); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := svc.List(ctx, core.ListFilter{Status: core.StatusPending, RootsOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 3 || list[0].ID != a.ID || list[1].ID != c.ID || list[2].ID != b.ID {
+		t.Fatalf("reorder before: %+v", list)
+	}
+
+	if _, err := svc.ReorderBoardTask(ctx, a.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	list, err = svc.List(ctx, core.ListFilter{Status: core.StatusPending, RootsOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list[0].ID != c.ID || list[1].ID != b.ID || list[2].ID != a.ID {
+		t.Fatalf("reorder append: %+v", list)
+	}
+
+	wip, err := svc.Create(ctx, core.CreateInput{Title: "W", Status: core.StatusWIP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := wip.ID
+	_, err = svc.ReorderBoardTask(ctx, a.ID, &other)
+	if !errors.Is(err, core.ErrReorderStatusMismatch) {
+		t.Fatalf("cross-status before: %v", err)
+	}
+}
+
+func TestCreateAssignsBoardRank(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	got, err := svc.Create(ctx, core.CreateInput{Title: "root"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.BoardRank == nil || *got.BoardRank != 1.0 {
+		t.Fatalf("first root rank: %+v", got.BoardRank)
+	}
+	child, err := svc.Create(ctx, core.CreateInput{Title: "child", ParentID: got.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.BoardRank != nil {
+		t.Fatalf("sub-task rank should be nil: %+v", child.BoardRank)
+	}
+}
+
+func TestSetStatusAssignsEndRank(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	a, _ := svc.Create(ctx, core.CreateInput{Title: "A", Status: core.StatusPending})
+	b, _ := svc.Create(ctx, core.CreateInput{Title: "B", Status: core.StatusWIP})
+	moved, err := svc.SetStatus(ctx, a.ID, core.StatusWIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved.BoardRank == nil || *moved.BoardRank <= *b.BoardRank {
+		t.Fatalf("moved should append after B: moved=%v b=%v", moved.BoardRank, b.BoardRank)
+	}
+}

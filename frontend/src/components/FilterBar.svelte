@@ -48,7 +48,7 @@
     { value: 'archived', label: 'Archived', active: 'border-line bg-white/10 text-ink' }
   ]
 
-  const sortFields = ['updated', 'created', 'status', 'progress', 'title'] as const
+  const sortFields = ['board', 'updated', 'created', 'status', 'progress', 'title'] as const
 </script>
 
 <div class="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">

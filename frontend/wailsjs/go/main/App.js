@@ -54,6 +54,10 @@ export function Quit() {
   return window['go']['main']['App']['Quit']();
 }
 
+export function ReorderBoardTask(arg1, arg2) {
+  return window['go']['main']['App']['ReorderBoardTask'](arg1, arg2);
+}
+
 export function SetAlwaysOnTop(arg1) {
   return window['go']['main']['App']['SetAlwaysOnTop'](arg1);
 }

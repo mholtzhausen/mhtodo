@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 4 {
-		t.Fatalf("schema_version = %d, want 4", version)
+	if version != 5 {
+		t.Fatalf("schema_version = %d, want 5", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 4 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 4", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 5 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 5", version, err)
 	}
 
 	// WAL must be active.
@@ -218,10 +218,10 @@ func TestListFilters(t *testing.T) {
 		t.Fatalf("sort progress asc = %v", ids(got))
 	}
 
-	// Default sort is updated_at desc.
+	// Default sort is board order (status workflow, then updated_at desc within column).
 	got, _ = r.List(ctx, core.ListFilter{})
-	if got[0].ID != "t1" || got[len(got)-1].ID != "t4" {
-		t.Fatalf("default sort = %v, want t1..t4 by updated desc", ids(got))
+	if got[0].ID != "t1" || got[1].ID != "t2" || got[2].ID != "t4" {
+		t.Fatalf("default sort = %v, want t1,t2,t4 board order", ids(got))
 	}
 
 	// Limit.
@@ -297,9 +297,9 @@ func ids(ts []core.Task) []string {
 	return out
 }
 
-// TestV1ToV4Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
-// Open migrates it forward through v2–v4 in place.
-func TestV1ToV4Upgrade(t *testing.T) {
+// TestV1ToV5Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
+// Open migrates it forward through v2–v5 in place.
+func TestV1ToV5Upgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mhtodo.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -317,8 +317,8 @@ func TestV1ToV4Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 4 {
-		t.Fatalf("schema_version = %d (err=%v), want 4", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 5 {
+		t.Fatalf("schema_version = %d (err=%v), want 5", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
@@ -336,7 +336,7 @@ func TestV1ToV4Upgrade(t *testing.T) {
 		cols = append(cols, name)
 	}
 	rows.Close()
-	for _, want := range []string{"archived_at", "parent_id", "feedback"} {
+	for _, want := range []string{"archived_at", "parent_id", "feedback", "board_rank"} {
 		found := false
 		for _, c := range cols {
 			if c == want {

@@ -227,6 +227,41 @@ func TestListFiltersAndSort(t *testing.T) {
 	}
 }
 
+func TestReorderCLI(t *testing.T) {
+	out, _, run := newCLI(t)
+	if code := run("add", "Alpha"); code != 0 {
+		t.Fatal(code)
+	}
+	idA := strings.Fields(out.String())[0]
+	out.Reset()
+	if code := run("add", "Beta"); code != 0 {
+		t.Fatal(code)
+	}
+	out.Reset()
+	if code := run("add", "Gamma"); code != 0 {
+		t.Fatal(code)
+	}
+	idC := strings.Fields(out.String())[0]
+	out.Reset()
+
+	if code := run("reorder", idC, "--before", idA, "--json"); code != 0 {
+		t.Fatalf("reorder exit %d", code)
+	}
+	var moved core.Task
+	mustJSON(t, out.Bytes(), &moved)
+	if moved.BoardRank == nil {
+		t.Fatalf("reorder json missing board_rank: %+v", moved)
+	}
+
+	out.Reset()
+	run("list", "--json")
+	var tasks []core.Task
+	mustJSON(t, out.Bytes(), &tasks)
+	if len(tasks) != 3 || tasks[0].Title != "Gamma" || tasks[1].Title != "Alpha" || tasks[2].Title != "Beta" {
+		t.Errorf("after reorder --before first: %+v", tasks)
+	}
+}
+
 // --- show ---------------------------------------------------------------------
 
 func TestShow(t *testing.T) {
@@ -552,7 +587,7 @@ func TestAI(t *testing.T) {
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
-		"created|updated|status|progress|title",
+		"board|created|updated|status|progress|title",
 		"v4  Activity labels",
 		"--feedback",
 		"Markdown fields",

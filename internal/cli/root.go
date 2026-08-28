@@ -63,6 +63,10 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "not_archived", msg: err.Error()}
 		case errors.Is(err, core.ErrParentIsChild):
 			return &errExit{code: ExitUsage, name: "parent_is_child", msg: err.Error()}
+		case errors.Is(err, core.ErrNotRoot):
+			return &errExit{code: ExitUsage, name: "not_root", msg: err.Error()}
+		case errors.Is(err, core.ErrReorderStatusMismatch):
+			return &errExit{code: ExitUsage, name: "reorder_status_mismatch", msg: err.Error()}
 		case errors.Is(err, core.ErrEmptyActivity):
 			return &errExit{code: ExitUsage, name: "empty_activity", msg: err.Error()}
 		default:
@@ -226,7 +230,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
-		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(),
+		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
 		newActivityCmd(), newRmCmd(), newPathCmd(), newAICmd(version),
 		newUpdateCmd(version),
 	} {

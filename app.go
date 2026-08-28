@@ -127,7 +127,7 @@ func (a *App) shutdown(_ context.Context) {
 // --- bound methods (parity contract) -----------------------------------------
 
 // ListTasks maps to CLI `list`. Zero filter values give the CLI defaults:
-// hide done, sort updated_at desc. A nil result is normalized to an empty
+// hide done, board order. A nil result is normalized to an empty
 // slice: Wails marshals a nil Go slice as JSON null and the frontend expects
 // an array (same normalization the CLI applies in printTasks).
 func (a *App) ListTasks(filter core.ListFilter) ([]core.Task, error) {
@@ -179,6 +179,21 @@ func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 				a.notifier.TaskWaiting(t.ID, t.Title)
 			}
 		}
+	}
+	return t, err
+}
+
+// ReorderBoardTask moves a root task within its current status column.
+// beforeID empty appends to the column end.
+func (a *App) ReorderBoardTask(id string, beforeID string) (core.Task, error) {
+	var beforeRef *string
+	if strings.TrimSpace(beforeID) != "" {
+		b := strings.TrimSpace(beforeID)
+		beforeRef = &b
+	}
+	t, err := a.svc.ReorderBoardTask(a.ctx, id, beforeRef)
+	if err == nil {
+		a.emitChanged(t.ID, "reorder")
 	}
 	return t, err
 }

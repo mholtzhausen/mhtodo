@@ -58,6 +58,7 @@ mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
 mhtodo list [--all] [--archived] [--roots] [--status S] [--search S] [--sort F] [--limit N]
+mhtodo reorder ID [--before ID]
 mhtodo activity add ID [--activity S] [--comment S]       # at least one
 mhtodo activity list [--task ID ...] [--limit N]
 mhtodo activity rm ID --yes
@@ -72,7 +73,7 @@ mhtodo update [--check] [--force]                         # self-update from Git
 - IDs accept any unique prefix of **4+ characters**. Prefixes are time-ordered, so
   tasks created seconds apart share long prefixes — **display 13 characters** in
   any generated listing, not 8.
-- `--sort` fields: `{{SORT_FIELDS}}`; suffix `-` ascending, `+`/none descending.
+- `--sort` fields: `{{SORT_FIELDS}}`; default `board`; suffix `-` ascending, `+`/none descending.
 - Sub-tasks are **one level deep**. Passing a sub-task to `--parent` is rejected
   with `parent_is_child`.
 - `mhtodo list` excludes `done` and archived tasks by default.
@@ -88,7 +89,7 @@ mhtodo update [--check] [--force]                         # self-update from Git
 | `done` | Complete and verified. |
 
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
-`parent_id`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
+`parent_id`, `board_rank`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
 
 ### Markdown fields
