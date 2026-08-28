@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 (6e3b43c)
+
+### Features and Improvements
+- Board task reordering: drag root cards within a column, cross-column drag changes status; CLI `mhtodo reorder`; default list/board sort uses `board_rank`
+- Status updates can reorder within the column when appropriate
+- Modal detail mode, resizable pin/float panels, and board arrow navigation
+- Agent integration contract **v7** (`mhtodo ai`)
+
+### Bugfixes
+- Window position persistence and global hotkey (`Ctrl+Shift+Alt+T`) on Ubuntu 24+ Wayland: default to XWayland, periodic hotkey re-grab, resume-from-suspend re-grab, safer position capture
+
+### Deprecations
+- (none)
+
 ## 1.3.0 (1ae273f)
 
 ### Features and Improvements
