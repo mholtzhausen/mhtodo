@@ -8,10 +8,52 @@
   import NewTaskDialog from './components/NewTaskDialog.svelte'
   import ConfirmDialog from './components/ConfirmDialog.svelte'
   import { api, errMsg, type Activity, type Status } from './lib/api'
+  import { boardAdjacentTaskId } from './lib/boardOrder'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
   type View = 'board' | 'list' | 'activity'
+  type DetailMode = 'pinned' | 'floating' | 'modal'
+
+  function loadDetailMode(): DetailMode {
+    try {
+      const stored = localStorage.getItem('mhtodo.detailMode')
+      if (stored === 'pinned' || stored === 'floating' || stored === 'modal') return stored
+      const legacy = localStorage.getItem('mhtodo.detailPinned')
+      if (legacy === 'true') return 'pinned'
+    } catch {
+      /* ignore */
+    }
+    return 'floating'
+  }
+
+  const DETAIL_PANEL_WIDTH_DEFAULT = 420
+  const DETAIL_PANEL_WIDTH_MIN = 280
+
+  function maxDetailPanelWidth() {
+    return Math.min(960, Math.floor(window.innerWidth * 0.75))
+  }
+
+  function loadDetailPanelWidth(): number {
+    try {
+      for (const key of ['mhtodo.detailPanelWidth', 'mhtodo.detailPinnedWidth']) {
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          const n = parseInt(stored, 10)
+          if (!Number.isNaN(n)) {
+            return Math.max(DETAIL_PANEL_WIDTH_MIN, Math.min(maxDetailPanelWidth(), n))
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return DETAIL_PANEL_WIDTH_DEFAULT
+  }
+
+  function clampDetailPanelWidth(w: number) {
+    return Math.max(DETAIL_PANEL_WIDTH_MIN, Math.min(maxDetailPanelWidth(), w))
+  }
   const storedView = (() => {
     try {
       return localStorage.getItem('mhtodo.view')
@@ -32,14 +74,9 @@
   })()
   let showSubtasks = $state(storedShowSub !== 'false')
 
-  const storedPin = (() => {
-    try {
-      return localStorage.getItem('mhtodo.detailPinned')
-    } catch {
-      return null
-    }
-  })()
-  let detailPinned = $state(storedPin === 'true')
+  let detailMode = $state<DetailMode>(loadDetailMode())
+  let detailPanelWidth = $state(loadDetailPanelWidth())
+  let resizingDetail = $state(false)
   let alwaysOnTop = $state(false)
 
   let tasks = $state<any[]>([])
@@ -96,13 +133,66 @@
     }
   }
 
-  function togglePin() {
-    detailPinned = !detailPinned
+  function setDetailMode(mode: DetailMode) {
+    if (detailMode === mode) return
+    detailMode = mode
     try {
-      localStorage.setItem('mhtodo.detailPinned', detailPinned ? 'true' : 'false')
+      localStorage.setItem('mhtodo.detailMode', mode)
     } catch {
       /* ignore */
     }
+  }
+
+  function selectTask(id: string) {
+    if (detailMode === 'modal' && selectedId) return
+    selectedId = id
+  }
+
+  function navigateBoardTask(dir: -1 | 1) {
+    if (detailMode !== 'modal' || !selectedId || view !== 'board') return
+    const nextId = boardAdjacentTaskId(tasks, showSubtasks, selectedId, dir)
+    if (nextId) selectedId = nextId
+  }
+
+  function persistDetailPanelWidth() {
+    try {
+      localStorage.setItem('mhtodo.detailPanelWidth', String(detailPanelWidth))
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function startDetailResize(e: PointerEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startWidth = detailPanelWidth
+    resizingDetail = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    function onMove(ev: PointerEvent | MouseEvent) {
+      if ('buttons' in ev && ev.buttons === 0) return
+      detailPanelWidth = clampDetailPanelWidth(startWidth + startX - ev.clientX)
+    }
+
+    function onUp() {
+      resizingDetail = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('pointermove', onMove, true)
+      document.removeEventListener('pointerup', onUp, true)
+      document.removeEventListener('pointercancel', onUp, true)
+      document.removeEventListener('mousemove', onMove, true)
+      document.removeEventListener('mouseup', onUp, true)
+      persistDetailPanelWidth()
+    }
+
+    document.addEventListener('pointermove', onMove, true)
+    document.addEventListener('pointerup', onUp, true)
+    document.addEventListener('pointercancel', onUp, true)
+    document.addEventListener('mousemove', onMove, true)
+    document.addEventListener('mouseup', onUp, true)
   }
 
   async function toggleAlwaysOnTop() {
@@ -183,13 +273,29 @@
       else if (dialogOpen) {
         dialogOpen = false
         dialogParentId = ''
-      } else if (selectedId && !detailPinned) selectedId = null
+      } else if (selectedId && detailMode !== 'pinned') selectedId = null
       else api.hideWindow()
       return
     }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
       e.preventDefault()
       api.quit()
+      return
+    }
+    if (
+      (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+      detailMode === 'modal' &&
+      selectedId &&
+      view === 'board' &&
+      !dialogOpen &&
+      !confirmTask &&
+      !typing &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      e.preventDefault()
+      navigateBoardTask(e.key === 'ArrowLeft' ? -1 : 1)
       return
     }
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return
@@ -252,6 +358,14 @@
     }
   }
 
+  function onWindowResize() {
+    const clamped = clampDetailPanelWidth(detailPanelWidth)
+    if (clamped !== detailPanelWidth) {
+      detailPanelWidth = clamped
+      persistDetailPanelWidth()
+    }
+  }
+
   onMount(async () => {
     if (!inWails) {
       loading = false
@@ -272,6 +386,7 @@
       dialogOpen = true
     })
     window.addEventListener('keydown', onKeydown)
+    window.addEventListener('resize', onWindowResize)
     await load()
   })
 
@@ -279,10 +394,15 @@
     unbindChanged?.()
     unbindTrayNewTask?.()
     window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('resize', onWindowResize)
+    if (resizingDetail) {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
   })
 </script>
 
-<div class="flex h-full flex-col">
+<div class="flex h-full flex-col {resizingDetail ? 'select-none' : ''}">
   <header class="flex h-[52px] flex-none items-center gap-4 border-b border-line-soft bg-chrome px-5">
     <div class="flex items-center gap-2.5">
       <span
@@ -437,7 +557,7 @@
           {search}
           selectedId={selectedId}
           {showSubtasks}
-          onSelect={(id: string) => (selectedId = id)}
+          onSelect={selectTask}
           onQuickAdd={(s: Status) => {
             dialogInitialStatus = s
             dialogParentId = ''
@@ -452,7 +572,7 @@
           hasFilters={status !== '' || search.trim() !== ''}
           selectedId={selectedId}
           {showSubtasks}
-          onSelect={(id: string) => (selectedId = id)}
+          onSelect={selectTask}
         />
       {:else}
         <ActivityView
@@ -464,23 +584,26 @@
               ? activityFilterIds.filter((x) => x !== id)
               : [...activityFilterIds, id]
           }}
-          onSelectTask={(id) => (selectedId = id)}
+          onSelectTask={selectTask}
           onClearFilter={() => (activityFilterIds = [])}
         />
       {/if}
     </main>
 
-    {#if selectedTask && detailPinned}
+    {#if selectedTask && detailMode === 'pinned'}
       {#key selectedTask.id}
         <TaskDetail
           task={selectedTask}
           parentTitle={selectedParentTitle}
-          pinned={true}
+          mode="pinned"
+          width={detailPanelWidth}
+          resizing={resizingDetail}
+          onResizeStart={startDetailResize}
           onClose={() => (selectedId = null)}
           onError={showToast}
           onDelete={(t: any) => requestDelete(t)}
-          onTogglePin={togglePin}
-          onSelectParent={(id) => (selectedId = id)}
+          onSetMode={setDetailMode}
+          onSelectParent={selectTask}
           onAddSubtask={(pid) => {
             dialogParentId = pid
             dialogInitialStatus = 'pending'
@@ -502,23 +625,50 @@
     >
   </footer>
 
-  {#if selectedTask && !detailPinned}
+  {#if selectedTask && detailMode === 'floating'}
     {#key selectedTask.id}
       <TaskDetail
         task={selectedTask}
         parentTitle={selectedParentTitle}
-        pinned={false}
+        mode="floating"
+        width={detailPanelWidth}
+        resizing={resizingDetail}
+        onResizeStart={startDetailResize}
         onClose={() => (selectedId = null)}
         onError={showToast}
         onDelete={(t: any) => requestDelete(t)}
-        onTogglePin={togglePin}
-        onSelectParent={(id) => (selectedId = id)}
+        onSetMode={setDetailMode}
+        onSelectParent={selectTask}
         onAddSubtask={(pid) => {
           dialogParentId = pid
           dialogInitialStatus = 'pending'
           dialogOpen = true
         }}
       />
+    {/key}
+  {/if}
+
+  {#if selectedTask && detailMode === 'modal'}
+    {#key selectedTask.id}
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+        onclick={() => (selectedId = null)}
+      >
+        <TaskDetail
+          task={selectedTask}
+          parentTitle={selectedParentTitle}
+          mode="modal"
+          onClose={() => (selectedId = null)}
+          onError={showToast}
+          onDelete={(t: any) => requestDelete(t)}
+          onSetMode={setDetailMode}
+          onAddSubtask={(pid) => {
+            dialogParentId = pid
+            dialogInitialStatus = 'pending'
+            dialogOpen = true
+          }}
+        />
+      </div>
     {/key}
   {/if}
 

@@ -6,27 +6,41 @@
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
 
+  type DetailMode = 'pinned' | 'floating' | 'modal'
+
   let {
     task,
     parentTitle = null,
-    pinned,
+    mode,
+    width = 420,
+    resizing = false,
+    onResizeStart,
     onClose,
     onError,
     onDelete,
-    onTogglePin,
+    onSetMode,
     onAddSubtask,
     onSelectParent
   }: {
     task: any
     parentTitle?: string | null
-    pinned: boolean
+    mode: DetailMode
+    width?: number
+    resizing?: boolean
+    onResizeStart?: (e: PointerEvent) => void
     onClose: () => void
     onError: (msg: string) => void
     onDelete: (task: any) => void
-    onTogglePin: () => void
+    onSetMode: (mode: DetailMode) => void
     onAddSubtask: (parentId: string) => void
     onSelectParent?: (parentId: string) => void
   } = $props()
+
+  const modeOptions: { value: DetailMode; label: string; title: string }[] = [
+    { value: 'pinned', label: 'Pin', title: 'Pin detail to the right' },
+    { value: 'floating', label: 'Float', title: 'Floating panel on the right' },
+    { value: 'modal', label: 'Modal', title: 'Full modal overlay' }
+  ]
 
   let title = $state(task.title)
   let description = $state(task.description)
@@ -142,21 +156,59 @@
     }
   }
 
-  const shellClass = pinned
-    ? 'flex h-full w-[420px] flex-none flex-col border-l border-line bg-canvas'
-    : 'fixed inset-y-0 right-0 z-40 flex w-[420px] max-w-full flex-col border-l border-line bg-canvas shadow-2xl'
+  const resizable = $derived(mode === 'pinned' || mode === 'floating')
+
+  const shellClass = $derived(
+    mode === 'pinned'
+      ? 'relative flex h-full flex-none flex-col border-l border-line bg-canvas'
+      : mode === 'floating'
+        ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-2xl'
+        : 'flex max-h-[90vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-2xl'
+  )
+
+  const enterTransition = $derived(
+    mode === 'modal' ? { y: 12, duration: 150 } : { x: 40, duration: 150 }
+  )
 </script>
 
-<aside in:fly={{ x: 40, duration: 150 }} class={shellClass}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<aside
+  in:fly={enterTransition}
+  class={shellClass}
+  style:width={resizable ? `${width}px` : undefined}
+  style:max-width={resizable ? '100%' : undefined}
+  onclick={(e) => e.stopPropagation()}
+>
+  {#if resizable && onResizeStart}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize detail pane"
+      class="absolute inset-y-0 left-0 z-30 w-1.5 -translate-x-1/2 cursor-col-resize touch-none
+        {resizing ? 'bg-accent/50' : 'bg-transparent hover:bg-accent/30'}"
+      onpointerdown={onResizeStart}
+    ></div>
+  {/if}
   <div class="flex flex-none items-center justify-end gap-2 border-b border-line-soft bg-chrome px-4 py-2.5">
-    <button
-      onclick={onTogglePin}
-      title={pinned ? 'Unpin detail' : 'Pin detail to the right'}
-      class="rounded px-2 py-1 text-xs font-medium transition-colors
-        {pinned ? 'bg-accent/20 text-accent-hi' : 'text-ink-3 hover:bg-white/5 hover:text-ink'}"
+    <div
+      class="mr-auto flex rounded border border-line-soft p-0.5"
+      role="group"
+      aria-label="Detail display mode"
     >
-      {pinned ? 'Pinned' : 'Pin'}
-    </button>
+      {#each modeOptions as opt (opt.value)}
+        <button
+          type="button"
+          onclick={() => onSetMode(opt.value)}
+          title={opt.title}
+          aria-pressed={mode === opt.value}
+          class="rounded px-2 py-0.5 text-xs font-medium transition-colors
+            {mode === opt.value ? 'bg-accent/20 text-accent-hi' : 'text-ink-3 hover:bg-white/5 hover:text-ink'}"
+        >
+          {opt.label}
+        </button>
+      {/each}
+    </div>
     <button
       onclick={onClose}
       title="Close (esc)"
@@ -170,14 +222,20 @@
     {#if task.parent_id}
       <div>
         <span class="micro mb-1.5">Parent task</span>
-        <button
-          type="button"
-          onclick={() => onSelectParent?.(task.parent_id)}
-          class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
-          title={parentTitle ?? task.parent_id}
-        >
-          {parentTitle ?? 'Open parent'}
-        </button>
+        {#if mode === 'modal'}
+          <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
+            {parentTitle ?? task.parent_id}
+          </p>
+        {:else}
+          <button
+            type="button"
+            onclick={() => onSelectParent?.(task.parent_id)}
+            class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
+            title={parentTitle ?? task.parent_id}
+          >
+            {parentTitle ?? 'Open parent'}
+          </button>
+        {/if}
       </div>
     {/if}
 
