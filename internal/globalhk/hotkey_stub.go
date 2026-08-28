@@ -18,6 +18,9 @@ func Register(_ []Modifier, _ Key, _ func()) (*Handle, error) {
 // Close is a no-op.
 func (h *Handle) Close() {}
 
+// Regrab is a no-op on stub builds.
+func (h *Handle) Regrab() error { return ErrUnsupported }
+
 // Modifier / Key match the Linux API surface so call sites compile everywhere.
 type Modifier uint32
 type Key uint32

@@ -149,6 +149,7 @@ type Handle struct {
 	key      C.KeySym
 	cbHandle cgo.Handle
 	done     chan struct{}
+	stop     chan struct{} // closes to end the re-grab watchdog
 }
 
 type callbackBox struct {
@@ -233,6 +234,7 @@ func Register(mods []Modifier, key Key, onFire func()) (*Handle, error) {
 		key:      keysym,
 		cbHandle: cb,
 		done:     make(chan struct{}),
+		stop:     make(chan struct{}),
 	}
 
 	go func() {
@@ -240,8 +242,50 @@ func Register(mods []Modifier, key Key, onFire func()) (*Handle, error) {
 		C.hkPump(C.uintptr_t(cb), d, win)
 	}()
 
+	h.startWatchdog()
+
 	log.Printf("global hotkey registered (ctrl+shift+alt+key)")
 	return h, nil
+}
+
+const regrabInterval = 45 * time.Second
+
+func (h *Handle) startWatchdog() {
+	go func() {
+		t := time.NewTicker(regrabInterval)
+		defer t.Stop()
+		for {
+			select {
+			case <-h.stop:
+				return
+			case <-t.C:
+				if err := h.Regrab(); err != nil {
+					log.Printf("global hotkey re-grab: %v", err)
+				}
+			}
+		}
+	}()
+}
+
+// Regrab renews the X11 key grab. Compositors and screen lock often drop passive
+// grabs; periodic re-grab keeps Ctrl+Shift+Alt+T working on long-lived sessions.
+func (h *Handle) Regrab() error {
+	if h == nil {
+		return errors.New("hotkey: nil handle")
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.display == nil || len(h.mods) == 0 {
+		return errors.New("hotkey: closed")
+	}
+	rc := C.hkGrabKey(h.display, (*C.uint)(unsafe.Pointer(&h.mods[0])), C.int(len(h.mods)), h.key)
+	if rc != 0 {
+		if rc == 1 {
+			return ErrConflict
+		}
+		return fmt.Errorf("hotkey: grab failed (%d)", int(rc))
+	}
+	return nil
 }
 
 // Close unregisters the hotkey and stops the event loop.
@@ -253,6 +297,11 @@ func (h *Handle) Close() {
 	defer h.mu.Unlock()
 	if h.display == nil {
 		return
+	}
+	select {
+	case <-h.stop:
+	default:
+		close(h.stop)
 	}
 	if len(h.mods) > 0 {
 		C.hkUngrabKey(h.display, (*C.uint)(unsafe.Pointer(&h.mods[0])), C.int(len(h.mods)), h.key)

@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"mhtodo/internal/core"
 	"mhtodo/internal/globalhk"
 	"mhtodo/internal/notify"
+	"mhtodo/internal/platform"
 	"mhtodo/internal/store"
 	mhsync "mhtodo/internal/sync"
 	"mhtodo/internal/tray"
@@ -43,6 +45,8 @@ type App struct {
 	posX  int
 	posY  int
 	posOK bool // true once we have a captured or loaded position
+
+	posStop chan struct{} // stops periodic position capture
 }
 
 var app = &App{}
@@ -105,9 +109,11 @@ func (a *App) domReady(_ context.Context) {
 	if a.visible.Load() {
 		a.restoreWindowPos()
 	}
+	a.startPosCapture()
 }
 
 func (a *App) shutdown(_ context.Context) {
+	a.stopPosCapture()
 	if a.visible.Load() {
 		a.captureWindowPos()
 	}
@@ -322,12 +328,20 @@ func (a *App) showWindow() {
 		wruntime.WindowSetAlwaysOnTop(a.ctx, false)
 	}
 	a.visible.Store(true)
+	a.startPosCapture()
+	// Some WMs apply the final frame only after the first map; nudge once more.
+	time.AfterFunc(150*time.Millisecond, func() {
+		if a.visible.Load() {
+			a.restoreWindowPos()
+		}
+	})
 }
 
 func (a *App) hideWindow() {
 	if a.ctx == nil {
 		return
 	}
+	a.stopPosCapture()
 	a.captureWindowPos() // must run while still mapped
 	wruntime.WindowHide(a.ctx)
 	a.visible.Store(false)
@@ -339,10 +353,59 @@ func (a *App) captureWindowPos() {
 		return
 	}
 	x, y := wruntime.WindowGetPosition(a.ctx)
+	if !windowPosLooksValid(x, y) {
+		return
+	}
 	a.posMu.Lock()
 	a.posX, a.posY, a.posOK = x, y, true
 	a.posMu.Unlock()
 	a.persistWindowPos(x, y)
+}
+
+// windowPosLooksValid rejects bogus (0,0) reads on native Wayland where GTK
+// cannot report global coordinates — overwriting a good saved position.
+func windowPosLooksValid(x, y int) bool {
+	if x != 0 || y != 0 {
+		return true
+	}
+	if os.Getenv("MHTODO_WAYLAND") == "1" || os.Getenv("GDK_BACKEND") == "wayland" {
+		if os.Getenv("XDG_SESSION_TYPE") == "wayland" {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *App) startPosCapture() {
+	a.stopPosCapture()
+	a.posStop = make(chan struct{})
+	stop := a.posStop
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-t.C:
+				if a.visible.Load() {
+					a.captureWindowPos()
+				}
+			}
+		}
+	}()
+}
+
+func (a *App) stopPosCapture() {
+	if a.posStop == nil {
+		return
+	}
+	select {
+	case <-a.posStop:
+	default:
+		close(a.posStop)
+	}
+	a.posStop = nil
 }
 
 func (a *App) restoreWindowPos() {
@@ -417,6 +480,14 @@ func (a *App) registerGlobalHotkey() {
 		return
 	}
 	a.hotkey = h
+	platform.OnResume(func() {
+		if a.hotkey == nil {
+			return
+		}
+		if err := a.hotkey.Regrab(); err != nil {
+			log.Printf("global hotkey re-grab after resume: %v", err)
+		}
+	})
 }
 
 // Quit is the real exit path: tray "Quit" menu item or Ctrl+Q in the window.

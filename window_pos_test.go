@@ -17,3 +17,21 @@ func TestParseWindowPos(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestWindowPosLooksValid(t *testing.T) {
+	t.Setenv("XDG_SESSION_TYPE", "wayland")
+	t.Setenv("GDK_BACKEND", "wayland")
+	t.Setenv("MHTODO_WAYLAND", "1")
+	if windowPosLooksValid(0, 0) {
+		t.Fatal("expected (0,0) invalid on native wayland")
+	}
+	if !windowPosLooksValid(10, 0) {
+		t.Fatal("expected non-zero valid")
+	}
+
+	t.Setenv("MHTODO_WAYLAND", "")
+	t.Setenv("GDK_BACKEND", "x11")
+	if !windowPosLooksValid(0, 0) {
+		t.Fatal("expected (0,0) valid on x11")
+	}
+}

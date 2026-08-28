@@ -187,11 +187,11 @@ status transitions → activity → delete) using only this CLI.
   overlay drawer to an in-flow right pane (persisted). Esc closes modals/unpinned detail, otherwise hides to tray.
 - **Sub-tasks toggle:** header control or `s` (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
-- **Window position:** last position is saved on hide/quit (`meta.window_pos`) and restored on show.
+- **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `s` sub-tasks · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list) · `b`/`l`/`a` views · `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
 - **System tray:** Show/Hide, New Task, Quit; close hides to tray; label shows open-task count.
-  Global hotkey (X11) toggles the window and raises it on show.
+  Global hotkey (X11) toggles the window and raises it on show. The grab is renewed periodically and after resume from suspend (screen lock can drop passive X11 grabs).
 - **Notifications:** on real →done and →waiting only (not →review).
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.

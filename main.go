@@ -26,6 +26,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 
 	"mhtodo/internal/cli"
+	"mhtodo/internal/platform"
 	"mhtodo/internal/tray"
 )
 
@@ -73,6 +74,8 @@ func init() {
 // runGUI is the GUI entrypoint: single-instance lock, focus-on-relaunch signal,
 // tray registration (before Wails), then wails.Run.
 func runGUI(args []string) {
+	platform.PreferX11Backend()
+
 	if len(args) > 0 && args[0] == "gui" {
 		args = args[1:] // flag parsing stops at non-flag args, so strip the subcommand first
 	}
