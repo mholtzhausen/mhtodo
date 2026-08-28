@@ -357,8 +357,12 @@ order** — the same order the GUI uses (status workflow → rank → `updated_a
    multiple-choice UI. Each option must clearly show:
 
    - **status** (`pending`, `wip`, `waiting`, `review`)
+   - **date** — `updated_at` from the JSON, human-readable
    - **title**
-   - **13-character id prefix** (§2)
+   - **description** — include when non-empty and it helps distinguish similar titles
+
+   Do **not** show task ids in the picker labels — the user picks by meaning; map
+   the selection back to the task id from the JSON you already fetched.
 
    List options in **exactly** the order `mhtodo list` returned them. Include at
    least one escape hatch (e.g. *None of these / something else*) so the user is
@@ -533,7 +537,7 @@ it reads first. Search the installed artifact for these and **delete them**:
 | Hand-back that only sets progress/status with no `--feedback` | §3.7: set `--feedback` with summary + notes/takeaways |
 | Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are planned steps, activities are actions within a step |
 | `waiting` or `review` on sub-tasks | §3.5: sub-tasks use `pending` → `wip` → `done` only; blocking moves the **parent** to `waiting` |
-| Task list as prose groups, omitting `wip`, or auto-picking the first `pending` row | §3.8: `mhtodo list --roots --json` in board order → **AskUserQuestion** / **AskQuestion** picker |
+| Task list as prose groups, omitting `wip`, or auto-picking the first `pending` row | §3.8: `mhtodo list --roots --json` in board order → **AskUserQuestion** / **AskQuestion** picker (status, date, title; no ids in labels) |
 
 Example labels matter more than they look: they sit above the rule in the file and
 are what an agent actually copies. A correct rule underneath a table of sentences
