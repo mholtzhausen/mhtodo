@@ -145,7 +145,7 @@ activity already shown to the agent, for the comment relay in §3.6.
 | Status / progress | Agent moves it. | Agent moves it. |
 | Narration | **Activities only** while working. | Activities (and the description). |
 | Closing | Take to `review`. **The user** marks it done. | Agent may mark `done`. |
-| Decomposition | Add sub-tasks beneath it. Never narrow their row. | Sub-tasks as useful. |
+| Decomposition | Step plan as sub-tasks on start (§3.5). Never narrow their row. | Same — immediate step plan on start. |
 
 **Feedback** is a short **post-work summary**: outcome in a sentence or two, plus any
 notes and takeaways the user should keep (gotchas, follow-ups, decisions). It lives
@@ -197,11 +197,18 @@ the user tells concurrent agents apart on the board. Keep titles under ~60 chars
 Skip registration entirely for conversational turns, one-line lookups, and work
 already covered by the session's open task.
 
+Immediately after adopting or registering, draft the step plan (§3.5).
+
 ### 3.4 Activities — the primary reporting channel
 
 ```bash
 mhtodo activity add <id> --activity "<Short Label>" [--comment "<detail>"]
 ```
+
+**Which `<id>`?** When the job has sub-tasks, post activities on the sub-task
+being worked — they are actions taken to complete that step. When there are no
+sub-tasks, post on the parent. Use judgment for job-wide moments (hand-back,
+plan changes) — parent is fine.
 
 **`--activity` is a label, not a sentence.** Two to four words, Title Case, a noun
 phrase — the kind of thing that fits on a chip in a list. The GUI renders it as a
@@ -248,48 +255,83 @@ long job is a healthy trace, not noise.
 Roughly one every few minutes of real work. **Twenty minutes of silence reads as a
 stalled agent.**
 
-### 3.5 Sub-tasks — decomposition, one level
+### 3.5 Sub-tasks — step plan, one level
 
-Use when the job has **three or more distinct pieces** with their own lifecycles,
-especially when the user wrote a coarse task: sub-tasks show the agent's breakdown
-without touching their row, and let them object to it.
+When a root task is adopted or registered and work begins, **immediately** draft
+a step plan for the job.
 
-> **Sub-task or activity?** A sub-task is a *unit of work with its own lifecycle*.
-> An activity is *something that happened*. "Migrate the loader" is a sub-task;
-> `Loader Migrated` is an activity. If it doesn't deserve its own progress bar,
-> it's an activity.
+- **Two steps or fewer** — work on the parent only. No sub-tasks.
+- **Three or more steps** — create one sub-task per step under the parent as soon
+  as the plan is clear:
 
-Three or four sub-tasks is a breakdown; twelve is a checklist nobody reads.
+```bash
+mhtodo add "<step title>" --parent <parent-id> --status pending --json
+# when work on a step starts (possibly in parallel — §3.9):
+mhtodo status <step-id> wip
+# when a step is finished:
+mhtodo status <step-id> done
+```
+
+Sub-tasks are the visible breakdown — especially valuable when the user wrote a
+coarse task: the plan appears without touching their row, and they can object to
+it. Three or four steps is a solid plan; twelve is a checklist nobody reads.
+
+> **Sub-task or activity?** A sub-task is a *planned step* in the breakdown.
+> An activity is an *action taken while completing* a step. "Add CSV serializer
+> endpoint" is a sub-task; `Serializer Implemented` is an activity on that
+> sub-task.
+
+Sub-tasks use **`pending` → `wip` → `done` only** — never `review` or `waiting`.
+
+**Parent row is the job.** Parent status and progress reflect the overall job —
+informed by sub-task completion, but not mechanically derived from it. Do not
+treat "all sub-tasks done" as synonymous with "job finished" unless the work is
+actually complete.
+
+**Replan freely.** Add, remove, or reorder sub-tasks whenever the shape of the
+job changes — new findings, user input, blockers, scope shifts. Drop obsolete
+steps (`rm` only for rows created in error; otherwise mark `done` with a brief
+activity explaining why).
+
+**Blocking moves the parent.** Sub-tasks render inside the parent card on the
+board, not as separate kanban columns. When user input is required, set the
+**parent** to `waiting` — the whole job is blocked until they respond (§3.7).
+Context injection flips the parent back to `wip` on the next user turn.
 
 ### 3.6 Reading the user's comments
 
 The user writes comments on tasks in the GUI mid-job. Treat a comment from them as
-an instruction, and acknowledge it with an activity so they can see it landed.
+an instruction, and acknowledge it with an activity on that same task so they can
+see it landed.
 
 ```bash
-mhtodo activity list --task <id> --json
+mhtodo activity list --task <id> --json   # the task they commented on; repeat --task for each sub-task if needed
 ```
 
 ### 3.7 Handing back
 
-Never end a turn leaving a task on `wip` — that claims a live agent is on it.
+Never end a turn leaving the **parent** on `wip` — that claims a live agent is on it.
+
+If the job has sub-tasks, **every sub-task must be `done`** before the parent
+can move to `review`. Incomplete steps mean the job is not ready to hand back.
 
 ```bash
-mhtodo activity add <id> --activity "Handed Back" --comment "<files, PR, outcome>"
-mhtodo edit <id> --progress 100 --feedback "<short summary + notes/takeaways>"
-mhtodo status <id> review     # user's task — they close it
+mhtodo activity add <parent-id> --activity "Handed Back" --comment "<files, PR, outcome>"
+mhtodo edit <parent-id> --progress 100 --feedback "<short summary + notes/takeaways>"
+mhtodo status <parent-id> review     # user's task — they close it
 # or, for the agent's own task:
-mhtodo edit <id> --desc "<what was delivered, past tense>" \
-  --feedback "<short summary + notes/takeaways>" && mhtodo done <id>
+mhtodo edit <parent-id> --desc "<what was delivered, past tense>" \
+  --feedback "<short summary + notes/takeaways>" && mhtodo done <parent-id>
 ```
 
 **`--feedback` at hand-back** is required whenever substantive work happened: a
 brief outcome plus notes and takeaways (markdown OK — e.g. a short bullet list).
 Keep it scannable; put the blow-by-blow in activities, not here.
 
-Use `waiting` instead when blocked on an answer. The closing activity is the
-step-trace the user can skim; **feedback** is what they read later for the
-digest — files, PRs, outcomes, gotchas — not "finished the task".
+Use `waiting` on the **parent** instead when blocked on an answer — the whole
+card moves to the Waiting column (sub-tasks stay nested inside it). The closing
+activity is the step-trace the user can skim; **feedback** is what they read
+later for the digest — files, PRs, outcomes, gotchas — not "finished the task".
 
 ### 3.8 Answering "what's on my list?"
 
@@ -316,8 +358,12 @@ abandoned"**. Hard-killed sessions leak `wip` rows that the session-end hook
 ### 3.9 Subagents
 
 Subagents share the parent session's task and pointer, and must **not** register
-their own — that fragments one job into several dashboard rows. A subagent may
-post an activity against the shared task; the orchestrator owns statuses.
+their own root task — that fragments one job into several dashboard rows.
+
+Each subagent works a step: set that sub-task to `wip` and post activities on
+**that sub-task**. Multiple steps may be `wip` in parallel across subagents.
+The orchestrator owns the parent row — creating and replanning sub-tasks, setting
+the parent to `waiting` or `review`, and closing the job.
 
 ### 3.10 Never narrate the bookkeeping
 
@@ -460,6 +506,8 @@ it reads first. Search the installed artifact for these and **delete them**:
 | "`--activity` is the headline … short and past tense" | §3.4: `--activity` is a **Title Case label, not a sentence** — 2–4 words, noun phrase |
 | Sentence-style example labels (`Picked up in a session`, `Traced it to the async GCS loader`, `Handed back for review — 3 files changed`) | Chip-style labels (`Task Picked Up`, `Root Cause Found`, `Handed Back`) |
 | Hand-back that only sets progress/status with no `--feedback` | §3.7: set `--feedback` with summary + notes/takeaways |
+| Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are planned steps, activities are actions within a step |
+| `waiting` or `review` on sub-tasks | §3.5: sub-tasks use `pending` → `wip` → `done` only; blocking moves the **parent** to `waiting` |
 
 Example labels matter more than they look: they sit above the rule in the file and
 are what an agent actually copies. A correct rule underneath a table of sentences
