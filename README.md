@@ -96,10 +96,10 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set) |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots]` | default: excludes done **and archived**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
+| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--human-only]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--human-only` marks a user-owned task agents must skip |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100]` | at least one flag required; never changes status |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--human-only \| --no-human-only]` | at least one flag required; never changes status; `--cwd ""` clears the path |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
@@ -110,7 +110,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `activity rm` | `mhtodo activity rm ID [--yes]` | non-TTY requires `--yes` |
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
-| `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums) |
+| `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; documents human-only and cwd rules) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is present, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
@@ -129,7 +129,9 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "completed_at": null,
   "archived_at": null,
   "parent_id": null,
-  "board_rank": 1.0
+  "board_rank": 1.0,
+  "cwd": "/home/me/projects/mhtodo",
+  "human_only": false
 }
 ```
 
@@ -148,15 +150,19 @@ Activity entry:
 `--json list` returns an array of task objects. Timestamps are RFC3339 UTC; `completed_at` is set on
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
 `parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
-(lower = higher on the board). IDs are UUIDv7 (time-ordered).
+(lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
+directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
+such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
 
 ### Agent usage examples
 
 ```bash
-mhtodo add "Refactor auth" --desc "Split token + session" --json | jq -r .id
+mhtodo add "Refactor auth" --desc "Split token + session" --cwd "$PWD" --json | jq -r .id
 mhtodo add "Write tests" --parent 01958b2e --json
+mhtodo add "Renew passport" --human-only --json
 mhtodo list --status wip --json
 mhtodo list --roots --json
+mhtodo list --human-only --json   # include user-owned tasks
 mhtodo show 01958b2e --json
 mhtodo edit 01958b2e --progress 60
 mhtodo status 01958b2e review
@@ -175,16 +181,20 @@ status transitions → activity → delete) using only this CLI.
 ## GUI
 
 - **Board view (default):** five kanban columns — pending / wip / waiting / review / done — with live
-  counts; root cards show title, progress, relative time. Sub-tasks nest under the parent card when
-  shown (never own column cards). Drag a **root** card to change status. Per-column **+** opens
-  new-task preset to that status.
-- **List view:** status + progress stacked in one column; title takes remaining width; updated shows
-  elapsed + absolute time. Sub-tasks indent under parents when shown. Toggle Board / List / Activity
-  with `b` / `l` / `a`; choice persists.
+  counts; root cards show title, progress, relative time; human-only cards show a person icon top-right.
+  Sub-tasks nest under the parent card when shown (never own column cards). Drag a **root** card to
+  change status. Per-column **+** opens new-task preset to that status. Filter chips: **All** /
+  **Agents** (hide human-only) / **Human** (human-only only).
+- **List view:** status + progress stacked in one column; human-only rows show a person icon before
+  the status chip; title takes remaining width; updated shows elapsed + absolute time. Sub-tasks indent
+  under parents when shown. Same human filter as the board. Toggle Board / List / Activity with `b` /
+  `l` / `a`; choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), filterable
   by ticket checkbox dropdown.
-- **Detail pane:** edit fields, activity composer, Add sub-task (roots only). **Pin** switches from
-  overlay drawer to an in-flow right pane (persisted). Esc closes modals/unpinned detail, otherwise hides to tray.
+- **Detail pane:** edit fields (including working directory with folder picker, human-only checkbox),
+  activity composer, Add sub-task (roots only). **Pin** switches from overlay drawer to an in-flow
+  right pane (persisted). Esc closes modals/unpinned detail, otherwise hides to tray.
+- **New task dialog:** optional working directory (text + system folder picker) and human-only checkbox.
 - **Sub-tasks toggle:** header control or `s` (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
@@ -206,10 +216,11 @@ status transitions → activity → delete) using only this CLI.
 
 | Bound method (GUI) | CLI command | Notes |
 |---|---|---|
-| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly |
+| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
 | `GetTask(id)` | `show` | prefix match allowed |
-| `CreateTask(in)` | `add` | optional ParentID |
-| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress only |
+| `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly |
+| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only |
+| `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting; assigns end rank on column change |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
 | `ArchiveDone()` | `archive` | bulk done → archive |
