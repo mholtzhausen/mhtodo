@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0 (c4c1545)
+
+### Features and Improvements
+- Task `cwd` field: optional absolute working-directory path on tasks (`--cwd` on add/edit; GUI in new-task dialog and detail pane)
+- `human_only` flag: mark user-owned tasks agents must skip; default `list` hides them (`--human-only` to include); GUI filter chips (Agents / Human / All) and person icon on board cards
+- Agent integration contract **v8** (`mhtodo ai`): documents `cwd`, `human_only`, and stricter never-adopt-human-only guidance
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.4.0 (6e3b43c)
 
 ### Features and Improvements
