@@ -35,11 +35,12 @@ as a place to dump status lines has failed, even if every command succeeds.
 ### The one hard rule
 
 > **An agent may read the board freely. An agent may NEVER adopt or start a task
-> because it found one there.**
+> because it found one there — including tasks marked `human_only`.**
 
 Work begins in exactly two ways: the user asks for something in the session (and
 the agent then searches mhtodo for a matching existing task), or the user points
-at a specific task. There is no third way. Listing is not starting.
+at a specific task. There is no third way. Listing is not starting. Skip any
+`human_only` row even when the user did not use `--human-only` on list.
 
 Any integration that lets an agent pick up work autonomously is wrong and must be
 corrected during upgrade.
@@ -52,12 +53,12 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID]
-mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N]  # at least one flag
+mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--human-only]
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--human-only | --no-human-only]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
-mhtodo list [--all] [--archived] [--roots] [--status S] [--search S] [--sort F] [--limit N]
+mhtodo list [--all] [--archived] [--roots] [--human-only] [--status S] [--search S] [--sort F] [--limit N]
 mhtodo reorder ID [--before ID]
 mhtodo activity add ID [--activity S] [--comment S]       # at least one
 mhtodo activity list [--task ID ...] [--limit N]
@@ -76,7 +77,9 @@ mhtodo update [--check] [--force]                         # self-update from Git
 - `--sort` fields: `{{SORT_FIELDS}}`; default `board`; suffix `-` ascending, `+`/none descending.
 - Sub-tasks are **one level deep**. Passing a sub-task to `--parent` is rejected
   with `parent_is_child`.
-- `mhtodo list` excludes `done` and archived tasks by default.
+- `mhtodo list` excludes `done`, archived, and **human-only** tasks by default.
+  Pass `--human-only` to include human-only rows (for the human's own review, not
+  for agent task pickers).
 
 **Statuses:** `{{STATUS_ENUM}}`
 
@@ -89,8 +92,17 @@ mhtodo update [--check] [--force]                         # self-update from Git
 | `done` | Complete and verified. |
 
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
-`parent_id`, `board_rank`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
+`parent_id`, `board_rank`, `cwd`, `human_only`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
+
+**`cwd`** is an optional absolute path to the project or working directory the task
+belongs to. Set it with `--cwd` on `add`/`edit` when the job is tied to a specific
+checkout. The GUI folder picker sets the same field.
+
+**`human_only`** marks a task the user will handle themselves. Agents must **never**
+adopt, start, or update human-only tasks. Default `mhtodo list` hides them; only
+include them when the user explicitly asks to see their personal queue
+(`mhtodo list --human-only`).
 
 ### Markdown fields
 
@@ -186,7 +198,8 @@ Register:
 
 ```bash
 mhtodo add "[<context>] <short imperative title>" \
-  --desc "<one-line goal>" --status wip --progress 5 --json
+  --desc "<one-line goal>" --status wip --progress 5 \
+  [--cwd "<absolute path>"] --json
 printf '%s\norigin=agent\n' <id> > "$pointer"
 ```
 
@@ -349,9 +362,10 @@ without an explicit pick (§1).
 mhtodo list --roots --json
 ```
 
-Use default list behaviour: open tasks (excludes `done` and archived) in **board
-order** — the same order the GUI uses (status workflow → rank → `updated_at`).
-**Do not re-sort, split into groups, or omit rows** (including `wip`).
+Use default list behaviour: open agent-eligible tasks (excludes `done`, archived,
+and **human-only**) in **board order** — the same order the GUI uses for agent
+work (status workflow → rank → `updated_at`). **Do not re-sort, split into groups,
+or omit rows** (including `wip`).
 
 2. **Present every row with AskUserQuestion** — the host's structured
    multiple-choice UI. Each option must clearly show:
@@ -538,6 +552,7 @@ it reads first. Search the installed artifact for these and **delete them**:
 | Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are planned steps, activities are actions within a step |
 | `waiting` or `review` on sub-tasks | §3.5: sub-tasks use `pending` → `wip` → `done` only; blocking moves the **parent** to `waiting` |
 | Task list as prose groups, omitting `wip`, or auto-picking the first `pending` row | §3.8: `mhtodo list --roots --json` in board order → **AskUserQuestion** / **AskQuestion** picker (status, date, title; no ids in labels) |
+| Adopting or updating tasks with `human_only: true` | §1 / §2: human-only tasks are user-owned; default list hides them — never adopt |
 
 Example labels matter more than they look: they sit above the rule in the file and
 are what an agent actually copies. A correct rule underneath a table of sentences

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { relTime, absList, STATUS_LABELS } from '../lib/format'
   import type { Status } from '../lib/api'
+  import HumanIcon from './HumanIcon.svelte'
 
   let {
     tasks,
@@ -66,6 +67,7 @@
 {:else}
   <div class="flex h-full flex-col overflow-hidden rounded-md border border-line-soft bg-col shadow-sm">
     <div class="flex flex-none items-center gap-3 px-3 py-2 text-[11px] uppercase tracking-[0.07em] text-ink-3">
+      <span class="w-4 flex-none"></span>
       <span class="w-28 flex-none font-medium">Status</span>
       <span class="min-w-0 flex-1 font-medium">Title</span>
       <span class="w-36 flex-none text-right font-medium">Updated</span>
@@ -81,6 +83,14 @@
               : 'w-full'}
             {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
         >
+          {#if t.human_only}
+            <HumanIcon
+              class="h-4 w-4 flex-none text-ink-2"
+              title="Human only — agents skip"
+            />
+          {:else}
+            <span class="w-4 flex-none" aria-hidden="true"></span>
+          {/if}
           <div class="w-28 flex-none">
             <div class="flex flex-col gap-1.5">
               <span

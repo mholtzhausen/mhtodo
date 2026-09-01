@@ -98,6 +98,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		ParentID:    parentID,
+		Cwd:         strings.TrimSpace(in.Cwd),
+		HumanOnly:   in.HumanOnly,
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -190,6 +192,12 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	if in.Progress != nil {
 		t.Progress = *in.Progress
+	}
+	if in.Cwd != nil {
+		t.Cwd = strings.TrimSpace(*in.Cwd)
+	}
+	if in.HumanOnly != nil {
+		t.HumanOnly = *in.HumanOnly
 	}
 	t.UpdatedAt = s.now()
 	if err := s.repo.Update(ctx, t); err != nil {

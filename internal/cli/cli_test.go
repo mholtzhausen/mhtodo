@@ -227,6 +227,48 @@ func TestListFiltersAndSort(t *testing.T) {
 	}
 }
 
+func TestListHumanOnlyFilter(t *testing.T) {
+	out, _, run := newCLI(t)
+
+	if code := run("add", "Agent task"); code != 0 {
+		t.Fatal(code)
+	}
+	if code := run("add", "Human task", "--human-only"); code != 0 {
+		t.Fatal(code)
+	}
+
+	var tasks []core.Task
+	out.Reset()
+	if code := run("list", "--json"); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tasks)
+	if len(tasks) != 1 || tasks[0].Title != "Agent task" {
+		t.Errorf("default list should exclude human-only: %+v", tasks)
+	}
+
+	out.Reset()
+	run("list", "--human-only", "--json")
+	mustJSON(t, out.Bytes(), &tasks)
+	if len(tasks) != 2 {
+		t.Errorf("--human-only should include both: %+v", tasks)
+	}
+}
+
+func TestAddCwdAndHumanOnly(t *testing.T) {
+	out, _, run := newCLI(t)
+
+	out.Reset()
+	if code := run("add", "Project fix", "--cwd", "/home/me/proj", "--human-only", "--json"); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var tsk core.Task
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.Cwd != "/home/me/proj" || !tsk.HumanOnly {
+		t.Errorf("add flags wrong: cwd=%q human_only=%v", tsk.Cwd, tsk.HumanOnly)
+	}
+}
+
 func TestReorderCLI(t *testing.T) {
 	out, _, run := newCLI(t)
 	if code := run("add", "Alpha"); code != 0 {
@@ -582,7 +624,7 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 7",
+		"Integration contract version: 8",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
@@ -617,7 +659,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 7 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 8 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

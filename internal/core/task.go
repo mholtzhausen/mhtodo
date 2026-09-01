@@ -46,6 +46,8 @@ type Task struct {
 	ArchivedAt  *time.Time `json:"archived_at"` // set on archive, cleared on unarchive (v0.2)
 	ParentID    *string    `json:"parent_id"`   // nil = root; one-level children only (v0.3)
 	BoardRank   *float64   `json:"board_rank"`  // nil = unset; root tasks only; lower = higher on board
+	Cwd         string     `json:"cwd"`         // optional project/working directory for the task
+	HumanOnly   bool       `json:"human_only"`  // when true, agents must not adopt or work the task
 }
 
 // CreateInput carries the fields accepted by add / CreateTask.
@@ -56,6 +58,8 @@ type CreateInput struct {
 	Status      Status // zero value → pending
 	Progress    int    // zero value → 0
 	ParentID    string // optional; empty = root. Must resolve to a root task.
+	Cwd         string // optional working directory path
+	HumanOnly   bool   // mark as human-only (agents exclude from default lists)
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
@@ -64,11 +68,14 @@ type UpdateInput struct {
 	Title    *string
 	Desc     *string
 	Feedback *string
-	Progress *int
+	Progress  *int
+	Cwd       *string
+	HumanOnly *bool
 }
 
 func (in UpdateInput) hasFields() bool {
-	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil
+	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
+		in.Cwd != nil || in.HumanOnly != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
@@ -81,7 +88,8 @@ type ListFilter struct {
 	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
 	IncludeDone bool   // default false → done tasks are hidden unless matched by Status
 	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
-	RootsOnly   bool   // true → parent_id IS NULL only (v0.3)
+	RootsOnly         bool // true → parent_id IS NULL only (v0.3)
+	IncludeHumanOnly  bool // false (default) → human_only tasks are hidden; true → include them
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

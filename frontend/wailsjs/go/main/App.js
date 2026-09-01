@@ -50,6 +50,10 @@ export function ListTasks(arg1) {
   return window['go']['main']['App']['ListTasks'](arg1);
 }
 
+export function PickDirectory() {
+  return window['go']['main']['App']['PickDirectory']();
+}
+
 export function Quit() {
   return window['go']['main']['App']['Quit']();
 }

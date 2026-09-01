@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -46,12 +46,14 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		archived  sql.NullString
 		parent    sql.NullString
 		boardRank sql.NullFloat64
+		humanOnly int
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank); err != nil {
+		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
+	t.HumanOnly = humanOnly != 0
 	var err error
 	if t.CreatedAt, err = parseTS(createdAt); err != nil {
 		return core.Task{}, err
@@ -88,10 +90,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
-		nullStr(t.ParentID), nullFloat(t.BoardRank))
+		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly))
 	return err
 }
 
@@ -142,6 +144,9 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 	if f.RootsOnly {
 		conds = append(conds, "parent_id IS NULL")
 	}
+	if !f.IncludeHumanOnly {
+		conds = append(conds, "human_only = 0")
+	}
 	if strings.TrimSpace(f.Search) != "" {
 		pat := "%" + escapeLike(strings.TrimSpace(f.Search)) + "%"
 		conds = append(conds, `(title LIKE ? ESCAPE '\' OR description LIKE ? ESCAPE '\')`)
@@ -176,10 +181,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
-		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), nullFloat(t.BoardRank),
-		formatTS(t.UpdatedAt), t.ID)
+		t.Cwd, boolInt(t.HumanOnly), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
@@ -259,11 +264,12 @@ func (r *TaskRepo) MaxBoardRank(ctx context.Context, status core.Status) (max fl
 // ListRootsInStatus returns root tasks in a status column ordered by board sort.
 func (r *TaskRepo) ListRootsInStatus(ctx context.Context, status core.Status) ([]core.Task, error) {
 	return r.List(ctx, core.ListFilter{
-		Status:    status,
-		Sort:      "board",
-		Ascending: false,
-		RootsOnly: true,
-		IncludeDone: true,
+		Status:           status,
+		Sort:             "board",
+		Ascending:        false,
+		RootsOnly:        true,
+		IncludeDone:      true,
+		IncludeHumanOnly: true,
 	})
 }
 
@@ -407,6 +413,13 @@ func nullFloat(f *float64) any {
 		return nil
 	}
 	return *f
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // escapeLike escapes LIKE wildcards so user input matches literally.

@@ -1,26 +1,32 @@
 <script lang="ts">
   import { STATUS_LABELS } from '../lib/format'
   import type { Status } from '../lib/api'
+  import HumanFilterChips from './HumanFilterChips.svelte'
+  import type { HumanFilter } from '../lib/humanFilter'
 
   let {
     status,
     search,
     sort,
     ascending,
+    humanFilter,
     onStatusChange,
     onSearchInput,
     onSortChange,
-    onToggleAsc
+    onToggleAsc,
+    onHumanFilterChange
   }: {
     // '' = all (hides archived); 'archived' = archive view; else a status chip.
     status: Status | '' | 'archived'
     search: string
     sort: string
     ascending: boolean
+    humanFilter: HumanFilter
     onStatusChange: (s: Status | '' | 'archived') => void
     onSearchInput: (v: string) => void
     onSortChange: (f: string) => void
     onToggleAsc: () => void
+    onHumanFilterChange: (v: HumanFilter) => void
   } = $props()
 
   // Archived is a neutral chip (no status color): it is a storage state, not
@@ -65,6 +71,8 @@
       </button>
     {/each}
   </div>
+
+  <HumanFilterChips value={humanFilter} onChange={onHumanFilterChange} />
 
   <input
     id="task-search"

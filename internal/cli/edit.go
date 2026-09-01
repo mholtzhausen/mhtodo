@@ -9,8 +9,9 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback string
+	var title, desc, feedback, cwd string
 	var progress int
+	var humanOnly, noHumanOnly bool
 	cmd := &cobra.Command{
 		Use:   "edit ID",
 		Short: "Update a task's title/description/feedback/progress (at least one flag)",
@@ -33,12 +34,24 @@ func newEditCmd() *cobra.Command {
 				v := feedback
 				in.Feedback = &v
 			}
-			if cmd.Flags().Changed("progress") {
-				v := progress
-				in.Progress = &v
-			}
+		if cmd.Flags().Changed("progress") {
+			v := progress
+			in.Progress = &v
+		}
+		if cmd.Flags().Changed("cwd") {
+			v := cwd
+			in.Cwd = &v
+		}
+		switch {
+		case cmd.Flags().Changed("human-only"):
+			v := humanOnly
+			in.HumanOnly = &v
+		case cmd.Flags().Changed("no-human-only"):
+			v := false
+			in.HumanOnly = &v
+		}
 
-			svc, closeDB, err := openService()
+		svc, closeDB, err := openService()
 			if err != nil {
 				return err
 			}
@@ -55,5 +68,8 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().StringVar(&desc, "desc", "", "new description")
 	cmd.Flags().StringVar(&feedback, "feedback", "", "agent feedback (shown in GUI when set)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "new progress 0-100")
+	cmd.Flags().StringVar(&cwd, "cwd", "", "working directory path (empty clears)")
+	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
+	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")
 	return cmd
 }

@@ -76,6 +76,8 @@ export namespace core {
 	    Status: string;
 	    Progress: number;
 	    ParentID: string;
+	    Cwd: string;
+	    HumanOnly: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -89,6 +91,8 @@ export namespace core {
 	        this.Status = source["Status"];
 	        this.Progress = source["Progress"];
 	        this.ParentID = source["ParentID"];
+	        this.Cwd = source["Cwd"];
+	        this.HumanOnly = source["HumanOnly"];
 	    }
 	}
 	export class ListFilter {
@@ -100,6 +104,7 @@ export namespace core {
 	    IncludeDone: boolean;
 	    Archived: boolean;
 	    RootsOnly: boolean;
+	    IncludeHumanOnly: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListFilter(source);
@@ -115,6 +120,7 @@ export namespace core {
 	        this.IncludeDone = source["IncludeDone"];
 	        this.Archived = source["Archived"];
 	        this.RootsOnly = source["RootsOnly"];
+	        this.IncludeHumanOnly = source["IncludeHumanOnly"];
 	    }
 	}
 	export class Task {
@@ -134,6 +140,8 @@ export namespace core {
 	    archived_at?: any;
 	    parent_id?: string;
 	    board_rank?: number;
+	    cwd: string;
+	    human_only: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -153,6 +161,8 @@ export namespace core {
 	        this.archived_at = this.convertValues(source["archived_at"], null);
 	        this.parent_id = source["parent_id"];
 	        this.board_rank = source["board_rank"];
+	        this.cwd = source["cwd"];
+	        this.human_only = source["human_only"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -178,6 +188,8 @@ export namespace core {
 	    Desc?: string;
 	    Feedback?: string;
 	    Progress?: number;
+	    Cwd?: string;
+	    HumanOnly?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -189,6 +201,8 @@ export namespace core {
 	        this.Desc = source["Desc"];
 	        this.Feedback = source["Feedback"];
 	        this.Progress = source["Progress"];
+	        this.Cwd = source["Cwd"];
+	        this.HumanOnly = source["HumanOnly"];
 	    }
 	}
 

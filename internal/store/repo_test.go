@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 5 {
-		t.Fatalf("schema_version = %d, want 5", version)
+	if version != 6 {
+		t.Fatalf("schema_version = %d, want 6", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 5 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 5", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 6 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 6", version, err)
 	}
 
 	// WAL must be active.
@@ -235,6 +235,21 @@ func TestListFilters(t *testing.T) {
 	if err != nil || len(got) != 3 {
 		t.Fatalf("injection-ish sort: (%d, %v)", len(got), err)
 	}
+
+	// Human-only tasks excluded by default; IncludeHumanOnly adds them back.
+	humanTS := base.Add(2 * time.Minute)
+	if err := r.Create(ctx, core.Task{ID: "t5", Title: "Human chore", Status: core.StatusPending,
+		CreatedAt: humanTS, UpdatedAt: humanTS, HumanOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = r.List(ctx, core.ListFilter{})
+	if len(got) != 3 {
+		t.Fatalf("default list with human-only task = %d tasks, want 3", len(got))
+	}
+	got, _ = r.List(ctx, core.ListFilter{IncludeHumanOnly: true})
+	if len(got) != 4 {
+		t.Fatalf("include human-only list = %d tasks, want 4", len(got))
+	}
 }
 
 // TestConcurrentWriters simulates the CLI+GUI concurrency contract: two
@@ -298,7 +313,7 @@ func ids(ts []core.Task) []string {
 }
 
 // TestV1ToV5Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
-// Open migrates it forward through v2–v5 in place.
+// Open migrates it forward through v2–v6 in place.
 func TestV1ToV5Upgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mhtodo.db")
 	db, err := sql.Open("sqlite", path)
@@ -317,8 +332,8 @@ func TestV1ToV5Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 5 {
-		t.Fatalf("schema_version = %d (err=%v), want 5", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 6 {
+		t.Fatalf("schema_version = %d (err=%v), want 6", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
@@ -336,7 +351,7 @@ func TestV1ToV5Upgrade(t *testing.T) {
 		cols = append(cols, name)
 	}
 	rows.Close()
-	for _, want := range []string{"archived_at", "parent_id", "feedback", "board_rank"} {
+	for _, want := range []string{"archived_at", "parent_id", "feedback", "board_rank", "cwd", "human_only"} {
 		found := false
 		for _, c := range cols {
 			if c == want {

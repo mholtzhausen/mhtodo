@@ -19,6 +19,8 @@ export interface Task {
   archived_at: string | null
   parent_id: string | null
   board_rank: number | null
+  cwd: string
+  human_only: boolean
 }
 
 export interface Activity {
@@ -38,6 +40,8 @@ export interface ListFilterInput {
   rootsOnly?: boolean
   /** When set, overrides the default (include done if no status filter / archived view). */
   includeDone?: boolean
+  /** GUI default true; CLI default false — include human-only tasks in results. */
+  includeHumanOnly?: boolean
 }
 
 export interface ActivityFilterInput {
@@ -54,7 +58,8 @@ const toGoFilter = (f: ListFilterInput) => ({
   Ascending: !!f.ascending,
   IncludeDone: f.includeDone ?? (!f.status || !!f.archived),
   Archived: !!f.archived,
-  RootsOnly: !!f.rootsOnly
+  RootsOnly: !!f.rootsOnly,
+  IncludeHumanOnly: f.includeHumanOnly !== undefined ? f.includeHumanOnly : true
 })
 
 const toGoActivityFilter = (f: ActivityFilterInput) => ({
@@ -77,6 +82,8 @@ export const api = {
     status?: Status
     progress?: number
     parentId?: string
+    cwd?: string
+    humanOnly?: boolean
   }) {
     return App.CreateTask({
       Title: input.title,
@@ -84,15 +91,26 @@ export const api = {
       Feedback: input.feedback ?? '',
       Status: (input.status ?? 'pending') as unknown as string,
       Progress: input.progress ?? 0,
-      ParentID: input.parentId ?? ''
+      ParentID: input.parentId ?? '',
+      Cwd: input.cwd ?? '',
+      HumanOnly: !!input.humanOnly
     })
   },
-  update(id: string, patch: { title?: string; description?: string; feedback?: string; progress?: number }) {
+  update(id: string, patch: {
+    title?: string
+    description?: string
+    feedback?: string
+    progress?: number
+    cwd?: string
+    humanOnly?: boolean
+  }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
       Desc: patch.description ?? null,
       Feedback: patch.feedback ?? null,
-      Progress: patch.progress ?? null
+      Progress: patch.progress ?? null,
+      Cwd: patch.cwd ?? null,
+      HumanOnly: patch.humanOnly ?? null
     })
   },
   setStatus(id: string, status: Status) {
@@ -139,6 +157,9 @@ export const api = {
   },
   setAlwaysOnTop(on: boolean): Promise<void> {
     return App.SetAlwaysOnTop(on)
+  },
+  pickDirectory(): Promise<string> {
+    return App.PickDirectory()
   }
 }
 

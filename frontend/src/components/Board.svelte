@@ -1,6 +1,7 @@
 <script lang="ts">
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
+  import HumanIcon from './HumanIcon.svelte'
 
   let {
     tasks,
@@ -354,20 +355,28 @@
                 draggable="true"
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="rounded-md border border-l-2 shadow-sm transition-all duration-150 select-none
+                class="relative rounded-md border border-l-2 shadow-sm transition-all duration-150 select-none
                   {col.edge}
                   {selectedId === t.id
                     ? 'border-accent bg-card-hi ring-1 ring-accent/70'
                     : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}
                   {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
               >
+                {#if t.human_only}
+                  <span
+                    class="pointer-events-none absolute right-2 top-2 text-ink-2"
+                    title="Human only — agents skip"
+                  >
+                    <HumanIcon class="h-3.5 w-3.5" />
+                  </span>
+                {/if}
                 <button
                   type="button"
                   onclick={() => onCardClick(t)}
                   ondragstart={(e) => e.preventDefault()}
                   class="w-full cursor-grab p-2.5 text-left"
                 >
-                  <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
+                  <p class="mb-2 line-clamp-2 pr-5 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">
                     <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                       <div

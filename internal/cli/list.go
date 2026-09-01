@@ -34,7 +34,7 @@ func newListCmd() *cobra.Command {
 	var status, search string
 	var limit int
 	var sort string
-	var all, archived, roots bool
+	var all, archived, roots, humanOnly bool
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -59,14 +59,15 @@ func newListCmd() *cobra.Command {
 			defer closeDB()
 
 			tasks, err := svc.List(context.Background(), core.ListFilter{
-				Status:      core.Status(status), // "" = any (subject to --all); invalid → exit 1
-				Search:      search,
-				Limit:       limit,
-				Sort:        field,
-				Ascending:   ascending,
-				IncludeDone: all || status != "",
-				Archived:    archived, // --archived shows only archived tasks (incl. done)
-				RootsOnly:   roots,
+				Status:           core.Status(status), // "" = any (subject to --all); invalid → exit 1
+				Search:           search,
+				Limit:            limit,
+				Sort:             field,
+				Ascending:        ascending,
+				IncludeDone:      all || status != "",
+				Archived:         archived, // --archived shows only archived tasks (incl. done)
+				RootsOnly:          roots,
+				IncludeHumanOnly: humanOnly,
 			})
 			if err != nil {
 				return mapError(err)
@@ -81,5 +82,6 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&all, "all", false, "include done tasks")
 	cmd.Flags().BoolVar(&archived, "archived", false, "show archived tasks only (default lists hide them)")
 	cmd.Flags().BoolVar(&roots, "roots", false, "show top-level tasks only (exclude sub-tasks)")
+	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "include human-only tasks (excluded by default)")
 	return cmd
 }

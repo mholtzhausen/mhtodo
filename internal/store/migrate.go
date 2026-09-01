@@ -19,6 +19,7 @@ var migrations = []migration{
 	{version: 3, up: schemaV3},
 	{version: 4, up: schemaV4},
 	{version: 5, up: schemaV5},
+	{version: 6, up: schemaV6},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -81,6 +82,13 @@ const schemaV5 = `
 ALTER TABLE tasks ADD COLUMN board_rank REAL;
 
 CREATE INDEX idx_tasks_status_rank ON tasks(status, board_rank);
+`
+
+// v6: optional task cwd and human-only flag (agents exclude from default lists).
+const schemaV6 = `
+ALTER TABLE tasks ADD COLUMN cwd TEXT NOT NULL DEFAULT '';
+ALTER TABLE tasks ADD COLUMN human_only INTEGER NOT NULL DEFAULT 0
+  CHECK (human_only IN (0, 1));
 `
 
 const schemaV1 = `

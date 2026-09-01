@@ -10,8 +10,9 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent string
+	var desc, feedback, status, parent, cwd string
 	var progress int
+	var humanOnly bool
 	cmd := &cobra.Command{
 		Use:   "add TITLE",
 		Short: "Create a task",
@@ -34,6 +35,8 @@ func newAddCmd() *cobra.Command {
 				Status:      core.Status(status), // "" → pending; invalid → exit 1
 				Progress:    progress,
 				ParentID:    parent,
+				Cwd:         cwd,
+				HumanOnly:   humanOnly,
 			})
 			if err != nil {
 				return mapError(err)
@@ -55,5 +58,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|done; default pending)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
+	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
+	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	return cmd
 }

@@ -9,6 +9,8 @@
   import ConfirmDialog from './components/ConfirmDialog.svelte'
   import { api, errMsg, type Activity, type Status } from './lib/api'
   import { boardAdjacentTaskId } from './lib/boardOrder'
+  import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
+  import HumanFilterChips from './components/HumanFilterChips.svelte'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
@@ -97,6 +99,10 @@
   let search = $state('')
   let sort = $state<'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'>('board')
   let ascending = $state(false)
+  let humanFilter = $state<HumanFilter>(loadHumanFilter())
+
+  const displayTasks = $derived(applyHumanFilter(tasks, humanFilter))
+  const displayRootCount = $derived(displayTasks.filter((t) => !t.parent_id).length)
 
   const selectedTask = $derived(tasks.find((t) => t.id === selectedId) ?? null)
   const selectedParentTitle = $derived(
@@ -150,8 +156,18 @@
 
   function navigateBoardTask(dir: -1 | 1) {
     if (detailMode !== 'modal' || !selectedId || view !== 'board') return
-    const nextId = boardAdjacentTaskId(tasks, showSubtasks, selectedId, dir)
+    const nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
     if (nextId) selectedId = nextId
+  }
+
+  function setHumanFilter(v: HumanFilter) {
+    if (humanFilter === v) return
+    humanFilter = v
+    try {
+      localStorage.setItem('mhtodo.humanFilter', v)
+    } catch {
+      /* ignore */
+    }
   }
 
   function persistDetailPanelWidth() {
@@ -490,6 +506,7 @@
       {search}
       {sort}
       {ascending}
+      {humanFilter}
       onStatusChange={(s: Status | '' | 'archived') => {
         status = s
         load()
@@ -506,9 +523,11 @@
         ascending = !ascending
         load()
       }}
+      onHumanFilterChange={setHumanFilter}
     />
   {:else if view === 'board'}
-    <div class="flex flex-none items-center gap-3 border-b border-line-soft px-5 py-2.5">
+    <div class="flex flex-none flex-wrap items-center gap-3 border-b border-line-soft px-5 py-2.5">
+      <HumanFilterChips value={humanFilter} onChange={setHumanFilter} />
       <label
         class="flex h-8 w-64 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25"
       >
@@ -538,9 +557,7 @@
       </label>
       <div class="flex-1"></div>
       <span class="font-mono text-[11px] text-ink-3">
-        {tasks.filter((t) => !t.parent_id).length} {tasks.filter((t) => !t.parent_id).length === 1
-          ? 'task'
-          : 'tasks'}
+        {displayRootCount} {displayRootCount === 1 ? 'task' : 'tasks'}
       </span>
     </div>
   {/if}
@@ -553,7 +570,7 @@
         <p class="text-sm text-ink-3">Loading…</p>
       {:else if view === 'board'}
         <Board
-          tasks={tasks}
+          tasks={displayTasks}
           {search}
           selectedId={selectedId}
           {showSubtasks}
@@ -568,8 +585,8 @@
         />
       {:else if view === 'list'}
         <List
-          tasks={tasks}
-          hasFilters={status !== '' || search.trim() !== ''}
+          tasks={displayTasks}
+          hasFilters={status !== '' || search.trim() !== '' || humanFilter !== 'all'}
           selectedId={selectedId}
           {showSubtasks}
           onSelect={selectTask}

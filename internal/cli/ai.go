@@ -14,10 +14,13 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 7
+const IntegrationVersion = 8
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v7  Task-picker options show status, updated_at, title, optional description —
+const integrationChangelog = `v8  Task cwd (--cwd) and human_only (--human-only on add/edit). Default list
+    excludes human-only tasks; pass --human-only on list to include them. Agents
+    must never adopt or work human_only tasks.
+v7  Task-picker options show status, updated_at, title, optional description —
     not task ids in the labels.
 v6  Task-picker turns ("what's next", todos, etc.) must use AskUserQuestion /
     AskQuestion with every root task from mhtodo list --roots --json in board

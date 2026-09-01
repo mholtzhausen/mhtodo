@@ -45,6 +45,8 @@
   let title = $state(task.title)
   let description = $state(task.description)
   let progress = $state(task.progress)
+  let cwd = $state(task.cwd ?? '')
+  let humanOnly = $state(!!task.human_only)
 
   let editingDesc = $state(false)
   let descEl = $state<HTMLTextAreaElement | null>(null)
@@ -72,6 +74,8 @@
   $effect(() => {
     title = task.title
     progress = task.progress
+    cwd = task.cwd ?? ''
+    humanOnly = !!task.human_only
     if (!editingDesc) {
       description = task.description ?? ''
     }
@@ -127,6 +131,38 @@
     try {
       await api.update(task.id, { progress: p })
     } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function pickCwd() {
+    try {
+      const path = await api.pickDirectory()
+      if (path && path !== cwd) {
+        cwd = path
+        await api.update(task.id, { cwd: path })
+      }
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function saveCwd() {
+    const v = cwd.trim()
+    if (v === (task.cwd ?? '')) return
+    try {
+      await api.update(task.id, { cwd: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function toggleHumanOnly() {
+    if (humanOnly === !!task.human_only) return
+    try {
+      await api.update(task.id, { humanOnly })
+    } catch (e) {
+      humanOnly = !!task.human_only
       onError(errMsg(e))
     }
   }
@@ -253,6 +289,47 @@
       <span class="micro mb-1.5">Status</span>
       <StatusPicker value={task.status} onPick={(s) => setStatus(s)} />
     </div>
+
+    <div class="block">
+      <span class="micro mb-1.5">Working directory</span>
+      <div class="flex gap-2">
+        <input
+          bind:value={cwd}
+          onblur={saveCwd}
+          placeholder="Optional project path…"
+          class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        />
+        <button
+          type="button"
+          onclick={pickCwd}
+          title="Pick folder"
+          class="flex-none rounded border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <label class="flex cursor-pointer items-center gap-2.5">
+      <input
+        type="checkbox"
+        bind:checked={humanOnly}
+        onchange={toggleHumanOnly}
+        class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+      />
+      <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
+    </label>
 
     <div class="block">
       <span class="micro mb-1.5">Description</span>

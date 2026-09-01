@@ -26,6 +26,8 @@ export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activi
 
 export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 
+export function PickDirectory():Promise<string>;
+
 export function Quit():Promise<void>;
 
 export function ReorderBoardTask(arg1:string,arg2:string):Promise<core.Task>;

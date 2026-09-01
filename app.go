@@ -274,6 +274,14 @@ func (a *App) DeleteActivity(id string) (core.Activity, error) {
 // DBPath maps to CLI `path`; shown in the GUI footer.
 func (a *App) DBPath() string { return store.DBPath() }
 
+// PickDirectory opens the system folder picker and returns the chosen path, or
+// "" when the user cancels.
+func (a *App) PickDirectory() (string, error) {
+	return wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
+		Title: "Select working directory",
+	})
+}
+
 // emitChanged is the single refresh path for the frontend: every local
 // mutation emits tasks:changed; the external watcher (internal/sync) emits the
 // same event on foreign writes, so the UI has exactly one refetch handler. It
