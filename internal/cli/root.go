@@ -228,7 +228,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
-		newActivityCmd(), newRmCmd(), newPathCmd(), newAICmd(version),
+		newActivityCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newUpdateCmd(version),
 	} {
 		root.AddCommand(c)

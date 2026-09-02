@@ -66,6 +66,7 @@ mhtodo activity rm ID --yes
 mhtodo rm ID --yes                                        # CASCADES to sub-tasks
 mhtodo archive | mhtodo unarchive ID
 mhtodo path
+mhtodo slack report                                     # paste-ready board summary for Slack
 mhtodo ai                                                 # this document
 mhtodo update [--check] [--force]                         # self-update from GitHub Releases
 ```

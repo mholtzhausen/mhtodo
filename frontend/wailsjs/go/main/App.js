@@ -98,6 +98,10 @@ export function ShowWindow() {
   return window['go']['main']['App']['ShowWindow']();
 }
 
+export function SlackReport() {
+  return window['go']['main']['App']['SlackReport']();
+}
+
 export function Unarchive(arg1) {
   return window['go']['main']['App']['Unarchive'](arg1);
 }

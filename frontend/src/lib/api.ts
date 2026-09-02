@@ -185,6 +185,9 @@ export const api = {
   },
   openHerdrTicket(taskId: string): Promise<void> {
     return App.OpenHerdrTicket(taskId)
+  },
+  slackReport(): Promise<string> {
+    return App.SlackReport()
   }
 }
 

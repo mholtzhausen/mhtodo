@@ -941,3 +941,32 @@ func TestParentAndReviewAndActivity(t *testing.T) {
 		t.Fatalf("child should be gone: exit %d", code)
 	}
 }
+
+func TestSlackReport(t *testing.T) {
+	out, _, run := newCLI(t)
+	seedTasks(t, os.Getenv("MHTODO_DB_PATH"),
+		fixedTask("01a02401-0000-7000-8000-000000000001", "Done task", core.StatusDone, 100),
+		fixedTask("01a02401-0000-7000-8000-000000000002", "Todo task", core.StatusPending, 0),
+		fixedTask("01a02401-0000-7000-8000-000000000003", "WIP task", core.StatusWIP, 50),
+	)
+
+	if code := run("slack", "report"); code != 0 {
+		t.Fatalf("slack report: exit %d", code)
+	}
+	got := out.String()
+	for _, want := range []string{"Completed ✓", "Todo ○", "WIP ◐", "Done task", "Todo task", "WIP task"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report missing %q:\n%s", want, got)
+		}
+	}
+
+	out.Reset()
+	if code := run("slack", "report", "--json"); code != 0 {
+		t.Fatalf("slack report --json: exit %d", code)
+	}
+	var report string
+	mustJSON(t, out.Bytes(), &report)
+	if !strings.Contains(report, "Completed ✓") {
+		t.Errorf("json report wrong: %q", report)
+	}
+}

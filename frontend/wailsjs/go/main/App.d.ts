@@ -52,6 +52,8 @@ export function SetStatus(arg1:string,arg2:core.Status):Promise<core.Task>;
 
 export function ShowWindow():Promise<void>;
 
+export function SlackReport():Promise<string>;
+
 export function Unarchive(arg1:string):Promise<core.Task>;
 
 export function UpdateTask(arg1:string,arg2:core.UpdateInput):Promise<core.Task>;

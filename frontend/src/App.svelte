@@ -127,6 +127,25 @@
     }, ms)
   }
 
+  async function copySlackReport() {
+    if (!inWails) {
+      showToast('Running outside Wails — API unavailable (use `make dev`)')
+      return
+    }
+    try {
+      const report = await api.slackReport()
+      const { ClipboardSetText } = await import('../wailsjs/runtime/runtime.js')
+      const ok = await ClipboardSetText(report)
+      if (ok) {
+        showToast('Slack report copied', 'info')
+      } else {
+        showToast('Could not copy to clipboard')
+      }
+    } catch (e) {
+      showToast(errMsg(e))
+    }
+  }
+
   function setView(v: View) {
     if (view === v) return
     view = v
@@ -459,6 +478,27 @@
     </nav>
 
     <div class="flex-1"></div>
+
+    <button
+      type="button"
+      onclick={copySlackReport}
+      title="Copy Slack report"
+      class="grid h-8 w-8 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
 
     <button
       type="button"

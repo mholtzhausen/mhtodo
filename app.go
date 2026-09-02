@@ -276,6 +276,11 @@ func (a *App) DeleteActivity(id string) (core.Activity, error) {
 // DBPath maps to CLI `path`; shown in the GUI footer.
 func (a *App) DBPath() string { return store.DBPath() }
 
+// SlackReport maps to CLI `slack report`: a paste-ready board summary.
+func (a *App) SlackReport() (string, error) {
+	return a.svc.SlackReport(a.ctx)
+}
+
 // PickDirectory opens the system folder picker and returns the chosen path, or
 // "" when the user cancels. start, when a valid directory, is the initial location.
 // If start is missing or invalid, or the dialog fails with that default, the picker
