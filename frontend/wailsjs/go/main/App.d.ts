@@ -20,6 +20,8 @@ export function DeleteActivity(arg1:string):Promise<core.Activity>;
 
 export function DeleteTask(arg1:string):Promise<core.Task>;
 
+export function EnsureHerdrReady():Promise<integrations.HerdrTaskStatus>;
+
 export function EnsureHerdrWorkspaceForTask(arg1:string):Promise<integrations.HerdrTaskStatus>;
 
 export function GetAlwaysOnTop():Promise<boolean>;

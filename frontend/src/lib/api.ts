@@ -85,7 +85,7 @@ export const api = {
     parentId?: string
     cwd?: string
     humanOnly?: boolean
-  }) {
+  }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
       Description: input.description ?? '',
@@ -95,7 +95,7 @@ export const api = {
       ParentID: input.parentId ?? '',
       Cwd: input.cwd ?? '',
       HumanOnly: !!input.humanOnly
-    })
+    }) as Promise<Task>
   },
   update(id: string, patch: {
     title?: string
@@ -170,6 +170,9 @@ export const api = {
   },
   checkBinary(path: string): Promise<boolean> {
     return App.CheckBinary(path)
+  },
+  ensureHerdrReady(): Promise<{ ready: boolean; error?: string }> {
+    return App.EnsureHerdrReady()
   },
   ensureHerdrWorkspace(taskId: string): Promise<{ ready: boolean; error?: string }> {
     return App.EnsureHerdrWorkspaceForTask(taskId)

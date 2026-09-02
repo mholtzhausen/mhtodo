@@ -34,6 +34,10 @@ export function DeleteTask(arg1) {
   return window['go']['main']['App']['DeleteTask'](arg1);
 }
 
+export function EnsureHerdrReady() {
+  return window['go']['main']['App']['EnsureHerdrReady']();
+}
+
 export function EnsureHerdrWorkspaceForTask(arg1) {
   return window['go']['main']['App']['EnsureHerdrWorkspaceForTask'](arg1);
 }

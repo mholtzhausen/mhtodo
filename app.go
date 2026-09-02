@@ -314,6 +314,23 @@ func (a *App) herdrClient() (integrations.Client, error) {
 	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude}, nil
 }
 
+// EnsureHerdrReady ensures the configured Herdr workspace exists when Herdr
+// integration is enabled and the binary is found (no task required).
+func (a *App) EnsureHerdrReady() (integrations.HerdrTaskStatus, error) {
+	client, err := a.herdrClient()
+	if err != nil {
+		return integrations.HerdrTaskStatus{}, err
+	}
+	if !client.Herdr.Enabled || !client.HerdrFound() {
+		return integrations.HerdrTaskStatus{}, nil
+	}
+	ready, err := client.EnsureWorkspace()
+	if err != nil {
+		return integrations.HerdrTaskStatus{Error: err.Error()}, nil
+	}
+	return integrations.HerdrTaskStatus{Ready: ready}, nil
+}
+
 // EnsureHerdrWorkspaceForTask ensures the configured Herdr workspace exists when
 // the task is eligible (Herdr enabled, cwd set, not human-only).
 func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskStatus, error) {

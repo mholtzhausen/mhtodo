@@ -23,7 +23,7 @@ export interface GUISettings {
 }
 
 export const DEFAULT_CLAUDE_TICKET_PROMPT =
-  'read todo {{todo-hash}} and start on the ticket. if there is not enough information to start working, gather as much information about the issue on your own (read-only) and ask your human for input'
+  'read todo {{todo-hash}} and start on the ticket. if there is not enough information to start working, gather as much information about the issue on your own (read-only) and ask your human for input. When starting the task, remember to create subtasks and notify about activities on the task.'
 
 export const defaultSettings = (): GUISettings => ({
   default_cwd: '',
