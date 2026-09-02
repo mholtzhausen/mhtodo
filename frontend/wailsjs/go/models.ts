@@ -208,3 +208,78 @@ export namespace core {
 
 }
 
+export namespace settings {
+	
+	export class IntegrationConfig {
+	    enabled: boolean;
+	    binary: string;
+	    env_start: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IntegrationConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.binary = source["binary"];
+	        this.env_start = source["env_start"];
+	    }
+	}
+	export class HerdrConfig {
+	    enabled: boolean;
+	    binary: string;
+	    env_start: string;
+	    space_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HerdrConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.binary = source["binary"];
+	        this.env_start = source["env_start"];
+	        this.space_name = source["space_name"];
+	    }
+	}
+	export class GUISettings {
+	    default_cwd: string;
+	    default_human_only: boolean;
+	    claude: IntegrationConfig;
+	    herdr: HerdrConfig;
+	
+	    static createFrom(source: any = {}) {
+	        return new GUISettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.default_cwd = source["default_cwd"];
+	        this.default_human_only = source["default_human_only"];
+	        this.claude = this.convertValues(source["claude"], IntegrationConfig);
+	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+

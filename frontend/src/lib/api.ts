@@ -2,6 +2,7 @@
 // The frontend never touches SQL or business rules — this is the parity
 // contract from .agent/plan/02-architecture.md.
 import * as App from '../../wailsjs/go/main/App'
+import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from './settings'
 
 export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
 
@@ -158,10 +159,21 @@ export const api = {
   setAlwaysOnTop(on: boolean): Promise<void> {
     return App.SetAlwaysOnTop(on)
   },
-  pickDirectory(): Promise<string> {
-    return App.PickDirectory()
+  pickDirectory(start = ''): Promise<string> {
+    return App.PickDirectory(start)
+  },
+  getSettings(): Promise<GUISettings> {
+    return App.GetGUISettings().then((s) => fromGoSettings(s))
+  },
+  setSettings(s: GUISettings): Promise<void> {
+    return App.SetGUISettings(toGoSettings(s))
+  },
+  checkBinary(path: string): Promise<boolean> {
+    return App.CheckBinary(path)
   }
 }
+
+export type { GUISettings } from './settings'
 
 export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message

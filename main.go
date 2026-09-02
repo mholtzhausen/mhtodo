@@ -84,11 +84,18 @@ func runGUI(args []string) {
 	fs.Parse(args)
 
 	// Single instance: a second launch focuses the running one and exits.
+	// Under -tags dev (make dev), skip focus signaling — wails generate module
+	// and hot-reload rebuilds spawn short-lived second processes that would
+	// otherwise pop the hidden window on every rebuild.
 	if err := acquireInstanceLock(); err != nil {
 		var ar *AlreadyRunningError
 		if errors.As(err, &ar) {
-			log.Printf("mhtodo is already running (pid %d); focusing existing window", ar.PID)
-			syscall.Kill(ar.PID, syscall.SIGUSR2) // best-effort focus request (never SIGUSR1 — see above)
+			if startHidden {
+				log.Printf("mhtodo is already running (pid %d); exiting quietly (dev)", ar.PID)
+			} else {
+				log.Printf("mhtodo is already running (pid %d); focusing existing window", ar.PID)
+				syscall.Kill(ar.PID, syscall.SIGUSR2) // best-effort focus request (never SIGUSR1 — see above)
+			}
 			return
 		}
 		log.Fatalf("instance lock: %v", err)
@@ -98,14 +105,17 @@ func runGUI(args []string) {
 	// MUST be SIGUSR2 — WebKit/JSC installs its own C handler for signal 10
 	// (SIGUSR1, "JSC_SIGNAL_FOR_GC"); sending SIGUSR1 to this process crashes it
 	// with SIGSEGV during cgo execution (verified 2026-08-19).
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGUSR2)
-	go func() {
-		for range sigCh {
-			log.Println("focus requested by second instance → showing window")
-			app.showWindow()
-		}
-	}()
+	// Not registered under StartHidden (dev): rebuild spawns would steal focus.
+	if !startHidden {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGUSR2)
+		go func() {
+			for range sigCh {
+				log.Println("focus requested by second instance → showing window")
+				app.showWindow()
+			}
+		}()
+	}
 
 	// SIGINT/SIGTERM must really quit — Wails routes its own signal handling
 	// through OnBeforeClose, which would otherwise hide-to-tray and swallow the

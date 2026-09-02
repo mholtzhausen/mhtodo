@@ -10,6 +10,10 @@ export function ArchiveDone() {
   return window['go']['main']['App']['ArchiveDone']();
 }
 
+export function CheckBinary(arg1) {
+  return window['go']['main']['App']['CheckBinary'](arg1);
+}
+
 export function CountChildren(arg1) {
   return window['go']['main']['App']['CountChildren'](arg1);
 }
@@ -34,6 +38,10 @@ export function GetAlwaysOnTop() {
   return window['go']['main']['App']['GetAlwaysOnTop']();
 }
 
+export function GetGUISettings() {
+  return window['go']['main']['App']['GetGUISettings']();
+}
+
 export function GetTask(arg1) {
   return window['go']['main']['App']['GetTask'](arg1);
 }
@@ -50,8 +58,8 @@ export function ListTasks(arg1) {
   return window['go']['main']['App']['ListTasks'](arg1);
 }
 
-export function PickDirectory() {
-  return window['go']['main']['App']['PickDirectory']();
+export function PickDirectory(arg1) {
+  return window['go']['main']['App']['PickDirectory'](arg1);
 }
 
 export function Quit() {
@@ -64,6 +72,10 @@ export function ReorderBoardTask(arg1, arg2) {
 
 export function SetAlwaysOnTop(arg1) {
   return window['go']['main']['App']['SetAlwaysOnTop'](arg1);
+}
+
+export function SetGUISettings(arg1) {
+  return window['go']['main']['App']['SetGUISettings'](arg1);
 }
 
 export function SetStatus(arg1, arg2) {

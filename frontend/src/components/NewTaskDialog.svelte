@@ -8,12 +8,16 @@
     open,
     initialStatus = 'pending',
     parentId = '',
+    defaultCwd = '',
+    defaultHumanOnly = false,
     onClose,
     onError
   }: {
     open: boolean
     initialStatus?: Status
     parentId?: string
+    defaultCwd?: string
+    defaultHumanOnly?: boolean
     onClose: () => void
     onError?: (msg: string) => void
   } = $props()
@@ -25,14 +29,18 @@
   let humanOnly = $state(false)
 
   $effect(() => {
-    if (open) status = initialStatus
+    if (open) {
+      status = initialStatus
+      cwd = defaultCwd
+      humanOnly = defaultHumanOnly
+    }
   })
   let progress = $state(0)
   let submitting = $state(false)
 
   async function pickCwd() {
     try {
-      const path = await api.pickDirectory()
+      const path = await api.pickDirectory(cwd.trim())
       if (path) cwd = path
     } catch (err) {
       onError?.(errMsg(err))

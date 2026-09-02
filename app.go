@@ -18,6 +18,7 @@ import (
 	"mhtodo/internal/globalhk"
 	"mhtodo/internal/notify"
 	"mhtodo/internal/platform"
+	"mhtodo/internal/settings"
 	"mhtodo/internal/store"
 	mhsync "mhtodo/internal/sync"
 	"mhtodo/internal/tray"
@@ -275,11 +276,33 @@ func (a *App) DeleteActivity(id string) (core.Activity, error) {
 func (a *App) DBPath() string { return store.DBPath() }
 
 // PickDirectory opens the system folder picker and returns the chosen path, or
-// "" when the user cancels.
-func (a *App) PickDirectory() (string, error) {
-	return wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
+// "" when the user cancels. start, when a valid directory, is the initial location.
+func (a *App) PickDirectory(start string) (string, error) {
+	opts := wruntime.OpenDialogOptions{
 		Title: "Select working directory",
-	})
+	}
+	start = strings.TrimSpace(start)
+	if start != "" {
+		if info, err := os.Stat(start); err == nil && info.IsDir() {
+			opts.DefaultDirectory = start
+		}
+	}
+	return wruntime.OpenDirectoryDialog(a.ctx, opts)
+}
+
+// GetGUISettings returns persisted GUI preferences (defaults when unset).
+func (a *App) GetGUISettings() (settings.GUISettings, error) {
+	return settings.Load(a.repo)
+}
+
+// SetGUISettings persists GUI preferences.
+func (a *App) SetGUISettings(s settings.GUISettings) error {
+	return settings.Save(s)
+}
+
+// CheckBinary reports whether path resolves to an executable (for integration UI).
+func (a *App) CheckBinary(path string) bool {
+	return settings.BinaryFound(path)
 }
 
 // emitChanged is the single refresh path for the frontend: every local

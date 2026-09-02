@@ -1,8 +1,8 @@
 <script lang="ts">
   import { STATUS_LABELS } from '../lib/format'
   import type { Status } from '../lib/api'
-  import HumanFilterChips from './HumanFilterChips.svelte'
   import type { HumanFilter } from '../lib/humanFilter'
+  import DropdownSelect from './DropdownSelect.svelte'
 
   let {
     status,
@@ -10,95 +10,130 @@
     sort,
     ascending,
     humanFilter,
+    showSubtasks,
+    showSort = true,
+    taskCount,
     onStatusChange,
     onSearchInput,
     onSortChange,
     onToggleAsc,
-    onHumanFilterChange
+    onHumanFilterChange,
+    onToggleSubtasks
   }: {
-    // '' = all (hides archived); 'archived' = archive view; else a status chip.
     status: Status | '' | 'archived'
     search: string
     sort: string
     ascending: boolean
     humanFilter: HumanFilter
+    showSubtasks: boolean
+    showSort?: boolean
+    taskCount?: number
     onStatusChange: (s: Status | '' | 'archived') => void
     onSearchInput: (v: string) => void
     onSortChange: (f: string) => void
     onToggleAsc: () => void
     onHumanFilterChange: (v: HumanFilter) => void
+    onToggleSubtasks: () => void
   } = $props()
 
-  // Archived is a neutral chip (no status color): it is a storage state, not
-  // a workflow state. Single-select with the rest — picking any other chip
-  // leaves the archive view and vice versa.
-  const chips: { value: Status | '' | 'archived'; label: string; active: string }[] = [
-    { value: '', label: 'All', active: 'border-accent/60 bg-accent/15 text-accent-hi' },
+  const statusOptions: {
+    value: Status | '' | 'archived'
+    label: string
+    activeClass: string
+  }[] = [
+    { value: '', label: 'All statuses', activeClass: 'text-accent-hi' },
     {
       value: 'pending',
       label: STATUS_LABELS.pending,
-      active: 'border-st-pending/60 bg-st-pending/15 text-st-pending'
+      activeClass: 'text-st-pending'
     },
-    { value: 'wip', label: STATUS_LABELS.wip, active: 'border-st-wip/70 bg-st-wip/20 text-st-wip' },
+    { value: 'wip', label: STATUS_LABELS.wip, activeClass: 'text-st-wip' },
     {
       value: 'waiting',
       label: STATUS_LABELS.waiting,
-      active: 'border-st-waiting/60 bg-st-waiting/15 text-st-waiting'
+      activeClass: 'text-st-waiting'
     },
     {
       value: 'review',
       label: STATUS_LABELS.review,
-      active: 'border-st-review/60 bg-st-review/15 text-st-review'
+      activeClass: 'text-st-review'
     },
-    { value: 'done', label: STATUS_LABELS.done, active: 'border-st-done/60 bg-st-done/15 text-st-done' },
-    { value: 'archived', label: 'Archived', active: 'border-line bg-white/10 text-ink' }
+    { value: 'done', label: STATUS_LABELS.done, activeClass: 'text-st-done' },
+    { value: 'archived', label: 'Archived', activeClass: 'text-ink' }
+  ]
+
+  const humanOptions: { value: HumanFilter; label: string; title: string }[] = [
+    { value: 'all', label: 'All tasks', title: 'Show all tasks' },
+    { value: 'exclude', label: 'Agents', title: 'Hide human-only tasks' },
+    { value: 'only', label: 'Human', title: 'Show human-only tasks' }
   ]
 
   const sortFields = ['board', 'updated', 'created', 'status', 'progress', 'title'] as const
+  const sortLabels: Record<(typeof sortFields)[number], string> = {
+    board: 'Board',
+    updated: 'Updated',
+    created: 'Created',
+    status: 'Status',
+    progress: 'Progress',
+    title: 'Title'
+  }
 </script>
 
-<div class="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
-  <div
-    class="flex gap-1 rounded border border-line-soft bg-field p-1 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]"
-  >
-    {#each chips as chip (chip.value)}
-      <button
-        onclick={() => onStatusChange(chip.value)}
-        class="rounded-[3px] border border-transparent px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:bg-white/5 hover:text-ink
-          {status === chip.value ? chip.active : ''}"
-      >
-        {chip.label}
-      </button>
-    {/each}
-  </div>
-
-  <HumanFilterChips value={humanFilter} onChange={onHumanFilterChange} />
-
-  <input
-    id="task-search"
-    type="search"
-    placeholder="Search… ( / )"
-    value={search}
-    oninput={(e) => onSearchInput(e.currentTarget.value)}
-    class="w-56 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+<div class="flex flex-wrap items-center gap-2 border-b border-line-soft px-5 py-2.5">
+  <DropdownSelect
+    value={status}
+    options={statusOptions}
+    ariaLabel="Filter by status"
+    minWidth="8.5rem"
+    onChange={onStatusChange}
   />
 
-  <div class="flex-1"></div>
+  <DropdownSelect
+    value={humanFilter}
+    options={humanOptions}
+    ariaLabel="Filter by task owner"
+    minWidth="6.5rem"
+    onChange={onHumanFilterChange}
+  />
 
-  <label for="sort-field" class="text-xs text-ink-3">Sort</label>
-  <span class="relative">
-    <select
-      id="sort-field"
-      value={sort}
-      onchange={(e) => onSortChange(e.currentTarget.value)}
-      class="appearance-none rounded border border-line-soft bg-field py-1.5 pl-2.5 pr-7 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-    >
-      {#each sortFields as f (f)}
-        <option value={f}>{f}</option>
-      {/each}
-    </select>
+  <label
+    class="flex h-8 min-w-[12rem] flex-1 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 sm:max-w-xs"
+  >
     <svg
-      class="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+      class="h-3.5 w-3.5 flex-none text-ink-3"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+    <input
+      id="task-search"
+      type="search"
+      placeholder="Search… ( / )"
+      value={search}
+      oninput={(e) => onSearchInput(e.currentTarget.value)}
+      class="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
+    />
+  </label>
+
+  <button
+    type="button"
+    onclick={onToggleSubtasks}
+    title={showSubtasks ? 'Hide sub-tasks' : 'Show sub-tasks'}
+    aria-label={showSubtasks ? 'Hide sub-tasks' : 'Show sub-tasks'}
+    aria-pressed={showSubtasks}
+    class="grid h-8 w-8 shrink-0 place-items-center rounded border transition-colors
+      {showSubtasks
+        ? 'border-accent/50 bg-accent/15 text-accent-hi'
+        : 'border-line-soft text-ink-3 hover:bg-card-hi hover:text-ink'}"
+  >
+    <svg
+      class="h-4 w-4"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -107,14 +142,32 @@
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <path d="m6 9 6 6 6-6" />
+      <path d="M3 5v14" />
+      <path d="M8 8h13" />
+      <path d="M8 12h13" />
+      <path d="M12 16h9" />
     </svg>
-  </span>
-  <button
-    title="Toggle sort direction ({ascending ? 'ascending' : 'descending'})"
-    onclick={onToggleAsc}
-    class="rounded border border-line-soft bg-field px-2.5 py-1.5 text-sm text-ink transition-colors hover:bg-card-hi"
-  >
-    {ascending ? '↑' : '↓'}
   </button>
+
+  {#if showSort}
+    <DropdownSelect
+      value={sort}
+      options={sortFields.map((f) => ({ value: f, label: sortLabels[f] }))}
+      ariaLabel="Sort field"
+      minWidth="6.5rem"
+      onChange={onSortChange}
+    />
+    <button
+      type="button"
+      title="Toggle sort direction ({ascending ? 'ascending' : 'descending'})"
+      onclick={onToggleAsc}
+      class="grid h-8 w-8 shrink-0 place-items-center rounded border border-line-soft bg-field text-sm text-ink transition-colors hover:bg-card-hi"
+    >
+      {ascending ? '↑' : '↓'}
+    </button>
+  {:else if taskCount !== undefined}
+    <span class="shrink-0 font-mono text-[11px] text-ink-3">
+      {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
+    </span>
+  {/if}
 </div>

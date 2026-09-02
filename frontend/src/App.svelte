@@ -6,11 +6,12 @@
   import ActivityView from './components/ActivityView.svelte'
   import TaskDetail from './components/TaskDetail.svelte'
   import NewTaskDialog from './components/NewTaskDialog.svelte'
+  import SettingsDialog from './components/SettingsDialog.svelte'
   import ConfirmDialog from './components/ConfirmDialog.svelte'
-  import { api, errMsg, type Activity, type Status } from './lib/api'
+  import { api, errMsg, type Activity, type GUISettings, type Status } from './lib/api'
+  import { defaultSettings } from './lib/settings'
   import { boardAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
-  import HumanFilterChips from './components/HumanFilterChips.svelte'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
@@ -90,6 +91,8 @@
   let dialogOpen = $state(false)
   let dialogInitialStatus = $state<Status | ''>('')
   let dialogParentId = $state('')
+  let settingsOpen = $state(false)
+  let guiSettings = $state<GUISettings>(defaultSettings())
   let confirmTask = $state<any | null>(null)
   let confirmMsg = $state('')
   let deleting = $state(false)
@@ -235,7 +238,9 @@
       } else {
         const filter =
           view === 'board'
-            ? { search, sort: 'board' as const, ascending: false }
+            ? status === 'archived'
+              ? { archived: true, search, sort: 'board' as const, ascending: false }
+              : { status, search, sort: 'board' as const, ascending: false }
             : status === 'archived'
               ? { archived: true, search, sort, ascending }
               : { status, search, sort, ascending }
@@ -284,8 +289,10 @@
     const el = e.target as HTMLElement | null
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     if (e.key === 'Escape') {
+      if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"]')) return
       e.preventDefault()
       if (confirmTask) confirmTask = null
+      else if (settingsOpen) settingsOpen = false
       else if (dialogOpen) {
         dialogOpen = false
         dialogParentId = ''
@@ -325,10 +332,6 @@
         dialogInitialStatus = ''
         dialogParentId = ''
         dialogOpen = true
-        break
-      case 's':
-        e.preventDefault()
-        toggleSubtasks()
         break
       case 'Delete':
         if (!dialogOpen && !confirmTask && selectedTask) {
@@ -395,6 +398,11 @@
     } catch {
       /* ignore */
     }
+    try {
+      guiSettings = await api.getSettings()
+    } catch {
+      /* ignore */
+    }
     unbindChanged = EventsOn('tasks:changed', () => load())
     unbindTrayNewTask = EventsOn('tray:new-task', () => {
       dialogInitialStatus = ''
@@ -448,6 +456,29 @@
 
     <button
       type="button"
+      onclick={() => (settingsOpen = true)}
+      title="Settings"
+      class="grid h-8 w-8 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path
+          d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+        />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+
+    <button
+      type="button"
       onclick={toggleAlwaysOnTop}
       title={alwaysOnTop ? 'Always on top (on)' : 'Always on top (off)'}
       aria-pressed={alwaysOnTop}
@@ -473,20 +504,6 @@
       </svg>
     </button>
 
-    {#if view === 'board' || view === 'list'}
-      <button
-        type="button"
-        onclick={toggleSubtasks}
-        title="Show/hide sub-tasks (s)"
-        class="rounded border px-2.5 py-1 text-xs font-medium transition-colors
-          {showSubtasks
-            ? 'border-accent/50 bg-accent/15 text-accent-hi'
-            : 'border-line-soft text-ink-3 hover:text-ink'}"
-      >
-        Sub-tasks <kbd>s</kbd>
-      </button>
-    {/if}
-
     <button
       onclick={() => {
         dialogInitialStatus = ''
@@ -507,6 +524,7 @@
       {sort}
       {ascending}
       {humanFilter}
+      {showSubtasks}
       onStatusChange={(s: Status | '' | 'archived') => {
         status = s
         load()
@@ -524,42 +542,31 @@
         load()
       }}
       onHumanFilterChange={setHumanFilter}
+      onToggleSubtasks={toggleSubtasks}
     />
   {:else if view === 'board'}
-    <div class="flex flex-none flex-wrap items-center gap-3 border-b border-line-soft px-5 py-2.5">
-      <HumanFilterChips value={humanFilter} onChange={setHumanFilter} />
-      <label
-        class="flex h-8 w-64 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25"
-      >
-        <svg
-          class="h-3.5 w-3.5 flex-none text-ink-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-        <input
-          id="task-search"
-          type="search"
-          placeholder="Search… ( / )"
-          value={search}
-          oninput={(e) => {
-            search = e.currentTarget.value
-            load()
-          }}
-          class="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
-        />
-      </label>
-      <div class="flex-1"></div>
-      <span class="font-mono text-[11px] text-ink-3">
-        {displayRootCount} {displayRootCount === 1 ? 'task' : 'tasks'}
-      </span>
-    </div>
+    <FilterBar
+      {status}
+      {search}
+      sort="board"
+      ascending={false}
+      {humanFilter}
+      {showSubtasks}
+      showSort={false}
+      taskCount={displayRootCount}
+      onStatusChange={(s: Status | '' | 'archived') => {
+        status = s
+        load()
+      }}
+      onSearchInput={(v: string) => {
+        search = v
+        load()
+      }}
+      onSortChange={() => {}}
+      onToggleAsc={() => {}}
+      onHumanFilterChange={setHumanFilter}
+      onToggleSubtasks={toggleSubtasks}
+    />
   {/if}
 
   <div class="flex min-h-0 flex-1">
@@ -635,8 +642,7 @@
     <span class="truncate font-mono text-[11px]">{dbPath}</span>
     <div class="flex-1"></div>
     <span class="flex-none whitespace-nowrap"
-      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
-      <kbd>s</kbd> sub-tasks
+      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view
       {#if view === 'list'}· <kbd>1–5</kbd> filter · <kbd>6</kbd> archived{/if} · <kbd>del</kbd> delete ·
       <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle · <kbd>ctrl+q</kbd> quit</span
     >
@@ -693,10 +699,19 @@
     open={dialogOpen}
     initialStatus={dialogInitialStatus || 'pending'}
     parentId={dialogParentId}
+    defaultCwd={guiSettings.default_cwd}
+    defaultHumanOnly={guiSettings.default_human_only}
     onClose={() => {
       dialogOpen = false
       dialogParentId = ''
     }}
+    onError={showToast}
+  />
+
+  <SettingsDialog
+    open={settingsOpen}
+    onClose={() => (settingsOpen = false)}
+    onSaved={(s) => (guiSettings = s)}
     onError={showToast}
   />
 

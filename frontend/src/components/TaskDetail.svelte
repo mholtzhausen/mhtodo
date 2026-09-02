@@ -154,7 +154,7 @@
 
   async function pickCwd() {
     try {
-      const path = await api.pickDirectory()
+      const path = await api.pickDirectory(cwd.trim())
       if (path && path !== cwd) {
         cwd = path
         await api.update(task.id, { cwd: path })
