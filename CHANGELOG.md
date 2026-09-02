@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.10.0 (ee9a638)
+
+### Features and Improvements
+- Task `slack_thread`: optional Slack thread URL on tasks (`--slack-thread` on add/edit); shown in `show`, markdown export, and Slack board report with a communication reminder
+- Settings → General: **Start hidden in system tray** — choose whether the app launches with the window visible or only in the tray (takes effect on next launch)
+- Task detail modal: left-nav sections (Task, Sub-tasks, Activity); header delete; sub-task list with navigation
+- Task detail: **Include in Slack report** toggle per task
+- New-task dialog: Claude/Herdr **Start task** respects the **Require cwd** integration setting; backdrop click no longer closes the dialog (avoids interrupting text selection)
+- Herdr integration: `TaskEligible` honors `require_cwd` when deciding whether a task can open in Herdr
+
+### Bugfixes
+- Board: selected card highlight no longer shows a heavy yellow accent border
+
+### Deprecations
+- (none)
+
 ## 1.9.0 (775f6d9)
 
 ### Features and Improvements
