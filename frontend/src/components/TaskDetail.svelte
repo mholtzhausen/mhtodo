@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Activity, type Status } from '../lib/api'
-  import { absShort, relTime } from '../lib/format'
+  import { absShort, relTime, shortId } from '../lib/format'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
@@ -55,6 +55,22 @@
   let actText = $state('')
   let commentText = $state('')
   let posting = $state(false)
+  let copiedId = $state(false)
+  let copyTimer: ReturnType<typeof setTimeout> | undefined
+
+  async function copyShortId() {
+    const code = shortId(task.id)
+    try {
+      await navigator.clipboard.writeText(code)
+      copiedId = true
+      clearTimeout(copyTimer)
+      copyTimer = setTimeout(() => {
+        copiedId = false
+      }, 1500)
+    } catch {
+      onError('Could not copy to clipboard')
+    }
+  }
 
   async function loadActivity() {
     try {
@@ -67,6 +83,7 @@
   $effect(() => {
     void task.id
     editingDesc = false
+    copiedId = false
     loadActivity()
   })
 
@@ -244,6 +261,48 @@
           {opt.label}
         </button>
       {/each}
+    </div>
+    <div
+      class="flex items-center gap-0.5 rounded border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
+      title={task.id}
+    >
+      <span class="py-1">{shortId(task.id)}</span>
+      <button
+        type="button"
+        onclick={copyShortId}
+        title={copiedId ? 'Copied' : 'Copy short ID'}
+        aria-label={copiedId ? 'Copied short ID' : 'Copy short ID'}
+        class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
+      >
+        {#if copiedId}
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        {:else}
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        {/if}
+      </button>
     </div>
     <button
       onclick={onClose}
