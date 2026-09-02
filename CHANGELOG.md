@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.7.0 (99fd39f)
+
+### Features and Improvements
+- Herdr workspace readiness check: `EnsureHerdrReady` verifies workspace status when integration is enabled; new-task dialog reflects Herdr/Claude readiness with async status refresh
+- Directory picking: invalid starting paths no longer break the folder dialog (reopens gracefully)
+- Toast notifications: multi-toast support with unique IDs and enter/exit transitions
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.6.0 (d66e0b3)
 
 ### Features and Improvements
