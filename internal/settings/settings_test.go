@@ -20,6 +20,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.Claude.Enabled = true
 	want.Claude.Binary = "/usr/bin/claude"
 	want.Claude.EnvStart = "ANTHROPIC_API_KEY=..."
+	want.Claude.TicketPrompt = "read todo {{todo-hash}}"
 	want.Herdr.Enabled = true
 	want.Herdr.Binary = "/usr/bin/herdr"
 	want.Herdr.EnvStart = "HERDR=1"

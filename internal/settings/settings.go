@@ -27,6 +27,12 @@ type IntegrationConfig struct {
 	EnvStart string `json:"env_start" yaml:"env_start"`
 }
 
+// ClaudeConfig is the Claude Code integration.
+type ClaudeConfig struct {
+	IntegrationConfig
+	TicketPrompt string `json:"ticket_prompt" yaml:"ticket_prompt"`
+}
+
 // HerdrConfig is the Herdr integration (space name is Herdr-specific).
 type HerdrConfig struct {
 	Enabled   bool   `json:"enabled" yaml:"enabled"`
@@ -39,8 +45,16 @@ type HerdrConfig struct {
 type GUISettings struct {
 	DefaultCwd       string            `json:"default_cwd" yaml:"default_cwd"`
 	DefaultHumanOnly bool              `json:"default_human_only" yaml:"default_human_only"`
-	Claude           IntegrationConfig `json:"claude" yaml:"claude"`
+	Claude           ClaudeConfig      `json:"claude" yaml:"claude"`
 	Herdr            HerdrConfig       `json:"herdr" yaml:"herdr"`
+}
+
+type claudeFile struct {
+	Enabled      bool   `yaml:"enabled"`
+	Binary       string `yaml:"binary"`
+	EnvStart     string `yaml:"env_start"`
+	TicketPrompt string `yaml:"ticket_prompt"`
+	UserSet      bool   `yaml:"user_set,omitempty"`
 }
 
 type integrationFile struct {
@@ -61,7 +75,7 @@ type herdrFile struct {
 type configFile struct {
 	DefaultCwd       string          `yaml:"default_cwd"`
 	DefaultHumanOnly bool            `yaml:"default_human_only"`
-	Claude           integrationFile `yaml:"claude"`
+	Claude           claudeFile      `yaml:"claude"`
 	Herdr            herdrFile       `yaml:"herdr"`
 }
 
@@ -72,7 +86,7 @@ func Default() GUISettings {
 
 func defaultConfigFile() configFile {
 	return configFile{
-		Claude: integrationFile{Binary: "claude"},
+		Claude: claudeFile{Binary: "claude"},
 		Herdr:  herdrFile{Binary: "herdr", SpaceName: defaultHerdrSpaceName},
 	}
 }
@@ -305,10 +319,13 @@ func toGUI(cf configFile) GUISettings {
 	return GUISettings{
 		DefaultCwd:       cf.DefaultCwd,
 		DefaultHumanOnly: cf.DefaultHumanOnly,
-		Claude: IntegrationConfig{
-			Enabled:  cf.Claude.Enabled,
-			Binary:   cf.Claude.Binary,
-			EnvStart: cf.Claude.EnvStart,
+		Claude: ClaudeConfig{
+			IntegrationConfig: IntegrationConfig{
+				Enabled:  cf.Claude.Enabled,
+				Binary:   cf.Claude.Binary,
+				EnvStart: cf.Claude.EnvStart,
+			},
+			TicketPrompt: cf.Claude.TicketPrompt,
 		},
 		Herdr: HerdrConfig{
 			Enabled:   cf.Herdr.Enabled,
@@ -325,6 +342,7 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.Claude.Enabled = s.Claude.Enabled
 	cf.Claude.Binary = s.Claude.Binary
 	cf.Claude.EnvStart = s.Claude.EnvStart
+	cf.Claude.TicketPrompt = s.Claude.TicketPrompt
 	cf.Herdr.Enabled = s.Herdr.Enabled
 	cf.Herdr.Binary = s.Herdr.Binary
 	cf.Herdr.EnvStart = s.Herdr.EnvStart
@@ -343,13 +361,18 @@ func migrateFromMeta(ctx context.Context, repo *store.TaskRepo) (configFile, boo
 	}
 	cf := defaultConfigFile()
 	applyGUI(&cf, legacy)
-	cf.Claude.UserSet = integrationConfigured(legacy.Claude, "claude")
+	cf.Claude.UserSet = claudeIntegrationConfigured(legacy.Claude, "claude")
 	cf.Herdr.UserSet = herdrIntegrationConfigured(legacy.Herdr, "herdr")
 	return cf, true
 }
 
 func integrationConfigured(c IntegrationConfig, defaultBinary string) bool {
 	return c.Enabled || c.EnvStart != "" || (c.Binary != "" && c.Binary != defaultBinary)
+}
+
+func claudeIntegrationConfigured(c ClaudeConfig, defaultBinary string) bool {
+	return integrationConfigured(c.IntegrationConfig, defaultBinary) ||
+		strings.TrimSpace(c.TicketPrompt) != ""
 }
 
 func herdrIntegrationConfigured(c HerdrConfig, defaultBinary string) bool {

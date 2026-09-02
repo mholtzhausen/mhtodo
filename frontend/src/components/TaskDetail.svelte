@@ -57,6 +57,40 @@
   let posting = $state(false)
   let copiedId = $state(false)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
+  let herdrReady = $state(false)
+  let claudeActive = $state(false)
+  let herdrOpening = $state(false)
+
+  async function refreshHerdrStatus() {
+    herdrReady = false
+    claudeActive = false
+    if (humanOnly || !cwd.trim()) return
+    try {
+      const [status, settings] = await Promise.all([
+        api.ensureHerdrWorkspace(task.id),
+        api.getSettings()
+      ])
+      herdrReady = !!status.ready
+      if (herdrReady && settings.claude.enabled) {
+        claudeActive = await api.checkBinary(settings.claude.binary)
+      }
+    } catch {
+      herdrReady = false
+      claudeActive = false
+    }
+  }
+
+  async function openHerdrTicket() {
+    if (herdrOpening || !herdrReady) return
+    herdrOpening = true
+    try {
+      await api.openHerdrTicket(task.id)
+    } catch (e) {
+      onError(errMsg(e))
+    } finally {
+      herdrOpening = false
+    }
+  }
 
   async function copyShortId() {
     const code = shortId(task.id)
@@ -85,6 +119,13 @@
     editingDesc = false
     copiedId = false
     loadActivity()
+    void refreshHerdrStatus()
+  })
+
+  $effect(() => {
+    void humanOnly
+    void cwd
+    void refreshHerdrStatus()
   })
 
   // Keep local fields in sync with live task updates; don't clobber an in-progress edit.
@@ -262,47 +303,93 @@
         </button>
       {/each}
     </div>
-    <div
-      class="flex items-center gap-0.5 rounded border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
-      title={task.id}
-    >
-      <span class="py-1">{shortId(task.id)}</span>
-      <button
-        type="button"
-        onclick={copyShortId}
-        title={copiedId ? 'Copied' : 'Copy short ID'}
-        aria-label={copiedId ? 'Copied short ID' : 'Copy short ID'}
-        class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
+    <div class="flex items-center gap-1">
+      <div
+        class="flex items-center gap-0.5 rounded border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
+        title={task.id}
       >
-        {#if copiedId}
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-        {:else}
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-        {/if}
-      </button>
+        <span class="py-1">{shortId(task.id)}</span>
+        <button
+          type="button"
+          onclick={copyShortId}
+          title={copiedId ? 'Copied' : 'Copy short ID'}
+          aria-label={copiedId ? 'Copied short ID' : 'Copy short ID'}
+          class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
+        >
+          {#if copiedId}
+            <svg
+              class="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          {:else}
+            <svg
+              class="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          {/if}
+        </button>
+      </div>
+      {#if herdrReady}
+        <button
+          type="button"
+          onclick={openHerdrTicket}
+          disabled={herdrOpening}
+          title={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
+          aria-label={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
+          class="rounded border border-line-soft bg-field/40 p-1 transition-colors hover:bg-white/5 disabled:opacity-40
+            {claudeActive
+            ? 'text-[#d97757] hover:text-[#e88a6a]'
+            : 'text-ink-3 hover:text-accent-hi'}"
+        >
+          {#if claudeActive}
+            <svg
+              class="h-3 w-3"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 100 100"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"
+              />
+            </svg>
+          {:else}
+            <svg
+              class="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8" />
+              <path d="M12 17v4" />
+              <path d="m7 8 3 3-3 3" />
+              <path d="M13 14h4" />
+            </svg>
+          {/if}
+        </button>
+      {/if}
     </div>
     <button
       onclick={onClose}

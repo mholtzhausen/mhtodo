@@ -208,15 +208,35 @@ export namespace core {
 
 }
 
+export namespace integrations {
+	
+	export class HerdrTaskStatus {
+	    ready: boolean;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HerdrTaskStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ready = source["ready"];
+	        this.error = source["error"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
-	export class IntegrationConfig {
+	export class ClaudeConfig {
 	    enabled: boolean;
 	    binary: string;
 	    env_start: string;
+	    ticket_prompt: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new IntegrationConfig(source);
+	        return new ClaudeConfig(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -224,6 +244,7 @@ export namespace settings {
 	        this.enabled = source["enabled"];
 	        this.binary = source["binary"];
 	        this.env_start = source["env_start"];
+	        this.ticket_prompt = source["ticket_prompt"];
 	    }
 	}
 	export class HerdrConfig {
@@ -247,7 +268,7 @@ export namespace settings {
 	export class GUISettings {
 	    default_cwd: string;
 	    default_human_only: boolean;
-	    claude: IntegrationConfig;
+	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
 	
 	    static createFrom(source: any = {}) {
@@ -258,7 +279,7 @@ export namespace settings {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.default_cwd = source["default_cwd"];
 	        this.default_human_only = source["default_human_only"];
-	        this.claude = this.convertValues(source["claude"], IntegrationConfig);
+	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
 	    }
 	

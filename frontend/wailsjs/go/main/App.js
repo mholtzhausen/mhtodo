@@ -34,6 +34,10 @@ export function DeleteTask(arg1) {
   return window['go']['main']['App']['DeleteTask'](arg1);
 }
 
+export function EnsureHerdrWorkspaceForTask(arg1) {
+  return window['go']['main']['App']['EnsureHerdrWorkspaceForTask'](arg1);
+}
+
 export function GetAlwaysOnTop() {
   return window['go']['main']['App']['GetAlwaysOnTop']();
 }
@@ -56,6 +60,10 @@ export function ListActivity(arg1) {
 
 export function ListTasks(arg1) {
   return window['go']['main']['App']['ListTasks'](arg1);
+}
+
+export function OpenHerdrTicket(arg1) {
+  return window['go']['main']['App']['OpenHerdrTicket'](arg1);
 }
 
 export function PickDirectory(arg1) {

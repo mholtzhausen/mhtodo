@@ -3,9 +3,10 @@
   import { api, errMsg } from '../lib/api'
   import {
     defaultSettings,
+    DEFAULT_CLAUDE_TICKET_PROMPT,
+    type ClaudeConfig,
     type GUISettings,
-    type HerdrConfig,
-    type IntegrationConfig
+    type HerdrConfig
   } from '../lib/settings'
 
   let {
@@ -127,6 +128,7 @@
     void claude.enabled
     void claude.binary
     void claude.env_start
+    void claude.ticket_prompt
     void herdr.enabled
     void herdr.binary
     void herdr.env_start
@@ -153,11 +155,11 @@
     }
   }
 
-  function patchIntegration(key: 'claude', patch: Partial<IntegrationConfig>): void
+  function patchIntegration(key: 'claude', patch: Partial<ClaudeConfig>): void
   function patchIntegration(key: 'herdr', patch: Partial<HerdrConfig>): void
   function patchIntegration(
     key: 'claude' | 'herdr',
-    patch: Partial<IntegrationConfig> | Partial<HerdrConfig>
+    patch: Partial<ClaudeConfig> | Partial<HerdrConfig>
   ) {
     settings = {
       ...settings,
@@ -308,6 +310,23 @@
                       placeholder="e.g. ANTHROPIC_API_KEY=… command args"
                       class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                     />
+                  </label>
+                  <label class="block">
+                    <span class="micro mb-1">Ticket prompt</span>
+                    <textarea
+                      rows="4"
+                      value={settings.claude.ticket_prompt}
+                      oninput={(e) =>
+                        patchIntegration('claude', {
+                          ticket_prompt: (e.currentTarget as HTMLTextAreaElement).value
+                        })}
+                      placeholder={DEFAULT_CLAUDE_TICKET_PROMPT}
+                      class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 font-mono text-xs leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                    ></textarea>
+                    <p class="mt-1 text-[11px] text-ink-3">
+                      Sent to Claude in a new Herdr tab. Use <code class="text-ink-2">{'{{todo-hash}}'}</code> for the
+                      short task ID.
+                    </p>
                   </label>
                 </div>
               </div>

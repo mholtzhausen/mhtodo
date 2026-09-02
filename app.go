@@ -16,6 +16,7 @@ import (
 
 	"mhtodo/internal/core"
 	"mhtodo/internal/globalhk"
+	"mhtodo/internal/integrations"
 	"mhtodo/internal/notify"
 	"mhtodo/internal/platform"
 	"mhtodo/internal/settings"
@@ -303,6 +304,59 @@ func (a *App) SetGUISettings(s settings.GUISettings) error {
 // CheckBinary reports whether path resolves to an executable (for integration UI).
 func (a *App) CheckBinary(path string) bool {
 	return settings.BinaryFound(path)
+}
+
+func (a *App) herdrClient() (integrations.Client, error) {
+	s, err := settings.Load(a.repo)
+	if err != nil {
+		return integrations.Client{}, err
+	}
+	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude}, nil
+}
+
+// EnsureHerdrWorkspaceForTask ensures the configured Herdr workspace exists when
+// the task is eligible (Herdr enabled, cwd set, not human-only).
+func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskStatus, error) {
+	client, err := a.herdrClient()
+	if err != nil {
+		return integrations.HerdrTaskStatus{}, err
+	}
+	if !client.Herdr.Enabled || !client.HerdrFound() {
+		return integrations.HerdrTaskStatus{}, nil
+	}
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return integrations.HerdrTaskStatus{}, err
+	}
+	if !integrations.TaskEligible(t.HumanOnly, t.Cwd) {
+		return integrations.HerdrTaskStatus{}, nil
+	}
+	ready, err := client.EnsureWorkspace()
+	if err != nil {
+		return integrations.HerdrTaskStatus{Error: err.Error()}, nil
+	}
+	return integrations.HerdrTaskStatus{Ready: ready}, nil
+}
+
+// OpenHerdrTicket opens or focuses a Herdr tab for the task and optionally
+// starts Claude with the configured ticket prompt on a new tab.
+func (a *App) OpenHerdrTicket(ref string) error {
+	client, err := a.herdrClient()
+	if err != nil {
+		return err
+	}
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return err
+	}
+	if !integrations.TaskEligible(t.HumanOnly, t.Cwd) {
+		return fmt.Errorf("task is not eligible for Herdr (needs cwd and must not be human-only)")
+	}
+	shortID := t.ID
+	if len(shortID) > 8 {
+		shortID = shortID[:8]
+	}
+	return client.OpenTicketTab(shortID, t.Title, t.Cwd)
 }
 
 // emitChanged is the single refresh path for the frontend: every local

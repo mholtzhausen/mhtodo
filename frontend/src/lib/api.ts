@@ -170,6 +170,12 @@ export const api = {
   },
   checkBinary(path: string): Promise<boolean> {
     return App.CheckBinary(path)
+  },
+  ensureHerdrWorkspace(taskId: string): Promise<{ ready: boolean; error?: string }> {
+    return App.EnsureHerdrWorkspaceForTask(taskId)
+  },
+  openHerdrTicket(taskId: string): Promise<void> {
+    return App.OpenHerdrTicket(taskId)
   }
 }
 
