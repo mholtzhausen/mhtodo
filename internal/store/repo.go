@@ -125,6 +125,25 @@ func (r *TaskRepo) FindByPrefix(ctx context.Context, prefix string) ([]core.Task
 	return out, rows.Err()
 }
 
+func (r *TaskRepo) FindBySuffix(ctx context.Context, suffix string) ([]core.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks WHERE REPLACE(id, '-', '') LIKE '%' || ? ESCAPE '\' ORDER BY id`,
+		escapeLike(suffix))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []core.Task
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, error) {
 	var conds []string
 	var args []any
@@ -329,6 +348,25 @@ func (r *TaskRepo) FindActivityByPrefix(ctx context.Context, prefix string) ([]c
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT `+activityColumns+` FROM activity WHERE id LIKE ? ESCAPE '\' ORDER BY id`,
 		escapeLike(prefix)+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []core.Activity
+	for rows.Next() {
+		a, err := scanActivity(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (r *TaskRepo) FindActivityBySuffix(ctx context.Context, suffix string) ([]core.Activity, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+activityColumns+` FROM activity WHERE REPLACE(id, '-', '') LIKE '%' || ? ESCAPE '\' ORDER BY id`,
+		escapeLike(suffix))
 	if err != nil {
 		return nil, err
 	}

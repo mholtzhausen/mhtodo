@@ -17,6 +17,7 @@ type TaskRepository interface {
 	Create(ctx context.Context, t Task) error
 	GetByID(ctx context.Context, id string) (Task, error) // ErrNotFound if missing
 	FindByPrefix(ctx context.Context, prefix string) ([]Task, error)
+	FindBySuffix(ctx context.Context, suffix string) ([]Task, error)
 	List(ctx context.Context, f ListFilter) ([]Task, error)
 	Update(ctx context.Context, t Task) error // mutable fields by t.ID; ErrNotFound if missing
 	UpdateBoardRank(ctx context.Context, id string, rank float64) error
@@ -32,6 +33,7 @@ type TaskRepository interface {
 	CreateActivity(ctx context.Context, a Activity) error
 	GetActivityByID(ctx context.Context, id string) (Activity, error)
 	FindActivityByPrefix(ctx context.Context, prefix string) ([]Activity, error)
+	FindActivityBySuffix(ctx context.Context, suffix string) ([]Activity, error)
 	ListActivity(ctx context.Context, f ActivityFilter) ([]Activity, error)
 	DeleteActivity(ctx context.Context, id string) (Activity, error)
 }
@@ -148,6 +150,12 @@ func (s *Service) ResolveID(ctx context.Context, ref string) (string, error) {
 	matches, err := s.repo.FindByPrefix(ctx, ref)
 	if err != nil {
 		return "", err
+	}
+	if len(matches) == 0 {
+		matches, err = s.repo.FindBySuffix(ctx, ref)
+		if err != nil {
+			return "", err
+		}
 	}
 	switch len(matches) {
 	case 0:
@@ -417,6 +425,12 @@ func (s *Service) ResolveActivityID(ctx context.Context, ref string) (string, er
 	matches, err := s.repo.FindActivityByPrefix(ctx, ref)
 	if err != nil {
 		return "", err
+	}
+	if len(matches) == 0 {
+		matches, err = s.repo.FindActivityBySuffix(ctx, ref)
+		if err != nil {
+			return "", err
+		}
 	}
 	switch len(matches) {
 	case 0:

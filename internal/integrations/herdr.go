@@ -121,7 +121,7 @@ func (c Client) EnsureWorkspace() (bool, error) {
 
 // OpenTicketTab focuses the configured workspace and opens or focuses a ticket tab.
 // When a new tab is created and Claude integration is enabled, runs the ticket prompt.
-func (c Client) OpenTicketTab(shortID, title, cwd string) error {
+func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 	if !c.Herdr.Enabled || !c.HerdrFound() {
 		return fmt.Errorf("herdr integration is not available")
 	}
@@ -143,8 +143,8 @@ func (c Client) OpenTicketTab(shortID, title, cwd string) error {
 		}
 	}
 
-	tabLabel := ticketTabLabel(shortID, title)
-	tab, found, err := c.findTabForTicket(ws.WorkspaceID, shortID, tabLabel)
+	tabLabel := ticketTabLabel(taskID, shortID, title)
+	tab, found, err := c.findTabForTicket(ws.WorkspaceID, taskID, shortID, tabLabel)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,10 @@ func (c Client) OpenTicketTab(shortID, title, cwd string) error {
 	return c.presentHerdrUI()
 }
 
-func ticketTabLabel(shortID, title string) string {
+const tabLabelTaskSep = "|"
+
+func ticketTabLabel(_ string, shortID, title string) string {
+	shortID = strings.TrimSpace(shortID)
 	title = strings.TrimSpace(title)
 	if title == "" {
 		return shortID
@@ -188,10 +191,24 @@ func ticketTabLabel(shortID, title string) string {
 	return shortID + " - " + title
 }
 
-func tabMatchesTicket(tabLabel, shortID string) bool {
+func parseTabLabel(label string) (taskID, display string, ok bool) {
+	i := strings.Index(label, tabLabelTaskSep)
+	if i <= 0 {
+		return "", label, false
+	}
+	return label[:i], label[i+len(tabLabelTaskSep):], true
+}
+
+func tabMatchesTicket(tabLabel, taskID, shortID string) bool {
 	shortID = strings.TrimSpace(shortID)
 	if shortID == "" {
 		return false
+	}
+	if tid, display, ok := parseTabLabel(tabLabel); ok {
+		if strings.TrimSpace(taskID) != "" && tid == taskID {
+			return true
+		}
+		tabLabel = display
 	}
 	if tabLabel == shortID {
 		return true
@@ -239,7 +256,7 @@ func (c Client) createWorkspace(label string) error {
 	return c.run("workspace", "create", "--cwd", home, "--label", label, "--no-focus")
 }
 
-func (c Client) findTabForTicket(workspaceID, shortID, label string) (herdrTab, bool, error) {
+func (c Client) findTabForTicket(workspaceID, taskID, shortID, label string) (herdrTab, bool, error) {
 	raw, err := c.runOutput("tab", "list", "--workspace", workspaceID)
 	if err != nil {
 		return herdrTab{}, false, err
@@ -255,20 +272,30 @@ func (c Client) findTabForTicket(workspaceID, shortID, label string) (herdrTab, 
 	if err := json.Unmarshal(env.Result, &list); err != nil {
 		return herdrTab{}, false, fmt.Errorf("parse tab list result: %w", err)
 	}
-	var prefixMatch *herdrTab
+	var legacyMatch *herdrTab
 	for _, tab := range list.Tabs {
+		if workspaceID != "" && tab.WorkspaceID != "" && tab.WorkspaceID != workspaceID {
+			continue
+		}
 		if tab.Label == label {
 			return tab, true, nil
 		}
-		if tabMatchesTicket(tab.Label, shortID) {
+		if tid, _, ok := parseTabLabel(tab.Label); ok {
+			if tid == taskID {
+				t := tab
+				return t, true, nil
+			}
+			continue
+		}
+		if tabMatchesTicket(tab.Label, taskID, shortID) {
 			t := tab
-			if prefixMatch == nil {
-				prefixMatch = &t
+			if legacyMatch == nil {
+				legacyMatch = &t
 			}
 		}
 	}
-	if prefixMatch != nil {
-		return *prefixMatch, true, nil
+	if legacyMatch != nil {
+		return *legacyMatch, true, nil
 	}
 	return herdrTab{}, false, nil
 }

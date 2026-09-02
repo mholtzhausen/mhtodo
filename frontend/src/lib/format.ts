@@ -1,5 +1,7 @@
 export function shortId(id: string): string {
-  return id.slice(0, 8)
+  const compact = id.replaceAll('-', '')
+  if (compact.length <= 8) return compact
+  return compact.slice(-8)
 }
 
 export function relTime(iso: string): string {

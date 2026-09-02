@@ -25,29 +25,45 @@ func TestShellDoubleQuote(t *testing.T) {
 
 func TestTicketTabLabel(t *testing.T) {
 	t.Parallel()
-	got := ticketTabLabel("abcd1234", "Short title")
-	want := "abcd1234 - Short title"
+	got := ticketTabLabel("019be00a-5f3a-7abc-8000-abc123456789", "81abc903", "Short title")
+	want := "81abc903 - Short title"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
-	long := ticketTabLabel("abcd1234", "This is a very long ticket title that exceeds forty characters easily")
-	if len([]rune(long)) > len("abcd1234 - ")+40 {
+	long := ticketTabLabel("ignored", "81abc903", "This is a very long ticket title that exceeds forty characters easily")
+	if len([]rune(long)) > len("81abc903 - ")+40 {
 		t.Fatalf("title not truncated: %q", long)
 	}
 }
 
 func TestTabMatchesTicket(t *testing.T) {
 	t.Parallel()
-	if !tabMatchesTicket("abcd1234 - Fix the bug", "abcd1234") {
+	taskA := "019be00a-5f3a-7abc-8000-abc123456789"
+	taskB := "019be00a-5f3a-7abc-8000-abc123456790"
+	shortA := "abc12345"
+	shortB := "abc12346"
+
+	tabA := ticketTabLabel(taskA, shortA, "Fix the bug")
+	if !tabMatchesTicket(tabA, taskA, shortA) {
+		t.Fatal("expected short id match")
+	}
+	if tabMatchesTicket(tabA, taskB, shortB) {
+		t.Fatal("different short ids must not match")
+	}
+	legacy := taskA + "|" + tabA
+	if !tabMatchesTicket(legacy, taskA, shortA) {
+		t.Fatal("expected legacy embedded task id match")
+	}
+	if !tabMatchesTicket("abcd1234 - Fix the bug", taskA, "abcd1234") {
 		t.Fatal("expected prefix match")
 	}
-	if !tabMatchesTicket("abcd1234", "abcd1234") {
+	if !tabMatchesTicket("abcd1234", taskA, "abcd1234") {
 		t.Fatal("expected exact match")
 	}
-	if tabMatchesTicket("abcd1234 - Fix", "abcd123") {
+	if tabMatchesTicket("abcd1234 - Fix", taskA, "abcd123") {
 		t.Fatal("should not match shorter prefix")
 	}
-	if tabMatchesTicket("xyz - abcd1234", "abcd1234") {
+	if tabMatchesTicket("xyz - abcd1234", taskA, "abcd1234") {
 		t.Fatal("should not match suffix")
 	}
 }

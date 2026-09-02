@@ -4,6 +4,7 @@ package integrations
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -57,11 +58,18 @@ func launchInTerminal(commandLine string) error {
 	return errors.New("no terminal emulator found on PATH")
 }
 
-// activateHerdrWindow raises an existing Herdr top-level window when possible.
+// activateHerdrWindow raises the terminal emulator hosting the Herdr TUI.
 func activateHerdrWindow() error {
 	if pid, ok := findHerdrTUIPID(); ok {
-		if err := activateWindowForPID(pid); err == nil {
-			return nil
+		for walk := pid; walk > 1; {
+			if err := activateWindowForPID(walk); err == nil {
+				return nil
+			}
+			parent, err := processParentPID(walk)
+			if err != nil || parent <= 1 || parent == walk {
+				break
+			}
+			walk = parent
 		}
 	}
 	if err := activateViaWMCtrl(); err == nil {
@@ -87,8 +95,12 @@ func activateWindowForPID(pid int) error {
 	if err != nil || len(strings.TrimSpace(string(idBytes))) == 0 {
 		return errHerdrWindowNotFound
 	}
-	id := strings.Fields(strings.TrimSpace(string(idBytes)))[0]
-	return exec.Command(path, "windowactivate", id).Run()
+	for _, id := range strings.Fields(strings.TrimSpace(string(idBytes))) {
+		if err := exec.Command(path, "windowactivate", id).Run(); err == nil {
+			return nil
+		}
+	}
+	return errHerdrWindowNotFound
 }
 
 func activateViaWMCtrl() error {
@@ -102,7 +114,11 @@ func activateViaWMCtrl() error {
 	}
 	for _, line := range strings.Split(string(out), "\n") {
 		lower := strings.ToLower(line)
-		if !strings.Contains(lower, "herdr") {
+		if !strings.Contains(lower, "herdr") &&
+			!strings.Contains(lower, "gnome-terminal") &&
+			!strings.Contains(lower, "konsole") &&
+			!strings.Contains(lower, "kitty") &&
+			!strings.Contains(lower, "alacritty") {
 			continue
 		}
 		fields := strings.Fields(line)
@@ -122,13 +138,42 @@ func activateViaXDoTool() error {
 	if err != nil {
 		return err
 	}
-	out, err := exec.Command(path, "search", "--onlyvisible", "--class", "herdr").Output()
-	if err != nil || len(strings.TrimSpace(string(out))) == 0 {
-		out, err = exec.Command(path, "search", "--name", "herdr").Output()
-		if err != nil || len(strings.TrimSpace(string(out))) == 0 {
-			return errHerdrWindowNotFound
+	for _, class := range []string{"gnome-terminal", "Gnome-terminal", "konsole", "kitty", "Alacritty", "herdr"} {
+		out, err := exec.Command(path, "search", "--onlyvisible", "--class", class).Output()
+		if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+			for _, id := range strings.Fields(strings.TrimSpace(string(out))) {
+				if err := exec.Command(path, "windowactivate", id).Run(); err == nil {
+					return nil
+				}
+			}
 		}
 	}
-	id := strings.Fields(strings.TrimSpace(string(out)))[0]
-	return exec.Command(path, "windowactivate", id).Run()
+	out, err := exec.Command(path, "search", "--name", "herdr").Output()
+	if err != nil || len(strings.TrimSpace(string(out))) == 0 {
+		return errHerdrWindowNotFound
+	}
+	for _, id := range strings.Fields(strings.TrimSpace(string(out))) {
+		if err := exec.Command(path, "windowactivate", id).Run(); err == nil {
+			return nil
+		}
+	}
+	return errHerdrWindowNotFound
+}
+
+func processParentPID(pid int) (int, error) {
+	raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if !strings.HasPrefix(line, "PPid:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("invalid PPid line for pid %d", pid)
+		}
+		return strconv.Atoi(fields[1])
+	}
+	return 0, fmt.Errorf("PPid not found for pid %d", pid)
 }

@@ -131,6 +131,7 @@ func TestPrefixLookup(t *testing.T) {
 	seed(t, repo, "aaaa1111-0000-7000-8000-000000000001", "one", core.StatusPending, 0)
 	seed(t, repo, "bbbb2222-0000-7000-8000-000000000001", "two", core.StatusWIP, 50)
 	seed(t, repo, "bbbb3333-0000-7000-8000-000000000002", "three", core.StatusPending, 10)
+	seed(t, repo, "cccc4444-0000-7000-8000-deadbeefc0de", "suffix", core.StatusPending, 0)
 
 	// Unique prefix resolves.
 	got, err := svc.Get(ctx, "aaaa")
@@ -160,6 +161,11 @@ func TestPrefixLookup(t *testing.T) {
 	}
 	if _, err := svc.Get(ctx, "zzzz9999-0000-7000-8000-000000000001"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("missing id: %v, want ErrNotFound", err)
+	}
+
+	got, err = svc.Get(ctx, core.ShortID("cccc4444-0000-7000-8000-deadbeefc0de"))
+	if err != nil || got.ID != "cccc4444-0000-7000-8000-deadbeefc0de" {
+		t.Fatalf("unique suffix: (%+v, %v)", got, err)
 	}
 }
 
@@ -391,7 +397,7 @@ func TestActivityCRUD(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list: (%d, %v)", len(list), err)
 	}
-	del, err := svc.DeleteActivity(ctx, a.ID[:8])
+	del, err := svc.DeleteActivity(ctx, core.ShortID(a.ID))
 	if err != nil || del.ID != a.ID {
 		t.Fatalf("delete: (%+v, %v)", del, err)
 	}

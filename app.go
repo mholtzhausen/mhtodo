@@ -352,11 +352,8 @@ func (a *App) OpenHerdrTicket(ref string) error {
 	if !integrations.TaskEligible(t.HumanOnly, t.Cwd) {
 		return fmt.Errorf("task is not eligible for Herdr (needs cwd and must not be human-only)")
 	}
-	shortID := t.ID
-	if len(shortID) > 8 {
-		shortID = shortID[:8]
-	}
-	return client.OpenTicketTab(shortID, t.Title, t.Cwd)
+	shortID := core.ShortID(t.ID)
+	return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd)
 }
 
 // emitChanged is the single refresh path for the frontend: every local

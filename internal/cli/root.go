@@ -198,10 +198,7 @@ func relTime(t time.Time) string {
 }
 
 func shortID(id string) string {
-	if len(id) >= 8 {
-		return id[:8]
-	}
-	return id
+	return core.ShortID(id)
 }
 
 // newTabWriter builds the aligned-column writer used by human output.
