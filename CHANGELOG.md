@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0 (d66e0b3)
+
+### Features and Improvements
+- GUI Settings dialog: persisted preferences (Herdr path, default terminal, etc.) with directory picking
+- Herdr integration: open workspace from task `cwd`, Claude ticket prompt in terminal tabs, status sync, and env-start helpers
+- Short task ID copy button in TaskDetail
+- Shared short-prefix ID resolution in core (CLI, GUI, and Herdr)
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.5.0 (c4c1545)
 
 ### Features and Improvements
