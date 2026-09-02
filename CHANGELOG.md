@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.0 (775f6d9)
+
+### Features and Improvements
+- Archive done: bulk archive from the Done column and `mhtodo archive` skips subtasks by default; enable **Archive done subtasks** in Settings → General to include them
+- Task markdown report: `mhtodo show ID --markdown` prints a paste-ready summary (subtasks, activity, feedback)
+- Herdr: optional close ticket tab when a task moves to done (`close_tab_on_done` in Claude integration settings)
+- GUI: task activity actions panel, clearable settings fields, list/board UI polish
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.8.0 (1e1e3ab)
 
 ### Features and Improvements
