@@ -78,6 +78,7 @@ export namespace core {
 	    ParentID: string;
 	    Cwd: string;
 	    HumanOnly: boolean;
+	    SlackThread: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -93,6 +94,7 @@ export namespace core {
 	        this.ParentID = source["ParentID"];
 	        this.Cwd = source["Cwd"];
 	        this.HumanOnly = source["HumanOnly"];
+	        this.SlackThread = source["SlackThread"];
 	    }
 	}
 	export class ListFilter {
@@ -143,6 +145,7 @@ export namespace core {
 	    cwd: string;
 	    human_only: boolean;
 	    include_in_report: boolean;
+	    slack_thread: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -165,6 +168,7 @@ export namespace core {
 	        this.cwd = source["cwd"];
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
+	        this.slack_thread = source["slack_thread"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -193,6 +197,7 @@ export namespace core {
 	    Cwd?: string;
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
+	    SlackThread?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -207,6 +212,7 @@ export namespace core {
 	        this.Cwd = source["Cwd"];
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
+	        this.SlackThread = source["SlackThread"];
 	    }
 	}
 
@@ -277,6 +283,7 @@ export namespace settings {
 	    default_cwd: string;
 	    default_human_only: boolean;
 	    archive_done_subtasks: boolean;
+	    start_hidden: boolean;
 	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
 	
@@ -289,6 +296,7 @@ export namespace settings {
 	        this.default_cwd = source["default_cwd"];
 	        this.default_human_only = source["default_human_only"];
 	        this.archive_done_subtasks = source["archive_done_subtasks"];
+	        this.start_hidden = source["start_hidden"];
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
 	    }

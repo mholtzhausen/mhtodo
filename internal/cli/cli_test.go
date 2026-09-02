@@ -269,6 +269,47 @@ func TestAddCwdAndHumanOnly(t *testing.T) {
 	}
 }
 
+func TestSlackThread(t *testing.T) {
+	out, _, run := newCLI(t)
+	link := "https://example.slack.com/archives/C123/p456"
+
+	out.Reset()
+	if code := run("add", "Slack task", "--slack-thread", link, "--json"); code != 0 {
+		t.Fatalf("add exit %d", code)
+	}
+	var tsk core.Task
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.SlackThread != link {
+		t.Fatalf("add slack_thread = %q, want %q", tsk.SlackThread, link)
+	}
+	id := tsk.ID
+
+	out.Reset()
+	if code := run("show", id); code != 0 {
+		t.Fatalf("show exit %d", code)
+	}
+	if !strings.Contains(out.String(), core.SlackThreadNotice(link)) {
+		t.Errorf("show missing slack notice:\n%s", out.String())
+	}
+
+	out.Reset()
+	if code := run("show", id, "--markdown"); code != 0 {
+		t.Fatalf("show --markdown exit %d", code)
+	}
+	if !strings.Contains(out.String(), core.SlackThreadNotice(link)) {
+		t.Errorf("markdown missing slack notice:\n%s", out.String())
+	}
+
+	out.Reset()
+	if code := run("edit", id, "--slack-thread", "", "--json"); code != 0 {
+		t.Fatalf("edit clear exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.SlackThread != "" {
+		t.Errorf("cleared slack_thread = %q", tsk.SlackThread)
+	}
+}
+
 func TestReorderCLI(t *testing.T) {
 	out, _, run := newCLI(t)
 	if code := run("add", "Alpha"); code != 0 {

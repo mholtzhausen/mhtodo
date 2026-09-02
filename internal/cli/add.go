@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent, cwd string
+	var desc, feedback, status, parent, cwd, slackThread string
 	var progress int
 	var humanOnly bool
 	cmd := &cobra.Command{
@@ -37,6 +37,7 @@ func newAddCmd() *cobra.Command {
 				ParentID:    parent,
 				Cwd:         cwd,
 				HumanOnly:   humanOnly,
+				SlackThread: slackThread,
 			})
 			if err != nil {
 				return mapError(err)
@@ -59,6 +60,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
+	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	return cmd
 }

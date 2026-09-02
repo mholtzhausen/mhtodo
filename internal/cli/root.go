@@ -137,6 +137,9 @@ func (o opts) printTask(t core.Task) error {
 		if t.Feedback != "" {
 			fmt.Fprintf(w, "Feedback   \t%s\n", t.Feedback)
 		}
+		if notice := core.SlackThreadNotice(t.SlackThread); notice != "" {
+			fmt.Fprintf(w, "Slack thread\t%s\n", notice)
+		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)
 		if t.ParentID != nil {

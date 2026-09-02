@@ -27,6 +27,7 @@ import (
 
 	"mhtodo/internal/cli"
 	"mhtodo/internal/platform"
+	"mhtodo/internal/settings"
 	"mhtodo/internal/tray"
 )
 
@@ -67,9 +68,16 @@ func init() {
 	}
 }
 
-// Tray wiring lives in internal/tray (M0-validated Register pattern); the app
-// provides the handlers. Tooltip counts are refreshed by App.emitChanged via
-// tray.SetTooltip.
+// launchStartHidden is resolved once in runGUI from config (see resolveLaunchStartHidden).
+var launchStartHidden bool
+
+func resolveLaunchStartHidden() bool {
+	s, err := settings.Load(nil)
+	if err != nil {
+		return startHidden
+	}
+	return s.StartHidden
+}
 
 // runGUI is the GUI entrypoint: single-instance lock, focus-on-relaunch signal,
 // tray registration (before Wails), then wails.Run.
@@ -83,6 +91,8 @@ func runGUI(args []string) {
 	selftest := fs.Bool("selftest", false, "auto-run show → hide → quit for headless verification")
 	fs.Parse(args)
 
+	launchStartHidden = resolveLaunchStartHidden()
+
 	// Single instance: a second launch focuses the running one and exits.
 	// Under -tags dev (make dev), skip focus signaling — wails generate module
 	// and hot-reload rebuilds spawn short-lived second processes that would
@@ -90,7 +100,7 @@ func runGUI(args []string) {
 	if err := acquireInstanceLock(); err != nil {
 		var ar *AlreadyRunningError
 		if errors.As(err, &ar) {
-			if startHidden {
+			if launchStartHidden {
 				log.Printf("mhtodo is already running (pid %d); exiting quietly (dev)", ar.PID)
 			} else {
 				log.Printf("mhtodo is already running (pid %d); focusing existing window", ar.PID)
@@ -105,8 +115,8 @@ func runGUI(args []string) {
 	// MUST be SIGUSR2 — WebKit/JSC installs its own C handler for signal 10
 	// (SIGUSR1, "JSC_SIGNAL_FOR_GC"); sending SIGUSR1 to this process crashes it
 	// with SIGSEGV during cgo execution (verified 2026-08-19).
-	// Not registered under StartHidden (dev): rebuild spawns would steal focus.
-	if !startHidden {
+	// Not registered when StartHidden: rebuild spawns would steal focus.
+	if !launchStartHidden {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGUSR2)
 		go func() {
@@ -167,7 +177,7 @@ func runGUI(args []string) {
 		Height:      720,
 		MinWidth:    800,
 		MinHeight:   560,
-		StartHidden: startHidden, // true under -tags dev (make dev); tray can still show
+		StartHidden: launchStartHidden, // user setting in config.yml (General → Start hidden)
 		Linux: &linux.Options{
 			Icon: appIcon, // window/taskbar icon (M6)
 		},

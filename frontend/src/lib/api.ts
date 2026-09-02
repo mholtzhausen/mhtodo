@@ -23,6 +23,7 @@ export interface Task {
   cwd: string
   human_only: boolean
   include_in_report: boolean
+  slack_thread: string
 }
 
 export interface Activity {
@@ -86,6 +87,7 @@ export const api = {
     parentId?: string
     cwd?: string
     humanOnly?: boolean
+    slackThread?: string
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -95,7 +97,8 @@ export const api = {
       Progress: input.progress ?? 0,
       ParentID: input.parentId ?? '',
       Cwd: input.cwd ?? '',
-      HumanOnly: !!input.humanOnly
+      HumanOnly: !!input.humanOnly,
+      SlackThread: input.slackThread ?? ''
     }) as Promise<Task>
   },
   update(id: string, patch: {
@@ -106,6 +109,7 @@ export const api = {
     cwd?: string
     humanOnly?: boolean
     includeInReport?: boolean
+    slackThread?: string
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -114,7 +118,8 @@ export const api = {
       Progress: patch.progress ?? null,
       Cwd: patch.cwd ?? null,
       HumanOnly: patch.humanOnly ?? null,
-      IncludeInReport: patch.includeInReport ?? null
+      IncludeInReport: patch.includeInReport ?? null,
+      SlackThread: patch.slackThread ?? null
     })
   },
   setStatus(id: string, status: Status) {

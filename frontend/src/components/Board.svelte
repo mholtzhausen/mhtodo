@@ -223,9 +223,10 @@
     await onLaneDrop(e, col)
   }
 
-  function onCardClick(t: any) {
+  function onCardClick(t: any, el?: HTMLButtonElement) {
     if (suppressClick) return
     onSelect(t.id)
+    el?.blur()
   }
 
   function showGhostAt(col: Status, beforeId: string | null): boolean {
@@ -367,18 +368,18 @@
                 draggable="true"
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="relative rounded-md border border-l-2 shadow-sm transition-all duration-150 select-none
+                class="relative rounded-md border border-l-2 border-line-soft shadow-sm transition-all duration-150 select-none
                   {col.edge}
                   {selectedId === t.id
-                    ? 'border-accent bg-card-hi ring-1 ring-accent/70'
-                    : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}
+                    ? 'bg-accent/10'
+                    : 'bg-card hover:bg-card-hi hover:shadow-lg'}
                   {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
               >
                 <button
                   type="button"
-                  onclick={() => onCardClick(t)}
+                  onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 text-left"
+                  class="w-full cursor-grab p-2.5 text-left focus:outline-none"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">

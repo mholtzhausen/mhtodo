@@ -1,8 +1,8 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
-  import { api, errMsg, type Activity, type Status } from '../lib/api'
+  import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
-  import { absShort, relTime, shortId } from '../lib/format'
+  import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
@@ -43,22 +43,47 @@
     { value: 'modal', label: 'Modal', title: 'Full modal overlay' }
   ]
 
+  type ModalSection = 'task' | 'subtasks' | 'activity'
+  let activeSection = $state<ModalSection>('task')
+
+  const modalSections = $derived.by(() => {
+    const sections: { id: ModalSection; label: string }[] = [
+      { id: 'task', label: 'Task' }
+    ]
+    if (!task.parent_id) {
+      sections.push({ id: 'subtasks', label: 'Sub-tasks' })
+    }
+    sections.push({ id: 'activity', label: 'Activity' })
+    return sections
+  })
+
+  const statusDot: Record<string, string> = {
+    pending: 'bg-st-pending',
+    wip: 'bg-st-wip',
+    waiting: 'bg-st-waiting',
+    review: 'bg-st-review',
+    done: 'bg-st-done'
+  }
+
   let title = $state(task.title)
   let description = $state(task.description)
   let progress = $state(task.progress)
   let cwd = $state(task.cwd ?? '')
+  let slackThread = $state(task.slack_thread ?? '')
   let humanOnly = $state(!!task.human_only)
+  let includeInReport = $state(task.include_in_report !== false)
 
   let editingDesc = $state(false)
   let descEl = $state<HTMLTextAreaElement | null>(null)
 
   let activities = $state<Activity[]>([])
+  let subtasks = $state<Task[]>([])
   let actText = $state('')
   let commentText = $state('')
   let posting = $state(false)
   let copiedId = $state(false)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
-  let herdrReady = $state(false)
+  let herdrActive = $state(false)
   let claudeActive = $state(false)
   let herdrOpening = $state(false)
   let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
@@ -67,8 +92,17 @@
     guiSettings ? claudeIconVisible({ ...task, cwd }, guiSettings) : false
   )
 
+  const canOpenClaude = $derived(
+    !!guiSettings &&
+      showClaude &&
+      guiSettings.herdr.enabled &&
+      guiSettings.claude.enabled &&
+      herdrActive &&
+      claudeActive
+  )
+
   async function refreshHerdrStatus() {
-    herdrReady = false
+    herdrActive = false
     claudeActive = false
     guiSettings = null
     if (humanOnly || task.status === 'done') return
@@ -76,21 +110,20 @@
       const settings = await api.getSettings()
       guiSettings = settings
       if (!claudeIconVisible({ ...task, cwd }, settings)) return
-      const status = cwd.trim()
-        ? await api.ensureHerdrWorkspace(task.id)
-        : await api.ensureHerdrReady()
-      herdrReady = !!status.ready
-      if (herdrReady && settings.claude.enabled) {
+      if (settings.herdr.enabled) {
+        herdrActive = await api.checkBinary(settings.herdr.binary)
+      }
+      if (settings.claude.enabled) {
         claudeActive = await api.checkBinary(settings.claude.binary)
       }
     } catch {
-      herdrReady = false
+      herdrActive = false
       claudeActive = false
     }
   }
 
   async function openHerdrTicket() {
-    if (herdrOpening || !herdrReady) return
+    if (herdrOpening || !canOpenClaude) return
     herdrOpening = true
     try {
       await api.openHerdrTicket(task.id)
@@ -115,6 +148,19 @@
     }
   }
 
+  async function loadSubtasks() {
+    if (task.parent_id) {
+      subtasks = []
+      return
+    }
+    try {
+      const all = await api.list({ includeDone: true, includeHumanOnly: true })
+      subtasks = all.filter((t) => t.parent_id === task.id)
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
   async function loadActivity() {
     try {
       activities = await api.listActivity({ taskIds: [task.id] })
@@ -127,8 +173,16 @@
     void task.id
     editingDesc = false
     copiedId = false
+    activeSection = 'task'
     loadActivity()
+    loadSubtasks()
     void refreshHerdrStatus()
+  })
+
+  $effect(() => {
+    if (task.parent_id && activeSection === 'subtasks') {
+      activeSection = 'task'
+    }
   })
 
   $effect(() => {
@@ -143,7 +197,9 @@
     title = task.title
     progress = task.progress
     cwd = task.cwd ?? ''
+    slackThread = task.slack_thread ?? ''
     humanOnly = !!task.human_only
+    includeInReport = task.include_in_report !== false
     if (!editingDesc) {
       description = task.description ?? ''
     }
@@ -225,12 +281,33 @@
     }
   }
 
+  async function saveSlackThread() {
+    const v = slackThread.trim()
+    if (v === (task.slack_thread ?? '')) return
+    try {
+      await api.update(task.id, { slackThread: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
   async function toggleHumanOnly() {
     if (humanOnly === !!task.human_only) return
     try {
       await api.update(task.id, { humanOnly })
     } catch (e) {
       humanOnly = !!task.human_only
+      onError(errMsg(e))
+    }
+  }
+
+  async function toggleIncludeInReport() {
+    const taskIncluded = task.include_in_report !== false
+    if (includeInReport === taskIncluded) return
+    try {
+      await api.update(task.id, { includeInReport })
+    } catch (e) {
+      includeInReport = taskIncluded
       onError(errMsg(e))
     }
   }
@@ -267,7 +344,7 @@
       ? 'relative flex h-full flex-none flex-col border-l border-line bg-canvas'
       : mode === 'floating'
         ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-2xl'
-        : 'flex max-h-[90vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-2xl'
+        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-2xl'
   )
 
   const enterTransition = $derived(
@@ -356,7 +433,7 @@
           {/if}
         </button>
       </div>
-      {#if showClaude && herdrReady}
+      {#if canOpenClaude}
         <button
           type="button"
           onclick={openHerdrTicket}
@@ -402,6 +479,30 @@
       {/if}
     </div>
     <button
+      type="button"
+      onclick={() => onDelete(task)}
+      title="Delete task (del)"
+      aria-label="Delete task"
+      class="rounded p-1.5 text-ink-3 transition-colors hover:bg-danger/15 hover:text-danger"
+    >
+      <svg
+        class="h-3.5 w-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M3 6h18" />
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+        <path d="M10 11v6" />
+        <path d="M14 11v6" />
+      </svg>
+    </button>
+    <button
       onclick={onClose}
       title="Close (esc)"
       class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
@@ -410,14 +511,25 @@
     </button>
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
+  {#snippet overviewSection()}
     {#if task.parent_id}
       <div>
         <span class="micro mb-1.5">Parent task</span>
         {#if mode === 'modal'}
-          <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
-            {parentTitle ?? task.parent_id}
-          </p>
+          {#if onSelectParent}
+            <button
+              type="button"
+              onclick={() => onSelectParent?.(task.parent_id)}
+              class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
+              title={parentTitle ?? task.parent_id}
+            >
+              {parentTitle ?? 'Open parent'}
+            </button>
+          {:else}
+            <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
+              {parentTitle ?? task.parent_id}
+            </p>
+          {/if}
         {:else}
           <button
             type="button"
@@ -446,6 +558,67 @@
       <StatusPicker value={task.status} onPick={(s) => setStatus(s)} />
     </div>
 
+    <div>
+      <span class="micro mb-1.5">Progress</span>
+      <ProgressControl value={progress} onCommit={(p) => saveProgress(p)} />
+    </div>
+  {/snippet}
+
+  {#snippet contentSection()}
+    <div class="block">
+      <span class="micro mb-1.5">Description</span>
+      {#if editingDesc}
+        <textarea
+          bind:this={descEl}
+          bind:value={description}
+          oninput={() => fitTextarea(descEl)}
+          onblur={saveDescription}
+          onkeydown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation()
+              description = task.description ?? ''
+              editingDesc = false
+            }
+          }}
+          rows="3"
+          placeholder="Notes, links, context… (markdown)"
+          class="ta-autogrow w-full rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        ></textarea>
+      {:else}
+        <div
+          role="button"
+          tabindex="0"
+          class="md-scroll w-full cursor-text rounded border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
+          title="Click to edit"
+          onclick={(e) => {
+            if ((e.target as HTMLElement).closest('a')) return
+            startEditDesc()
+          }}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              startEditDesc()
+            }
+          }}
+        >
+          <Markdown source={description} empty="Notes, links, context…" class="text-ink-2" />
+        </div>
+      {/if}
+    </div>
+
+    {#if task.feedback}
+      <div>
+        <span class="micro mb-1.5">Feedback</span>
+        <div
+          class="md-scroll rounded border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
+        >
+          <Markdown source={task.feedback} />
+        </div>
+      </div>
+    {/if}
+  {/snippet}
+
+  {#snippet contextSection()}
     <div class="block">
       <span class="micro mb-1.5">Working directory</span>
       <div class="flex gap-2">
@@ -477,6 +650,22 @@
       </div>
     </div>
 
+    <label class="block">
+      <span class="micro mb-1.5">Slack thread</span>
+      <input
+        bind:value={slackThread}
+        onblur={saveSlackThread}
+        placeholder="https://… (optional Slack thread link)"
+        class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      />
+      {#if slackThread.trim()}
+        <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
+          the primary thread on slack for communication regarding this ticket is :
+          <a href={slackThread.trim()} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{slackThread.trim()}</a>
+        </p>
+      {/if}
+    </label>
+
     <label class="flex cursor-pointer items-center gap-2.5">
       <input
         type="checkbox"
@@ -487,112 +676,105 @@
       <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
     </label>
 
-    <div class="block">
-      <span class="micro mb-1.5">Description</span>
-      {#if editingDesc}
-        <textarea
-          bind:this={descEl}
-          bind:value={description}
-          oninput={() => fitTextarea(descEl)}
-          onblur={saveDescription}
-          onkeydown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation()
-              description = task.description ?? ''
-              editingDesc = false
-            }
-          }}
-          rows="3"
-          placeholder="Notes, links, context… (markdown)"
-          class="ta-autogrow w-full rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-        ></textarea>
-      {:else}
-        <div
-          role="button"
-          tabindex="0"
-          class="md-scroll w-full cursor-text rounded border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
-          title="Click to edit"
-          onclick={(e) => {
-            // Keep markdown links clickable.
-            if ((e.target as HTMLElement).closest('a')) return
-            startEditDesc()
-          }}
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              startEditDesc()
-            }
-          }}
-        >
-          <Markdown source={description} empty="Notes, links, context…" class="text-ink-2" />
-        </div>
-      {/if}
-    </div>
+    <label class="flex cursor-pointer items-center gap-2.5">
+      <input
+        type="checkbox"
+        bind:checked={includeInReport}
+        onchange={toggleIncludeInReport}
+        class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+      />
+      <span class="text-sm text-ink-2">Include in Slack report <span class="text-ink-3">(board summary copy)</span></span>
+    </label>
+  {/snippet}
 
-    {#if task.feedback}
-      <div>
-        <span class="micro mb-1.5">Feedback</span>
-        <div
-          class="md-scroll rounded border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
-        >
-          <Markdown source={task.feedback} />
-        </div>
-      </div>
-    {/if}
-
-    <div>
-      <span class="micro mb-1.5">Progress</span>
-      <ProgressControl value={progress} onCommit={(p) => saveProgress(p)} />
-    </div>
-
-    {#if !task.parent_id}
+  {#snippet subtasksSection()}
+    <div class="flex flex-col gap-3">
       <button
         type="button"
         onclick={() => onAddSubtask(task.id)}
-        class="rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+        class="self-start rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
       >
         + Add sub-task
       </button>
-    {/if}
-
-    <div class="border-t border-line-soft pt-3">
-      <span class="micro mb-2">Activity</span>
-      <form onsubmit={postActivity} class="mb-3 space-y-2">
-        <input
-          bind:value={actText}
-          placeholder="Activity summary…"
-          class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-        />
-        <textarea
-          bind:value={commentText}
-          rows="2"
-          placeholder="Optional comment… (markdown)"
-          class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-        ></textarea>
-        <button
-          type="submit"
-          disabled={posting || (!actText.trim() && !commentText.trim())}
-          class="rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
-        >
-          Post
-        </button>
-      </form>
-      <ul class="space-y-2">
-        {#each activities as a (a.id)}
-          <li class="rounded border border-line-soft bg-field/50 px-2.5 py-2">
-            <p class="mb-0.5 text-[10px] text-ink-3">{relTime(a.created_at)}</p>
-            {#if a.activity}<p class="text-xs text-ink">{a.activity}</p>{/if}
-            {#if a.comment}
-              <Markdown source={a.comment} class="mt-0.5 text-xs text-ink-2" />
-            {/if}
-          </li>
-        {:else}
-          <li class="text-xs text-ink-3">No activity yet.</li>
-        {/each}
-      </ul>
+    <ul class="space-y-1">
+      {#each subtasks as st (st.id)}
+        <li>
+          <button
+            type="button"
+            onclick={() => onSelectParent?.(st.id)}
+            class="flex w-full items-center gap-2.5 rounded border border-line-soft bg-field/50 px-3 py-2 text-left transition-colors hover:bg-card-hi"
+          >
+            <span
+              class="h-2 w-2 flex-none rounded-full {statusDot[st.status] ?? statusDot.pending}"
+              title={STATUS_LABELS[st.status] ?? st.status}
+            ></span>
+            <span class="min-w-0 flex-1 truncate text-sm text-ink">{st.title}</span>
+            <span class="font-mono text-[11px] text-ink-3">{st.progress}%</span>
+          </button>
+        </li>
+      {:else}
+        <li class="text-sm text-ink-3">No sub-tasks yet.</li>
+      {/each}
+    </ul>
     </div>
+  {/snippet}
 
-    <dl class="space-y-1.5 border-t border-line-soft pt-3 text-xs text-ink-3">
+  {#snippet taskSection()}
+    {@render overviewSection()}
+    {@render contentSection()}
+    {@render contextSection()}
+    <div class="border-t border-line-soft pt-4">
+      {@render infoSection()}
+    </div>
+    {#if task.archived_at}
+      <button
+        onclick={unarchive}
+        title="Restore to pending (progress resets to 0)"
+        class="w-full rounded border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
+      >
+        Unarchive → pending
+      </button>
+    {/if}
+  {/snippet}
+
+  {#snippet activitySection()}
+    <form onsubmit={postActivity} class="mb-3 space-y-2">
+      <input
+        bind:value={actText}
+        placeholder="Activity summary…"
+        class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      />
+      <textarea
+        bind:value={commentText}
+        rows="2"
+        placeholder="Optional comment… (markdown)"
+        class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      ></textarea>
+      <button
+        type="submit"
+        disabled={posting || (!actText.trim() && !commentText.trim())}
+        class="rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
+      >
+        Post
+      </button>
+    </form>
+    <ul class="space-y-2">
+      {#each activities as a (a.id)}
+        <li class="rounded border border-line-soft bg-field/50 px-2.5 py-2">
+          <p class="mb-0.5 text-[10px] text-ink-3">{relTime(a.created_at)}</p>
+          {#if a.activity}<p class="text-xs text-ink">{a.activity}</p>{/if}
+          {#if a.comment}
+            <Markdown source={a.comment} class="mt-0.5 text-xs text-ink-2" />
+          {/if}
+        </li>
+      {:else}
+        <li class="text-xs text-ink-3">No activity yet.</li>
+      {/each}
+    </ul>
+  {/snippet}
+
+  {#snippet infoSection()}
+    <dl class="space-y-1.5 text-xs text-ink-3">
       <div class="flex justify-between">
         <dt>Created</dt>
         <dd class="font-mono text-[11px] text-ink-2">{absShort(task.created_at)}</dd>
@@ -612,9 +794,9 @@
         </div>
       {/if}
     </dl>
-  </div>
+  {/snippet}
 
-  <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
+  {#snippet actionSection()}
     {#if task.archived_at}
       <button
         onclick={unarchive}
@@ -624,12 +806,70 @@
         Unarchive → pending
       </button>
     {/if}
-    <button
-      onclick={() => onDelete(task)}
-      title="Delete (del)"
-      class="w-full rounded border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/15"
-    >
-      Delete task <kbd>del</kbd>
-    </button>
-  </div>
+  {/snippet}
+
+  {#if mode === 'modal'}
+    <div class="flex min-h-0 flex-1 overflow-hidden">
+      <nav
+        class="flex w-44 flex-none flex-col gap-0.5 overflow-y-auto border-r border-line-soft p-3"
+        aria-label="Task sections"
+      >
+        {#each modalSections as section (section.id)}
+          <button
+            type="button"
+            onclick={() => {
+              activeSection = section.id
+              if (section.id === 'subtasks') void loadSubtasks()
+            }}
+            class="rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
+              {activeSection === section.id
+              ? 'bg-accent/15 text-ink'
+              : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+          >
+            {section.label}
+            {#if section.id === 'activity' && activities.length > 0}
+              <span class="ml-1.5 text-[11px] text-ink-3">({activities.length})</span>
+            {:else if section.id === 'subtasks' && subtasks.length > 0}
+              <span class="ml-1.5 text-[11px] text-ink-3">({subtasks.length})</span>
+            {/if}
+          </button>
+        {/each}
+      </nav>
+
+      <div class="min-h-0 flex-1 overflow-y-auto p-5">
+        <div class="flex flex-col gap-5">
+          {#if activeSection === 'task'}
+            {@render taskSection()}
+          {:else if activeSection === 'subtasks'}
+            {@render subtasksSection()}
+          {:else}
+            {@render activitySection()}
+          {/if}
+        </div>
+      </div>
+    </div>
+  {:else}
+    <div class="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
+      {@render overviewSection()}
+      {@render contextSection()}
+      {@render contentSection()}
+      {#if !task.parent_id}
+        <div class="border-t border-line-soft pt-3">
+          <span class="micro mb-2">Sub-tasks</span>
+          {@render subtasksSection()}
+        </div>
+      {/if}
+      <div class="border-t border-line-soft pt-3">
+        <span class="micro mb-2">Activity</span>
+        {@render activitySection()}
+      </div>
+      {@render infoSection()}
+    </div>
+
+    {#if task.archived_at}
+      <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
+        {@render actionSection()}
+      </div>
+    {/if}
+  {/if}
 </aside>

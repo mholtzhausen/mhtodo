@@ -104,6 +104,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		Cwd:             strings.TrimSpace(in.Cwd),
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: true,
+		SlackThread:     strings.TrimSpace(in.SlackThread),
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -211,6 +212,9 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	if in.IncludeInReport != nil {
 		t.IncludeInReport = *in.IncludeInReport
+	}
+	if in.SlackThread != nil {
+		t.SlackThread = strings.TrimSpace(*in.SlackThread)
 	}
 	t.UpdatedAt = s.now()
 	if err := s.repo.Update(ctx, t); err != nil {

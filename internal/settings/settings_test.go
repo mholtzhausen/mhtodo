@@ -18,6 +18,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.DefaultCwd = "/tmp/proj"
 	want.DefaultHumanOnly = true
 	want.ArchiveDoneSubtasks = true
+	want.StartHidden = true
 	want.Claude.Enabled = true
 	want.Claude.Binary = "/usr/bin/claude"
 	want.Claude.EnvStart = "ANTHROPIC_API_KEY=..."

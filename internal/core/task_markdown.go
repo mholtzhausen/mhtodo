@@ -16,6 +16,10 @@ func FormatTaskMarkdown(task Task, children []Task, activities []Activity) strin
 	fmt.Fprintf(&b, "%s · %d%% · `%s` · updated %s\n",
 		task.Status, task.Progress, ShortID(task.ID), formatTaskUpdated(task.UpdatedAt))
 
+	if notice := SlackThreadNotice(task.SlackThread); notice != "" {
+		fmt.Fprintf(&b, "\n%s\n", notice)
+	}
+
 	if desc := strings.TrimSpace(task.Description); desc != "" {
 		b.WriteString("\n### Description\n\n```\n")
 		b.WriteString(desc)

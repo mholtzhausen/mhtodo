@@ -70,6 +70,9 @@ func FormatSlackReport(tasks []Task) string {
 		fmt.Fprintf(&b, "%s %s\n", sec.title, sec.icon)
 		for _, t := range sec.tasks {
 			fmt.Fprintf(&b, "  %s %s\n", slackStatusIcon(t.Status), t.Title)
+			if notice := SlackThreadNotice(t.SlackThread); notice != "" {
+				fmt.Fprintf(&b, "    %s\n", notice)
+			}
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

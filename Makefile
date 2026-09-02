@@ -31,7 +31,7 @@ all: build
 
 ## --- development -----------------------------------------------------------
 
-dev: ## wails dev: hot-reload (window starts hidden; show from tray)
+dev: ## wails dev: hot-reload (default start hidden; override in Settings → General)
 	wails dev $(GOFLAGS)
 
 fe-install: ## install frontend npm deps

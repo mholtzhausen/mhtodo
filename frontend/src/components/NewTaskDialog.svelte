@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
+  import { claudeIconVisible } from '../lib/claudeIntegration'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
 
@@ -30,26 +31,46 @@
 
   let progress = $state(0)
   let submitting = $state(false)
-  let herdrReady = $state(false)
+  let herdrActive = $state(false)
   let claudeActive = $state(false)
+  let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
   /** True while the dialog is open and form fields have been seeded from props. */
   let dialogInitialized = false
 
+  const showClaude = $derived(
+    guiSettings
+      ? claudeIconVisible({ cwd, human_only: humanOnly, status: 'pending' }, guiSettings)
+      : false
+  )
+
+  const canShowStartClaude = $derived(
+    !!guiSettings &&
+      showClaude &&
+      guiSettings.herdr.enabled &&
+      guiSettings.claude.enabled &&
+      herdrActive &&
+      claudeActive
+  )
+
   async function refreshIntegrationStatus() {
-    herdrReady = false
+    herdrActive = false
     claudeActive = false
-    if (humanOnly || !cwd.trim()) return
+    guiSettings = null
+    if (humanOnly) return
     try {
-      const [status, settings] = await Promise.all([
-        api.ensureHerdrReady(),
-        api.getSettings()
-      ])
-      herdrReady = !!status.ready
-      if (herdrReady && settings.claude.enabled) {
+      const settings = await api.getSettings()
+      guiSettings = settings
+      if (!claudeIconVisible({ cwd, human_only: humanOnly, status: 'pending' }, settings)) {
+        return
+      }
+      if (settings.herdr.enabled) {
+        herdrActive = await api.checkBinary(settings.herdr.binary)
+      }
+      if (settings.claude.enabled) {
         claudeActive = await api.checkBinary(settings.claude.binary)
       }
     } catch {
-      herdrReady = false
+      herdrActive = false
       claudeActive = false
     }
   }
@@ -75,7 +96,7 @@
   })
 
   const canStartWithClaude = $derived(
-    !!title.trim() && !submitting && herdrReady && claudeActive
+    !!title.trim() && !submitting && canShowStartClaude
   )
 
   async function pickCwd() {
@@ -152,7 +173,6 @@
 {#if open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
-    onclick={resetAndClose}
   >
     <form
       in:fly={{ y: 12, duration: 150 }}
@@ -254,7 +274,7 @@
         >
           Cancel
         </button>
-        {#if herdrReady && claudeActive}
+        {#if canShowStartClaude}
           <button
             type="button"
             onclick={submitAndStart}

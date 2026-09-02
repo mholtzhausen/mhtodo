@@ -68,6 +68,7 @@ type GUISettings struct {
 	DefaultCwd           string       `json:"default_cwd" yaml:"default_cwd"`
 	DefaultHumanOnly     bool         `json:"default_human_only" yaml:"default_human_only"`
 	ArchiveDoneSubtasks  bool         `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden          bool         `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
 	Claude               ClaudeConfig `json:"claude" yaml:"claude"`
 	Herdr                HerdrConfig  `json:"herdr" yaml:"herdr"`
 }
@@ -101,6 +102,7 @@ type configFile struct {
 	DefaultCwd          string     `yaml:"default_cwd"`
 	DefaultHumanOnly    bool       `yaml:"default_human_only"`
 	ArchiveDoneSubtasks bool       `yaml:"archive_done_subtasks"`
+	StartHidden         bool       `yaml:"start_hidden"`
 	Claude              claudeFile `yaml:"claude"`
 	Herdr               herdrFile  `yaml:"herdr"`
 }
@@ -113,8 +115,9 @@ func Default() GUISettings {
 func defaultConfigFile() configFile {
 	requireCwd := true
 	return configFile{
-		Claude: claudeFile{Binary: "claude", RequireCwd: &requireCwd},
-		Herdr:  herdrFile{Binary: "herdr"},
+		StartHidden: defaultLaunchHidden(),
+		Claude:      claudeFile{Binary: "claude", RequireCwd: &requireCwd},
+		Herdr:       herdrFile{Binary: "herdr"},
 	}
 }
 
@@ -363,6 +366,7 @@ func toGUI(cf configFile) GUISettings {
 		DefaultCwd:          cf.DefaultCwd,
 		DefaultHumanOnly:    cf.DefaultHumanOnly,
 		ArchiveDoneSubtasks: cf.ArchiveDoneSubtasks,
+		StartHidden:         cf.StartHidden,
 		Claude: ClaudeConfig{
 			IntegrationConfig: IntegrationConfig{
 				Enabled:  cf.Claude.Enabled,
@@ -386,6 +390,7 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultCwd = s.DefaultCwd
 	cf.DefaultHumanOnly = s.DefaultHumanOnly
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
+	cf.StartHidden = s.StartHidden
 	cf.Claude.Enabled = s.Claude.Enabled
 	cf.Claude.Binary = s.Claude.Binary
 	cf.Claude.EnvStart = s.Claude.EnvStart

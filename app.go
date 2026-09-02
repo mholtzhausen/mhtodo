@@ -65,7 +65,7 @@ func (a *App) startup(ctx context.Context) {
 	// Window visibility is self-tracked in showWindow/hideWindow/beforeClose:
 	// Wails v2 emits no window:shown/hidden events (verified against v2.11 source),
 	// and the runtime only exposes WindowIsMinimised — not hidden state.
-	a.visible.Store(!startHidden) // first launch shows the window unless StartHidden (dev)
+	a.visible.Store(!launchStartHidden)
 
 	// Restore always-on-top from meta (default off). Applied once the window
 	// exists; StartHidden builds still get the flag for the first Show.
@@ -377,7 +377,7 @@ func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskSta
 	if err != nil {
 		return integrations.HerdrTaskStatus{}, err
 	}
-	if !integrations.TaskEligible(t.HumanOnly, t.Cwd) {
+	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, client.Claude.RequireCwd) {
 		return integrations.HerdrTaskStatus{}, nil
 	}
 	ready, err := client.EnsureWorkspace()
@@ -398,8 +398,11 @@ func (a *App) OpenHerdrTicket(ref string) error {
 	if err != nil {
 		return err
 	}
-	if !integrations.TaskEligible(t.HumanOnly, t.Cwd) {
-		return fmt.Errorf("task is not eligible for Herdr (needs cwd and must not be human-only)")
+	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, client.Claude.RequireCwd) {
+		if client.Claude.RequireCwd {
+			return fmt.Errorf("task is not eligible for Herdr (needs cwd and must not be human-only)")
+		}
+		return fmt.Errorf("task is not eligible for Herdr (must not be human-only)")
 	}
 	shortID := core.ShortID(t.ID)
 	return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd)

@@ -716,6 +716,7 @@
           onError={showToast}
           onDelete={(t: any) => requestDelete(t)}
           onSetMode={setDetailMode}
+          onSelectParent={selectTask}
           onAddSubtask={(pid) => {
             dialogParentId = pid
             dialogInitialStatus = 'pending'

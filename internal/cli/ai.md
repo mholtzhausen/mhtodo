@@ -53,8 +53,8 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--human-only]
-mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--human-only | --no-human-only]  # at least one flag
+mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--slack-thread URL] [--human-only]
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--human-only | --no-human-only]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
@@ -93,12 +93,17 @@ mhtodo update [--check] [--force]                         # self-update from Git
 | `done` | Complete and verified. |
 
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
-`parent_id`, `board_rank`, `cwd`, `human_only`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
+`parent_id`, `board_rank`, `cwd`, `human_only`, `slack_thread`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
 
 **`cwd`** is an optional absolute path to the project or working directory the task
 belongs to. Set it with `--cwd` on `add`/`edit` when the job is tied to a specific
 checkout. The GUI folder picker sets the same field.
+
+**`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
+`show --markdown`, and `slack report` include the reminder:
+`the primary thread on slack for communication regarding this ticket is : <url>`.
+Set with `--slack-thread` on `add`/`edit`; empty string clears it.
 
 **`human_only`** marks a task the user will handle themselves. Agents must **never**
 adopt, start, or update human-only tasks. Default `mhtodo list` hides them; only

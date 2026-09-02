@@ -124,10 +124,11 @@
 
   $effect(() => {
     if (!open || !ready || loading) return
-    const { default_cwd, default_human_only, archive_done_subtasks, claude, herdr } = settings
+    const { default_cwd, default_human_only, archive_done_subtasks, start_hidden, claude, herdr } = settings
     void default_cwd
     void default_human_only
     void archive_done_subtasks
+    void start_hidden
     void claude.enabled
     void claude.binary
     void claude.env_start
@@ -272,6 +273,20 @@
                   <span class="text-sm text-ink-2">Archive done subtasks</span>
                   <span class="text-xs italic text-ink-3/75"
                     >When archiving from the Done column, include subtasks (default: root tasks only)</span
+                  >
+                </span>
+              </label>
+
+              <label class="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  bind:checked={settings.start_hidden}
+                  class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                />
+                <span class="flex flex-col gap-0.5">
+                  <span class="text-sm text-ink-2">Start hidden in system tray</span>
+                  <span class="text-xs italic text-ink-3/75"
+                    >When off, the window is shown on launch; when on, only the tray icon appears until you open it. Takes effect on next launch.</span
                   >
                 </span>
               </label>

@@ -49,6 +49,15 @@ type Task struct {
 	Cwd             string `json:"cwd"`               // optional project/working directory for the task
 	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
 	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
+	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
+}
+
+// SlackThreadNotice returns the agent-facing reminder when SlackThread is set.
+func SlackThreadNotice(thread string) string {
+	if s := strings.TrimSpace(thread); s != "" {
+		return "the primary thread on slack for communication regarding this ticket is : " + s
+	}
+	return ""
 }
 
 // CreateInput carries the fields accepted by add / CreateTask.
@@ -61,6 +70,7 @@ type CreateInput struct {
 	ParentID    string // optional; empty = root. Must resolve to a root task.
 	Cwd         string // optional working directory path
 	HumanOnly   bool   // mark as human-only (agents exclude from default lists)
+	SlackThread string // optional Slack thread URL
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
@@ -73,11 +83,12 @@ type UpdateInput struct {
 	Cwd             *string
 	HumanOnly       *bool
 	IncludeInReport *bool
+	SlackThread     *string
 }
 
 func (in UpdateInput) hasFields() bool {
 	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
-		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil
+		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil || in.SlackThread != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:

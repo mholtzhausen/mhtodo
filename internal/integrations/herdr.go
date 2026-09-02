@@ -95,8 +95,15 @@ func (c Client) ClaudeFound() bool {
 }
 
 // TaskEligible reports whether a task meets Herdr integration preconditions.
-func TaskEligible(humanOnly bool, cwd string) bool {
-	return !humanOnly && strings.TrimSpace(cwd) != ""
+// requireCwd mirrors GUI settings: when true, cwd must be set.
+func TaskEligible(humanOnly bool, cwd string, requireCwd bool) bool {
+	if humanOnly {
+		return false
+	}
+	if requireCwd && strings.TrimSpace(cwd) == "" {
+		return false
+	}
+	return true
 }
 
 // EnsureWorkspace lists workspaces and creates the configured one when missing.

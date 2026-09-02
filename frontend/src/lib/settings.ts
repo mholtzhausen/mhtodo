@@ -21,6 +21,7 @@ export interface GUISettings {
   default_cwd: string
   default_human_only: boolean
   archive_done_subtasks: boolean
+  start_hidden: boolean
   claude: ClaudeConfig
   herdr: HerdrConfig
 }
@@ -44,6 +45,7 @@ export const defaultSettings = (): GUISettings => ({
   default_cwd: '',
   default_human_only: false,
   archive_done_subtasks: false,
+  start_hidden: false,
   claude: {
     enabled: false,
     binary: 'claude',
@@ -61,6 +63,7 @@ export function fromGoSettings(s: goSettings.GUISettings): GUISettings {
     default_cwd: s.default_cwd ?? '',
     default_human_only: !!s.default_human_only,
     archive_done_subtasks: !!s.archive_done_subtasks,
+    start_hidden: !!s.start_hidden,
     claude: {
       enabled: !!s.claude?.enabled,
       binary: s.claude?.binary ?? 'claude',
@@ -83,6 +86,7 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
     default_cwd: s.default_cwd,
     default_human_only: s.default_human_only,
     archive_done_subtasks: s.archive_done_subtasks,
+    start_hidden: s.start_hidden,
     claude: {
       enabled: s.claude.enabled,
       binary: s.claude.binary,
