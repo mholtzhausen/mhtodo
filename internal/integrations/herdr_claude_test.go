@@ -1,6 +1,19 @@
 package integrations
 
-import "testing"
+import (
+	"testing"
+
+	"mhtodo/internal/settings"
+)
+
+func TestMaybeCloseTicketTabOnDoneDisabled(t *testing.T) {
+	t.Parallel()
+	c := Client{
+		Herdr:  settings.HerdrConfig{Enabled: true, Binary: "herdr"},
+		Claude: settings.ClaudeConfig{CloseTabOnDone: false},
+	}
+	c.MaybeCloseTicketTabOnDone("task-id", "abcd1234", "Title") // must not panic or call herdr
+}
 
 func TestProcessIsClaude(t *testing.T) {
 	t.Parallel()

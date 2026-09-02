@@ -267,7 +267,7 @@ func TestArchiveDoneAndUnarchive(t *testing.T) {
 	seed(t, repo, "dddd4444-0000-7000-8000-000000000001", "pending task", core.StatusPending, 0)
 
 	// ArchiveDone returns exactly the done tasks, stamped with archived_at.
-	archived, err := svc.ArchiveDone(ctx)
+	archived, err := svc.ArchiveDone(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +281,7 @@ func TestArchiveDoneAndUnarchive(t *testing.T) {
 	}
 
 	// Second call is a no-op.
-	again, err := svc.ArchiveDone(ctx)
+	again, err := svc.ArchiveDone(ctx, true)
 	if err != nil || len(again) != 0 {
 		t.Fatalf("second ArchiveDone = (%d, %v), want (0, nil)", len(again), err)
 	}
@@ -330,6 +330,44 @@ func TestArchiveDoneAndUnarchive(t *testing.T) {
 	_, err = svc.Unarchive(ctx, "zzzz9999")
 	if !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("unarchive unknown: %v, want ErrNotFound", err)
+	}
+}
+
+func TestArchiveDoneExcludesSubtasksByDefault(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	parent, err := svc.Create(ctx, core.CreateInput{Title: "root", Status: core.StatusDone, Progress: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := svc.Create(ctx, core.CreateInput{Title: "sub", ParentID: parent.ID, Status: core.StatusDone, Progress: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	archived, err := svc.ArchiveDone(ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archived) != 1 || archived[0].ID != parent.ID {
+		t.Fatalf("archived = %+v, want root only", archived)
+	}
+
+	gotChild, err := svc.Get(ctx, child.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotChild.ArchivedAt != nil {
+		t.Errorf("subtask archived by default: %+v", gotChild)
+	}
+
+	archivedAll, err := svc.ArchiveDone(ctx, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archivedAll) != 1 || archivedAll[0].ID != child.ID {
+		t.Fatalf("include subtasks archived = %+v, want sub only", archivedAll)
 	}
 }
 

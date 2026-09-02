@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+
+	"mhtodo/internal/settings"
 )
 
 // archive / unarchive (v0.2). Archive is bulk-only by design: the GUI button
@@ -29,7 +31,11 @@ from default lists and the board; list them with: mhtodo list --archived`,
 			}
 			defer closeDB()
 
-			tasks, err := svc.ArchiveDone(context.Background())
+			cfg, err := settings.Load(nil)
+			if err != nil {
+				return err
+			}
+			tasks, err := svc.ArchiveDone(context.Background(), cfg.ArchiveDoneSubtasks)
 			if err != nil {
 				return mapError(err)
 			}

@@ -14,8 +14,6 @@ import (
 	"mhtodo/internal/settings"
 )
 
-const DefaultClaudeTicketPrompt = "read todo {{todo-hash}} and start on the ticket. if there is not enough information to start working, gather as much information about the issue on your own (read-only) and ask your human for input"
-
 var errHerdrWindowNotFound = errors.New("herdr window not found")
 
 // HerdrTaskStatus is returned to the GUI for Herdr ticket integration.
@@ -106,10 +104,7 @@ func (c Client) EnsureWorkspace() (bool, error) {
 	if !c.Herdr.Enabled || !c.HerdrFound() {
 		return false, nil
 	}
-	label := strings.TrimSpace(c.Herdr.SpaceName)
-	if label == "" {
-		label = "mhtodo"
-	}
+	label := c.Herdr.EffectiveSpaceName()
 	if _, err := c.findWorkspace(label); err == nil {
 		return true, nil
 	}
@@ -128,10 +123,7 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 	if err := c.ensureHerdrSession(); err != nil {
 		return err
 	}
-	label := strings.TrimSpace(c.Herdr.SpaceName)
-	if label == "" {
-		label = "mhtodo"
-	}
+	label := c.Herdr.EffectiveSpaceName()
 	ws, err := c.findWorkspace(label)
 	if err != nil {
 		if createErr := c.createWorkspace(label); createErr != nil {
@@ -174,6 +166,31 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 		return err
 	}
 	return c.presentHerdrUI()
+}
+
+// MaybeCloseTicketTabOnDone closes the Herdr tab for a task when Claude
+// close_tab_on_done is enabled. Herdr/tab errors are ignored (best effort).
+func (c Client) MaybeCloseTicketTabOnDone(taskID, shortID, title string) {
+	if !c.Claude.CloseTabOnDone || !c.Herdr.Enabled || !c.HerdrFound() {
+		return
+	}
+	_ = c.CloseTicketTab(taskID, shortID, title)
+}
+
+// CloseTicketTab closes the Herdr tab matching a ticket when one exists.
+// Returns nil when Herdr is unavailable or no tab matches.
+func (c Client) CloseTicketTab(taskID, shortID, title string) error {
+	label := c.Herdr.EffectiveSpaceName()
+	ws, err := c.findWorkspace(label)
+	if err != nil {
+		return nil
+	}
+	tabLabel := ticketTabLabel(taskID, shortID, title)
+	tab, found, err := c.findTabForTicket(ws.WorkspaceID, taskID, shortID, tabLabel)
+	if err != nil || !found {
+		return nil
+	}
+	return c.run("tab", "close", tab.TabID)
 }
 
 const tabLabelTaskSep = "|"
@@ -361,10 +378,7 @@ func (c Client) maybeStartClaudePane(paneID, shortID string) error {
 }
 
 func (c Client) ticketPrompt(shortID string) string {
-	prompt := strings.TrimSpace(c.Claude.TicketPrompt)
-	if prompt == "" {
-		prompt = DefaultClaudeTicketPrompt
-	}
+	prompt := c.Claude.EffectiveTicketPrompt()
 	return strings.ReplaceAll(prompt, "{{todo-hash}}", shortID)
 }
 

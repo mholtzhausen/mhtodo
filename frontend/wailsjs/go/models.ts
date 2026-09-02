@@ -142,6 +142,7 @@ export namespace core {
 	    board_rank?: number;
 	    cwd: string;
 	    human_only: boolean;
+	    include_in_report: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -163,6 +164,7 @@ export namespace core {
 	        this.board_rank = source["board_rank"];
 	        this.cwd = source["cwd"];
 	        this.human_only = source["human_only"];
+	        this.include_in_report = source["include_in_report"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -190,6 +192,7 @@ export namespace core {
 	    Progress?: number;
 	    Cwd?: string;
 	    HumanOnly?: boolean;
+	    IncludeInReport?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -203,6 +206,7 @@ export namespace core {
 	        this.Progress = source["Progress"];
 	        this.Cwd = source["Cwd"];
 	        this.HumanOnly = source["HumanOnly"];
+	        this.IncludeInReport = source["IncludeInReport"];
 	    }
 	}
 
@@ -234,6 +238,8 @@ export namespace settings {
 	    binary: string;
 	    env_start: string;
 	    ticket_prompt: string;
+	    close_tab_on_done: boolean;
+	    require_cwd: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ClaudeConfig(source);
@@ -245,6 +251,8 @@ export namespace settings {
 	        this.binary = source["binary"];
 	        this.env_start = source["env_start"];
 	        this.ticket_prompt = source["ticket_prompt"];
+	        this.close_tab_on_done = source["close_tab_on_done"];
+	        this.require_cwd = source["require_cwd"];
 	    }
 	}
 	export class HerdrConfig {
@@ -268,6 +276,7 @@ export namespace settings {
 	export class GUISettings {
 	    default_cwd: string;
 	    default_human_only: boolean;
+	    archive_done_subtasks: boolean;
 	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
 	
@@ -279,6 +288,7 @@ export namespace settings {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.default_cwd = source["default_cwd"];
 	        this.default_human_only = source["default_human_only"];
+	        this.archive_done_subtasks = source["archive_done_subtasks"];
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
 	    }

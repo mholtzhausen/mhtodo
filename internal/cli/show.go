@@ -2,11 +2,13 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
 
 func newShowCmd() *cobra.Command {
+	var markdown bool
 	cmd := &cobra.Command{
 		Use:     "show ID",
 		Aliases: []string{"get"},
@@ -23,6 +25,15 @@ func newShowCmd() *cobra.Command {
 			}
 			defer closeDB()
 
+			if markdown {
+				report, err := svc.TaskMarkdownReport(context.Background(), args[0])
+				if err != nil {
+					return mapError(err)
+				}
+				_, err = fmt.Fprintln(o.out, report)
+				return err
+			}
+
 			t, err := svc.Get(context.Background(), args[0])
 			if err != nil {
 				return mapError(err)
@@ -30,5 +41,6 @@ func newShowCmd() *cobra.Command {
 			return o.printTask(t)
 		},
 	}
+	cmd.Flags().BoolVar(&markdown, "markdown", false, "print paste-ready markdown report")
 	return cmd
 }

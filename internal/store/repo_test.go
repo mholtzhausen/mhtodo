@@ -31,7 +31,7 @@ func mustCreate(t *testing.T, r *TaskRepo, id, title string, st core.Status, pro
 	if st == core.StatusDone {
 		completed = &now
 	}
-	task := core.Task{ID: id, Title: title, Status: st, Progress: prog, CreatedAt: now, UpdatedAt: now, CompletedAt: completed}
+	task := core.Task{ID: id, Title: title, Status: st, Progress: prog, CreatedAt: now, UpdatedAt: now, CompletedAt: completed, IncludeInReport: true}
 	if err := r.Create(context.Background(), task); err != nil {
 		t.Fatalf("Create(%s): %v", id, err)
 	}
@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 6 {
-		t.Fatalf("schema_version = %d, want 6", version)
+	if version != 7 {
+		t.Fatalf("schema_version = %d, want 7", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 6 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 6", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 7 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 7", version, err)
 	}
 
 	// WAL must be active.
@@ -332,8 +332,8 @@ func TestV1ToV5Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 6 {
-		t.Fatalf("schema_version = %d (err=%v), want 6", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 7 {
+		t.Fatalf("schema_version = %d (err=%v), want 7", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)
@@ -351,7 +351,7 @@ func TestV1ToV5Upgrade(t *testing.T) {
 		cols = append(cols, name)
 	}
 	rows.Close()
-	for _, want := range []string{"archived_at", "parent_id", "feedback", "board_rank", "cwd", "human_only"} {
+	for _, want := range []string{"archived_at", "parent_id", "feedback", "board_rank", "cwd", "human_only", "include_in_report"} {
 		found := false
 		for _, c := range cols {
 			if c == want {
@@ -390,7 +390,7 @@ func TestArchiveDoneRepo(t *testing.T) {
 	mustCreate(t, r, "w1", "wip task", core.StatusWIP, 50)
 
 	at := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
-	got, err := r.ArchiveDone(ctx, at)
+	got, err := r.ArchiveDone(ctx, at, true)
 	if err != nil {
 		t.Fatalf("ArchiveDone: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestArchiveDoneRepo(t *testing.T) {
 	}
 
 	// Idempotent: second call archives nothing.
-	again, err := r.ArchiveDone(ctx, at.Add(time.Second))
+	again, err := r.ArchiveDone(ctx, at.Add(time.Second), true)
 	if err != nil || len(again) != 0 {
 		t.Errorf("second ArchiveDone = (%d tasks, %v), want (0, nil)", len(again), err)
 	}
@@ -416,5 +416,56 @@ func TestArchiveDoneRepo(t *testing.T) {
 	w, err := r.GetByID(ctx, "w1")
 	if err != nil || w.ArchivedAt != nil {
 		t.Errorf("wip task archived: (%+v, %v)", w, err)
+	}
+}
+
+func mustCreateChild(t *testing.T, r *TaskRepo, id, parentID, title string, st core.Status, prog int) core.Task {
+	t.Helper()
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	var completed *time.Time
+	if st == core.StatusDone {
+		completed = &now
+	}
+	task := core.Task{
+		ID: id, Title: title, Status: st, Progress: prog,
+		CreatedAt: now, UpdatedAt: now, CompletedAt: completed,
+		ParentID: &parentID, IncludeInReport: true,
+	}
+	if err := r.Create(context.Background(), task); err != nil {
+		t.Fatalf("Create(%s): %v", id, err)
+	}
+	return task
+}
+
+func TestArchiveDoneExcludesSubtasksByDefault(t *testing.T) {
+	ctx := context.Background()
+	r := openTestRepo(t)
+	mustCreate(t, r, "root-done", "root done", core.StatusDone, 100)
+	mustCreateChild(t, r, "sub-done", "root-done", "sub done", core.StatusDone, 100)
+	mustCreate(t, r, "root-wip", "root wip", core.StatusWIP, 50)
+
+	at := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+	got, err := r.ArchiveDone(ctx, at, false)
+	if err != nil {
+		t.Fatalf("ArchiveDone: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("archived %d tasks, want 1 (root only): %+v", len(got), got)
+	}
+	if got[0].ID != "root-done" {
+		t.Errorf("archived id = %q, want root-done", got[0].ID)
+	}
+
+	sub, err := r.GetByID(ctx, "sub-done")
+	if err != nil || sub.ArchivedAt != nil {
+		t.Errorf("subtask should stay unarchived: (%+v, %v)", sub, err)
+	}
+
+	all, err := r.ArchiveDone(ctx, at.Add(time.Second), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 1 || all[0].ID != "sub-done" {
+		t.Fatalf("include subtasks archived = %+v, want sub-done only", all)
 	}
 }

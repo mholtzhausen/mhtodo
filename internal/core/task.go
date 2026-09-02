@@ -46,8 +46,9 @@ type Task struct {
 	ArchivedAt  *time.Time `json:"archived_at"` // set on archive, cleared on unarchive (v0.2)
 	ParentID    *string    `json:"parent_id"`   // nil = root; one-level children only (v0.3)
 	BoardRank   *float64   `json:"board_rank"`  // nil = unset; root tasks only; lower = higher on board
-	Cwd         string     `json:"cwd"`         // optional project/working directory for the task
-	HumanOnly   bool       `json:"human_only"`  // when true, agents must not adopt or work the task
+	Cwd             string `json:"cwd"`               // optional project/working directory for the task
+	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
+	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
 }
 
 // CreateInput carries the fields accepted by add / CreateTask.
@@ -69,13 +70,14 @@ type UpdateInput struct {
 	Desc     *string
 	Feedback *string
 	Progress  *int
-	Cwd       *string
-	HumanOnly *bool
+	Cwd             *string
+	HumanOnly       *bool
+	IncludeInReport *bool
 }
 
 func (in UpdateInput) hasFields() bool {
 	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
-		in.Cwd != nil || in.HumanOnly != nil
+		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:

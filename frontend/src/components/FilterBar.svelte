@@ -18,7 +18,8 @@
     onSortChange,
     onToggleAsc,
     onHumanFilterChange,
-    onToggleSubtasks
+    onToggleSubtasks,
+    onCopySlackReport
   }: {
     status: Status | '' | 'archived'
     search: string
@@ -34,6 +35,7 @@
     onToggleAsc: () => void
     onHumanFilterChange: (v: HumanFilter) => void
     onToggleSubtasks: () => void
+    onCopySlackReport?: () => void
   } = $props()
 
   const statusOptions: {
@@ -79,7 +81,8 @@
   }
 </script>
 
-<div class="flex flex-wrap items-center gap-2 border-b border-line-soft px-5 py-2.5">
+<div class="flex items-center gap-2 border-b border-line-soft px-5 py-2.5">
+  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
   <DropdownSelect
     value={status}
     options={statusOptions}
@@ -169,5 +172,29 @@
     <span class="shrink-0 font-mono text-[11px] text-ink-3">
       {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
     </span>
+  {/if}
+  </div>
+
+  {#if onCopySlackReport}
+    <button
+      type="button"
+      onclick={onCopySlackReport}
+      title="Copy Slack report"
+      class="grid h-8 w-8 shrink-0 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
   {/if}
 </div>

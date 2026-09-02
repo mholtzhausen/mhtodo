@@ -22,6 +22,7 @@ export interface Task {
   board_rank: number | null
   cwd: string
   human_only: boolean
+  include_in_report: boolean
 }
 
 export interface Activity {
@@ -104,6 +105,7 @@ export const api = {
     progress?: number
     cwd?: string
     humanOnly?: boolean
+    includeInReport?: boolean
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -111,7 +113,8 @@ export const api = {
       Feedback: patch.feedback ?? null,
       Progress: patch.progress ?? null,
       Cwd: patch.cwd ?? null,
-      HumanOnly: patch.humanOnly ?? null
+      HumanOnly: patch.humanOnly ?? null,
+      IncludeInReport: patch.includeInReport ?? null
     })
   },
   setStatus(id: string, status: Status) {
@@ -188,6 +191,9 @@ export const api = {
   },
   slackReport(): Promise<string> {
     return App.SlackReport()
+  },
+  taskMarkdownReport(id: string): Promise<string> {
+    return App.TaskMarkdownReport(id)
   }
 }
 

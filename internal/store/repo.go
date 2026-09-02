@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -47,13 +47,15 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		parent    sql.NullString
 		boardRank sql.NullFloat64
 		humanOnly int
+		includeInReport int
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly); err != nil {
+		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
 	t.HumanOnly = humanOnly != 0
+	t.IncludeInReport = includeInReport != 0
 	var err error
 	if t.CreatedAt, err = parseTS(createdAt); err != nil {
 		return core.Task{}, err
@@ -90,10 +92,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
-		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly))
+		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport))
 	return err
 }
 
@@ -200,10 +202,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
-		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), nullFloat(t.BoardRank),
-		t.Cwd, boolInt(t.HumanOnly), formatTS(t.UpdatedAt), t.ID)
+		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
@@ -229,13 +231,17 @@ func (r *TaskRepo) Delete(ctx context.Context, id string) (core.Task, error) {
 	return t, err
 }
 
-// ArchiveDone archives every non-archived done task and returns them.
-func (r *TaskRepo) ArchiveDone(ctx context.Context, at time.Time) ([]core.Task, error) {
+// ArchiveDone archives non-archived done tasks and returns them. When
+// includeSubtasks is false, only root tasks (parent_id IS NULL) are archived.
+func (r *TaskRepo) ArchiveDone(ctx context.Context, at time.Time, includeSubtasks bool) ([]core.Task, error) {
 	ts := formatTS(at)
-	rows, err := r.db.QueryContext(ctx,
-		`UPDATE tasks SET archived_at = ?, updated_at = ?
-		 WHERE status = 'done' AND archived_at IS NULL
-		 RETURNING `+taskColumns, ts, ts)
+	q := `UPDATE tasks SET archived_at = ?, updated_at = ?
+		 WHERE status = 'done' AND archived_at IS NULL`
+	if !includeSubtasks {
+		q += ` AND parent_id IS NULL`
+	}
+	q += ` RETURNING ` + taskColumns
+	rows, err := r.db.QueryContext(ctx, q, ts, ts)
 	if err != nil {
 		return nil, err
 	}

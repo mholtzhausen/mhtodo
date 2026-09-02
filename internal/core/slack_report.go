@@ -136,5 +136,11 @@ func (s *Service) SlackReport(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return FormatSlackReport(tasks), nil
+	filtered := make([]Task, 0, len(tasks))
+	for _, t := range tasks {
+		if t.IncludeInReport {
+			filtered = append(filtered, t)
+		}
+	}
+	return FormatSlackReport(filtered), nil
 }

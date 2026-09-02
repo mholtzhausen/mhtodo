@@ -20,9 +20,13 @@ func runSetStatus(cmd *cobra.Command, ref string, st core.Status) error {
 	}
 	defer closeDB()
 
+	prev, perr := svc.Get(context.Background(), ref)
 	t, err := svc.SetStatus(context.Background(), ref, st)
 	if err != nil {
 		return mapError(err)
+	}
+	if perr == nil {
+		maybeCloseHerdrTabOnDone(prev.Status, t)
 	}
 	return o.printTask(t)
 }
@@ -72,6 +76,9 @@ func newDoneCmd() *cobra.Command {
 			}
 			if b, _ := cmd.Flags().GetBool("notify"); b && perr == nil && prev.Status != t.Status {
 				NotifyDone(t.ID, t.Title)
+			}
+			if perr == nil {
+				maybeCloseHerdrTabOnDone(prev.Status, t)
 			}
 			return o.printTask(t)
 		},

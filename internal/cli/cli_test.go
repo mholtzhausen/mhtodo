@@ -47,7 +47,7 @@ func seedTasks(t *testing.T, db string, tasks ...core.Task) {
 
 func fixedTask(id, title string, st core.Status, prog int) core.Task {
 	now := time.Date(2026, 8, 19, 7, 59, 0, 0, time.UTC)
-	return core.Task{ID: id, Title: title, Status: st, Progress: prog, CreatedAt: now, UpdatedAt: now}
+	return core.Task{ID: id, Title: title, Status: st, Progress: prog, CreatedAt: now, UpdatedAt: now, IncludeInReport: true}
 }
 
 func mustJSON(t *testing.T, b []byte, v any) {

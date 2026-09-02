@@ -183,6 +183,7 @@ func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 			switch t.Status {
 			case core.StatusDone:
 				a.notifier.TaskDone(t.ID, t.Title)
+				a.maybeCloseHerdrTabOnDone(t)
 			case core.StatusWaiting:
 				a.notifier.TaskWaiting(t.ID, t.Title)
 			}
@@ -210,7 +211,11 @@ func (a *App) ReorderBoardTask(id string, beforeID string) (core.Task, error) {
 // board's Done-column button). Emits tasks:changed only when something moved,
 // so an empty click is a true no-op for the UI.
 func (a *App) ArchiveDone() ([]core.Task, error) {
-	tasks, err := a.svc.ArchiveDone(a.ctx)
+	s, err := settings.Load(a.repo)
+	if err != nil {
+		return nil, err
+	}
+	tasks, err := a.svc.ArchiveDone(a.ctx, s.ArchiveDoneSubtasks)
 	if err == nil && len(tasks) > 0 {
 		a.emitChanged("", "archive")
 	}
@@ -281,6 +286,11 @@ func (a *App) SlackReport() (string, error) {
 	return a.svc.SlackReport(a.ctx)
 }
 
+// TaskMarkdownReport maps to CLI `show --markdown`: paste-ready task summary.
+func (a *App) TaskMarkdownReport(ref string) (string, error) {
+	return a.svc.TaskMarkdownReport(a.ctx, ref)
+}
+
 // PickDirectory opens the system folder picker and returns the chosen path, or
 // "" when the user cancels. start, when a valid directory, is the initial location.
 // If start is missing or invalid, or the dialog fails with that default, the picker
@@ -326,6 +336,14 @@ func (a *App) herdrClient() (integrations.Client, error) {
 		return integrations.Client{}, err
 	}
 	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude}, nil
+}
+
+func (a *App) maybeCloseHerdrTabOnDone(t core.Task) {
+	client, err := a.herdrClient()
+	if err != nil {
+		return
+	}
+	client.MaybeCloseTicketTabOnDone(t.ID, core.ShortID(t.ID), t.Title)
 }
 
 // EnsureHerdrReady ensures the configured Herdr workspace exists when Herdr

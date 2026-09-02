@@ -102,6 +102,10 @@ export function SlackReport() {
   return window['go']['main']['App']['SlackReport']();
 }
 
+export function TaskMarkdownReport(arg1) {
+  return window['go']['main']['App']['TaskMarkdownReport'](arg1);
+}
+
 export function Unarchive(arg1) {
   return window['go']['main']['App']['Unarchive'](arg1);
 }

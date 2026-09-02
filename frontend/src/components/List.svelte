@@ -1,20 +1,24 @@
 <script lang="ts">
   import { relTime, absList, STATUS_LABELS } from '../lib/format'
   import type { Status } from '../lib/api'
-  import HumanIcon from './HumanIcon.svelte'
+  import TaskActivityActions from './TaskActivityActions.svelte'
 
   let {
     tasks,
     hasFilters,
     selectedId,
     showSubtasks,
-    onSelect
+    onSelect,
+    onError,
+    onToast
   }: {
     tasks: any[]
     hasFilters: boolean
     selectedId: string | null
     showSubtasks: boolean
     onSelect: (id: string) => void
+    onError?: (msg: string) => void
+    onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
 
   const badge: Record<Status, string> = {
@@ -74,51 +78,85 @@
     </div>
     <div class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 pt-0">
       {#each rows as { task: t, depth } (t.id)}
-        <button
-          type="button"
-          onclick={() => onSelect(t.id)}
-          class="flex items-center gap-3 rounded px-3 py-2.5 text-left transition-colors
-            {depth > 0
-              ? 'ml-5 w-[calc(100%-1.25rem)] border-l-2 border-line'
-              : 'w-full'}
-            {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
-        >
-          {#if t.human_only}
-            <HumanIcon
-              class="h-4 w-4 flex-none text-ink-2"
-              title="Human only — agents skip"
-            />
-          {:else}
+        {#if depth === 0}
+          <div
+            class="flex w-full items-stretch gap-3 rounded px-3 py-2.5 transition-colors
+              {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
+          >
             <span class="w-4 flex-none" aria-hidden="true"></span>
-          {/if}
-          <div class="w-28 flex-none">
-            <div class="flex flex-col gap-1.5">
-              <span
-                class="inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium
-                  {badge[t.status] ?? badge.pending}"
+            <button
+              type="button"
+              onclick={() => onSelect(t.id)}
+              class="flex w-28 flex-none items-center self-stretch text-left"
+            >
+              <div class="flex flex-col gap-1.5">
+                <span
+                  class="inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium
+                    {badge[t.status] ?? badge.pending}"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full {bar[t.status] ?? bar.pending}"></span>
+                  {STATUS_LABELS[t.status] ?? t.status}
+                </span>
+                <div class="h-[3px] overflow-hidden rounded-full bg-white/10">
+                  <div
+                    class="h-full rounded-full {bar[t.status] ?? bar.pending} transition-all duration-150"
+                    style="width: {t.progress}%"
+                  ></div>
+                </div>
+              </div>
+            </button>
+            <div class="flex min-w-0 flex-1 flex-col justify-center gap-1">
+              <button
+                type="button"
+                onclick={() => onSelect(t.id)}
+                class="min-w-0 truncate text-left text-sm text-ink"
+                title={t.title}
               >
-                <span class="h-1.5 w-1.5 rounded-full {bar[t.status] ?? bar.pending}"></span>
-                {STATUS_LABELS[t.status] ?? t.status}
-              </span>
-              <div class="h-[3px] overflow-hidden rounded-full bg-white/10">
-                <div
-                  class="h-full rounded-full {bar[t.status] ?? bar.pending} transition-all duration-150"
-                  style="width: {t.progress}%"
-                ></div>
+                {t.title}
+              </button>
+              <TaskActivityActions task={t} {onError} {onToast} />
+            </div>
+            <button
+              type="button"
+              onclick={() => onSelect(t.id)}
+              class="flex w-36 flex-none flex-col items-end justify-center gap-0.5 self-stretch text-left"
+            >
+              <span class="text-xs text-ink-2">{relTime(t.updated_at)}</span>
+              <span class="font-mono text-[10px] text-ink-3">{absList(t.updated_at)}</span>
+            </button>
+          </div>
+        {:else}
+          <button
+            type="button"
+            onclick={() => onSelect(t.id)}
+            class="flex w-[calc(100%-1.25rem)] items-center gap-3 rounded border-l-2 border-line px-3 py-2.5 text-left transition-colors ml-5
+              {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
+          >
+            <span class="w-4 flex-none" aria-hidden="true"></span>
+            <div class="w-28 flex-none">
+              <div class="flex flex-col gap-1.5">
+                <span
+                  class="inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium
+                    {badge[t.status] ?? badge.pending}"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full {bar[t.status] ?? bar.pending}"></span>
+                  {STATUS_LABELS[t.status] ?? t.status}
+                </span>
+                <div class="h-[3px] overflow-hidden rounded-full bg-white/10">
+                  <div
+                    class="h-full rounded-full {bar[t.status] ?? bar.pending} transition-all duration-150"
+                    style="width: {t.progress}%"
+                  ></div>
+                </div>
               </div>
             </div>
-          </div>
-          <span
-            class="min-w-0 flex-1 truncate text-sm {depth > 0 ? 'text-ink-2' : 'text-ink'}"
-            title={t.title}
-          >
-            {t.title}
-          </span>
-          <div class="flex w-36 flex-none flex-col items-end gap-0.5">
-            <span class="text-xs text-ink-2">{relTime(t.updated_at)}</span>
-            <span class="font-mono text-[10px] text-ink-3">{absList(t.updated_at)}</span>
-          </div>
-        </button>
+            <span class="min-w-0 flex-1 truncate text-sm text-ink-2" title={t.title}>{t.title}</span>
+            <div class="flex w-36 flex-none flex-col items-end gap-0.5">
+              <span class="text-xs text-ink-2">{relTime(t.updated_at)}</span>
+              <span class="font-mono text-[10px] text-ink-3">{absList(t.updated_at)}</span>
+            </div>
+          </button>
+        {/if}
       {/each}
     </div>
   </div>

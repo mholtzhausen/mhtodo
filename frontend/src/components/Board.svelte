@@ -1,26 +1,30 @@
 <script lang="ts">
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
-  import HumanIcon from './HumanIcon.svelte'
+  import TaskActivityActions from './TaskActivityActions.svelte'
 
   let {
     tasks,
     search,
     selectedId,
     showSubtasks,
+    archiveDoneSubtasks = false,
     onSelect,
     onQuickAdd,
     onArchived,
-    onError
+    onError,
+    onToast
   }: {
     tasks: any[]
     search: string
     selectedId: string | null
     showSubtasks: boolean
+    archiveDoneSubtasks?: boolean
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
     onArchived?: (n: number) => void
     onError?: (msg: string) => void
+    onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
 
   const COLUMNS: { status: Status; label: string; dot: string; bar: string; edge: string }[] = [
@@ -230,10 +234,16 @@
     )
   }
 
+  const archivableDoneCount = $derived.by(() => {
+    const done = tasks.filter((t) => t.status === 'done')
+    if (archiveDoneSubtasks) return done.length
+    return done.filter((t) => !t.parent_id).length
+  })
+
   let archiving = $state(false)
 
   async function archiveAll() {
-    if (archiving || byStatus.done.length === 0) return
+    if (archiving || archivableDoneCount === 0) return
     archiving = true
     try {
       const archived = await api.archiveDone()
@@ -301,8 +311,10 @@
           <div class="flex-1"></div>
           {#if col.status === 'done'}
             <button
-              title="Archive all done tasks (reversible from List → Archived)"
-              disabled={byStatus.done.length === 0 || archiving}
+              title={archiveDoneSubtasks
+                ? 'Archive all done tasks including subtasks (reversible from List → Archived)'
+                : 'Archive done root tasks only (reversible from List → Archived)'}
+              disabled={archivableDoneCount === 0 || archiving}
               onclick={archiveAll}
               class="rounded p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"
             >
@@ -362,21 +374,13 @@
                     : 'border-line-soft bg-card hover:bg-card-hi hover:shadow-lg'}
                   {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
               >
-                {#if t.human_only}
-                  <span
-                    class="pointer-events-none absolute right-2 top-2 text-ink-2"
-                    title="Human only — agents skip"
-                  >
-                    <HumanIcon class="h-3.5 w-3.5" />
-                  </span>
-                {/if}
                 <button
                   type="button"
                   onclick={() => onCardClick(t)}
                   ondragstart={(e) => e.preventDefault()}
                   class="w-full cursor-grab p-2.5 text-left"
                 >
-                  <p class="mb-2 line-clamp-2 pr-5 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
+                  <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">
                     <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                       <div
@@ -389,7 +393,7 @@
                   </div>
                 </button>
                 {#if showSubtasks && (childrenOf[t.id]?.length ?? 0) > 0}
-                  <ul class="space-y-1 border-t border-line-soft px-2 pb-2 pt-1.5">
+                  <ul class="space-y-1 border-t border-line-soft px-2 pt-1.5">
                     {#each childrenOf[t.id] as c (c.id)}
                       <li>
                         <button
@@ -408,6 +412,9 @@
                     {/each}
                   </ul>
                 {/if}
+                <div class="flex justify-end px-2 pb-2 pt-1">
+                  <TaskActivityActions task={t} {onError} {onToast} />
+                </div>
               </div>
             {/each}
             {#if showGhostAt(col.status, null) && draggingTask}

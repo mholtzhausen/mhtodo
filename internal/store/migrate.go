@@ -20,6 +20,7 @@ var migrations = []migration{
 	{version: 4, up: schemaV4},
 	{version: 5, up: schemaV5},
 	{version: 6, up: schemaV6},
+	{version: 7, up: schemaV7},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -89,6 +90,12 @@ const schemaV6 = `
 ALTER TABLE tasks ADD COLUMN cwd TEXT NOT NULL DEFAULT '';
 ALTER TABLE tasks ADD COLUMN human_only INTEGER NOT NULL DEFAULT 0
   CHECK (human_only IN (0, 1));
+`
+
+// v7: per-task opt-out from Slack board report (default included).
+const schemaV7 = `
+ALTER TABLE tasks ADD COLUMN include_in_report INTEGER NOT NULL DEFAULT 1
+  CHECK (include_in_report IN (0, 1));
 `
 
 const schemaV1 = `

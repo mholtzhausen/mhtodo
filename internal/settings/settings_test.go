@@ -17,6 +17,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want := Default()
 	want.DefaultCwd = "/tmp/proj"
 	want.DefaultHumanOnly = true
+	want.ArchiveDoneSubtasks = true
 	want.Claude.Enabled = true
 	want.Claude.Binary = "/usr/bin/claude"
 	want.Claude.EnvStart = "ANTHROPIC_API_KEY=..."
@@ -202,6 +203,46 @@ func TestExpandBinaryNameOnLoad(t *testing.T) {
 	}
 	if !strings.Contains(string(data), claude) {
 		t.Fatalf("expected expanded path in config:\n%s", data)
+	}
+}
+
+func TestOptionalIntegrationFieldsOmittedFromYAML(t *testing.T) {
+	path := configPathIn(t, "config.yml")
+	s := Default()
+	if err := Save(s); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	for _, key := range []string{"ticket_prompt:", "env_start:", "space_name:"} {
+		if strings.Contains(body, key) {
+			t.Errorf("expected empty optional field omitted from config, found %q in:\n%s", key, body)
+		}
+	}
+}
+
+func TestEffectiveIntegrationDefaults(t *testing.T) {
+	var c ClaudeConfig
+	if got := c.EffectiveTicketPrompt(); got != DefaultClaudeTicketPrompt {
+		t.Fatalf("EffectiveTicketPrompt = %q, want default", got)
+	}
+	var h HerdrConfig
+	if got := h.EffectiveSpaceName(); got != DefaultHerdrSpaceName {
+		t.Fatalf("EffectiveSpaceName = %q, want %q", got, DefaultHerdrSpaceName)
+	}
+}
+
+func TestStripStoredIntegrationDefaults(t *testing.T) {
+	cf := configFile{
+		Claude: claudeFile{TicketPrompt: DefaultClaudeTicketPrompt},
+		Herdr:  herdrFile{SpaceName: DefaultHerdrSpaceName},
+	}
+	stripStoredIntegrationDefaults(&cf)
+	if cf.Claude.TicketPrompt != "" || cf.Herdr.SpaceName != "" {
+		t.Fatalf("stripStoredIntegrationDefaults: %+v", cf)
 	}
 }
 

@@ -18,7 +18,27 @@ import (
 // MetaGUISettings is the legacy DB meta key (migrated to config.yml on first load).
 const MetaGUISettings = "gui_settings"
 
-const defaultHerdrSpaceName = "mhtodo"
+// DefaultHerdrSpaceName is the Herdr workspace label when space_name is unset in config.
+const DefaultHerdrSpaceName = "mhtodo"
+
+// DefaultClaudeTicketPrompt is used at runtime when ticket_prompt is empty in config.
+const DefaultClaudeTicketPrompt = "read todo {{todo-hash}} and start on the ticket. if there is not enough information to start working, gather as much information about the issue on your own (read-only) and ask your human for input. When starting the task, remember to create subtasks and notify about activities on the task."
+
+// EffectiveTicketPrompt returns the configured prompt or DefaultClaudeTicketPrompt.
+func (c ClaudeConfig) EffectiveTicketPrompt() string {
+	if p := strings.TrimSpace(c.TicketPrompt); p != "" {
+		return p
+	}
+	return DefaultClaudeTicketPrompt
+}
+
+// EffectiveSpaceName returns the configured Herdr space name or DefaultHerdrSpaceName.
+func (h HerdrConfig) EffectiveSpaceName() string {
+	if n := strings.TrimSpace(h.SpaceName); n != "" {
+		return n
+	}
+	return DefaultHerdrSpaceName
+}
 
 // IntegrationConfig holds one external agent integration (Wails/API surface).
 type IntegrationConfig struct {
@@ -30,7 +50,9 @@ type IntegrationConfig struct {
 // ClaudeConfig is the Claude Code integration.
 type ClaudeConfig struct {
 	IntegrationConfig
-	TicketPrompt string `json:"ticket_prompt" yaml:"ticket_prompt"`
+	TicketPrompt   string `json:"ticket_prompt" yaml:"ticket_prompt"`
+	CloseTabOnDone bool   `json:"close_tab_on_done" yaml:"close_tab_on_done"` // close Herdr ticket tab when task → done
+	RequireCwd     bool   `json:"require_cwd" yaml:"require_cwd"`             // hide Claude icon when task has no cwd
 }
 
 // HerdrConfig is the Herdr integration (space name is Herdr-specific).
@@ -43,18 +65,21 @@ type HerdrConfig struct {
 
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd       string            `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly bool              `json:"default_human_only" yaml:"default_human_only"`
-	Claude           ClaudeConfig      `json:"claude" yaml:"claude"`
-	Herdr            HerdrConfig       `json:"herdr" yaml:"herdr"`
+	DefaultCwd           string       `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly     bool         `json:"default_human_only" yaml:"default_human_only"`
+	ArchiveDoneSubtasks  bool         `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	Claude               ClaudeConfig `json:"claude" yaml:"claude"`
+	Herdr                HerdrConfig  `json:"herdr" yaml:"herdr"`
 }
 
 type claudeFile struct {
-	Enabled      bool   `yaml:"enabled"`
-	Binary       string `yaml:"binary"`
-	EnvStart     string `yaml:"env_start"`
-	TicketPrompt string `yaml:"ticket_prompt"`
-	UserSet      bool   `yaml:"user_set,omitempty"`
+	Enabled        bool   `yaml:"enabled"`
+	Binary         string `yaml:"binary"`
+	EnvStart       string `yaml:"env_start,omitempty"`
+	TicketPrompt   string `yaml:"ticket_prompt,omitempty"`
+	CloseTabOnDone bool   `yaml:"close_tab_on_done"`
+	RequireCwd     *bool  `yaml:"require_cwd,omitempty"`
+	UserSet        bool   `yaml:"user_set,omitempty"`
 }
 
 type integrationFile struct {
@@ -67,16 +92,17 @@ type integrationFile struct {
 type herdrFile struct {
 	Enabled   bool   `yaml:"enabled"`
 	Binary    string `yaml:"binary"`
-	EnvStart  string `yaml:"env_start"`
-	SpaceName string `yaml:"space_name"`
+	EnvStart  string `yaml:"env_start,omitempty"`
+	SpaceName string `yaml:"space_name,omitempty"`
 	UserSet   bool   `yaml:"user_set,omitempty"`
 }
 
 type configFile struct {
-	DefaultCwd       string          `yaml:"default_cwd"`
-	DefaultHumanOnly bool            `yaml:"default_human_only"`
-	Claude           claudeFile      `yaml:"claude"`
-	Herdr            herdrFile       `yaml:"herdr"`
+	DefaultCwd          string     `yaml:"default_cwd"`
+	DefaultHumanOnly    bool       `yaml:"default_human_only"`
+	ArchiveDoneSubtasks bool       `yaml:"archive_done_subtasks"`
+	Claude              claudeFile `yaml:"claude"`
+	Herdr               herdrFile  `yaml:"herdr"`
 }
 
 // Default returns factory defaults for a fresh install.
@@ -85,10 +111,18 @@ func Default() GUISettings {
 }
 
 func defaultConfigFile() configFile {
+	requireCwd := true
 	return configFile{
-		Claude: claudeFile{Binary: "claude"},
-		Herdr:  herdrFile{Binary: "herdr", SpaceName: defaultHerdrSpaceName},
+		Claude: claudeFile{Binary: "claude", RequireCwd: &requireCwd},
+		Herdr:  herdrFile{Binary: "herdr"},
 	}
+}
+
+func claudeRequireCwd(cf claudeFile) bool {
+	if cf.RequireCwd != nil {
+		return *cf.RequireCwd
+	}
+	return true
 }
 
 // Load reads settings from config.yml, migrating legacy meta when needed.
@@ -309,23 +343,35 @@ func normalizeConfigFile(cf *configFile) {
 	if cf.Herdr.Binary == "" {
 		cf.Herdr.Binary = "herdr"
 	}
-	if cf.Herdr.SpaceName == "" {
-		cf.Herdr.SpaceName = defaultHerdrSpaceName
-	}
+	stripStoredIntegrationDefaults(cf)
 	expandIntegrationBinaries(cf)
+}
+
+// stripStoredIntegrationDefaults removes legacy baked-in defaults from the file
+// representation so runtime defaults can evolve without rewriting config on upgrade.
+func stripStoredIntegrationDefaults(cf *configFile) {
+	if strings.TrimSpace(cf.Claude.TicketPrompt) == DefaultClaudeTicketPrompt {
+		cf.Claude.TicketPrompt = ""
+	}
+	if strings.TrimSpace(cf.Herdr.SpaceName) == DefaultHerdrSpaceName {
+		cf.Herdr.SpaceName = ""
+	}
 }
 
 func toGUI(cf configFile) GUISettings {
 	return GUISettings{
-		DefaultCwd:       cf.DefaultCwd,
-		DefaultHumanOnly: cf.DefaultHumanOnly,
+		DefaultCwd:          cf.DefaultCwd,
+		DefaultHumanOnly:    cf.DefaultHumanOnly,
+		ArchiveDoneSubtasks: cf.ArchiveDoneSubtasks,
 		Claude: ClaudeConfig{
 			IntegrationConfig: IntegrationConfig{
 				Enabled:  cf.Claude.Enabled,
 				Binary:   cf.Claude.Binary,
 				EnvStart: cf.Claude.EnvStart,
 			},
-			TicketPrompt: cf.Claude.TicketPrompt,
+			TicketPrompt:   cf.Claude.TicketPrompt,
+			CloseTabOnDone: cf.Claude.CloseTabOnDone,
+			RequireCwd:     claudeRequireCwd(cf.Claude),
 		},
 		Herdr: HerdrConfig{
 			Enabled:   cf.Herdr.Enabled,
@@ -339,10 +385,14 @@ func toGUI(cf configFile) GUISettings {
 func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultCwd = s.DefaultCwd
 	cf.DefaultHumanOnly = s.DefaultHumanOnly
+	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.Claude.Enabled = s.Claude.Enabled
 	cf.Claude.Binary = s.Claude.Binary
 	cf.Claude.EnvStart = s.Claude.EnvStart
 	cf.Claude.TicketPrompt = s.Claude.TicketPrompt
+	cf.Claude.CloseTabOnDone = s.Claude.CloseTabOnDone
+	requireCwd := s.Claude.RequireCwd
+	cf.Claude.RequireCwd = &requireCwd
 	cf.Herdr.Enabled = s.Herdr.Enabled
 	cf.Herdr.Binary = s.Herdr.Binary
 	cf.Herdr.EnvStart = s.Herdr.EnvStart
@@ -380,5 +430,5 @@ func herdrIntegrationConfigured(c HerdrConfig, defaultBinary string) bool {
 		Enabled:  c.Enabled,
 		Binary:   c.Binary,
 		EnvStart: c.EnvStart,
-	}, defaultBinary) || (c.SpaceName != "" && c.SpaceName != defaultHerdrSpaceName)
+	}, defaultBinary) || (strings.TrimSpace(c.SpaceName) != "" && c.SpaceName != DefaultHerdrSpaceName)
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Activity, type Status } from '../lib/api'
+  import { claudeIconVisible } from '../lib/claudeIntegration'
   import { absShort, relTime, shortId } from '../lib/format'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
@@ -60,16 +61,24 @@
   let herdrReady = $state(false)
   let claudeActive = $state(false)
   let herdrOpening = $state(false)
+  let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
+
+  const showClaude = $derived(
+    guiSettings ? claudeIconVisible({ ...task, cwd }, guiSettings) : false
+  )
 
   async function refreshHerdrStatus() {
     herdrReady = false
     claudeActive = false
-    if (humanOnly || !cwd.trim()) return
+    guiSettings = null
+    if (humanOnly || task.status === 'done') return
     try {
-      const [status, settings] = await Promise.all([
-        api.ensureHerdrWorkspace(task.id),
-        api.getSettings()
-      ])
+      const settings = await api.getSettings()
+      guiSettings = settings
+      if (!claudeIconVisible({ ...task, cwd }, settings)) return
+      const status = cwd.trim()
+        ? await api.ensureHerdrWorkspace(task.id)
+        : await api.ensureHerdrReady()
       herdrReady = !!status.ready
       if (herdrReady && settings.claude.enabled) {
         claudeActive = await api.checkBinary(settings.claude.binary)
@@ -125,6 +134,7 @@
   $effect(() => {
     void humanOnly
     void cwd
+    void task.status
     void refreshHerdrStatus()
   })
 
@@ -346,7 +356,7 @@
           {/if}
         </button>
       </div>
-      {#if herdrReady}
+      {#if showClaude && herdrReady}
         <button
           type="button"
           onclick={openHerdrTicket}

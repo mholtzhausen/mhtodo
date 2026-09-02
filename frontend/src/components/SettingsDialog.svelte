@@ -4,10 +4,12 @@
   import {
     defaultSettings,
     DEFAULT_CLAUDE_TICKET_PROMPT,
+    DEFAULT_HERDR_SPACE_NAME,
     type ClaudeConfig,
     type GUISettings,
     type HerdrConfig
   } from '../lib/settings'
+  import ClearableField from './ClearableField.svelte'
 
   let {
     open,
@@ -122,9 +124,10 @@
 
   $effect(() => {
     if (!open || !ready || loading) return
-    const { default_cwd, default_human_only, claude, herdr } = settings
+    const { default_cwd, default_human_only, archive_done_subtasks, claude, herdr } = settings
     void default_cwd
     void default_human_only
+    void archive_done_subtasks
     void claude.enabled
     void claude.binary
     void claude.env_start
@@ -258,6 +261,20 @@
                   >Human only by default <span class="text-ink-3">(agents skip new tasks)</span></span
                 >
               </label>
+
+              <label class="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  bind:checked={settings.archive_done_subtasks}
+                  class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                />
+                <span class="flex flex-col gap-0.5">
+                  <span class="text-sm text-ink-2">Archive done subtasks</span>
+                  <span class="text-xs italic text-ink-3/75"
+                    >When archiving from the Done column, include subtasks (default: root tasks only)</span
+                  >
+                </span>
+              </label>
               </div>
             </section>
           {:else if activePage === 'integrations'}
@@ -301,32 +318,59 @@
                   </label>
                   <label class="block">
                     <span class="micro mb-1">Env start string</span>
-                    <input
+                    <ClearableField
                       value={settings.claude.env_start}
-                      oninput={(e) =>
-                        patchIntegration('claude', {
-                          env_start: (e.currentTarget as HTMLInputElement).value
-                        })}
                       placeholder="e.g. ANTHROPIC_API_KEY=… command args"
-                      class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                      onChange={(env_start) => patchIntegration('claude', { env_start })}
                     />
                   </label>
                   <label class="block">
-                    <span class="micro mb-1">Ticket prompt</span>
-                    <textarea
-                      rows="4"
+                    <span class="mb-1.5 flex flex-col gap-0.5">
+                      <span class="micro">Ticket prompt</span>
+                      <span class="text-xs italic text-ink-3/75">
+                        Sent to Claude in a new Herdr tab. Use <code
+                          class="font-mono not-italic text-ink-3/90">{'{{todo-hash}}'}</code
+                        > for the short task ID.
+                      </span>
+                    </span>
+                    <ClearableField
+                      multiline
+                      rows={4}
+                      mono
                       value={settings.claude.ticket_prompt}
-                      oninput={(e) =>
-                        patchIntegration('claude', {
-                          ticket_prompt: (e.currentTarget as HTMLTextAreaElement).value
-                        })}
                       placeholder={DEFAULT_CLAUDE_TICKET_PROMPT}
-                      class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 font-mono text-xs leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-                    ></textarea>
-                    <p class="mt-1 text-[11px] text-ink-3">
-                      Sent to Claude in a new Herdr tab. Use <code class="text-ink-2">{'{{todo-hash}}'}</code> for the
-                      short task ID.
-                    </p>
+                      onChange={(ticket_prompt) => patchIntegration('claude', { ticket_prompt })}
+                    />
+                  </label>
+                  <label class="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={settings.claude.require_cwd}
+                      onchange={(e) =>
+                        patchIntegration('claude', {
+                          require_cwd: (e.currentTarget as HTMLInputElement).checked
+                        })}
+                      class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                    />
+                    <span class="flex flex-col gap-0.5">
+                      <span class="text-sm text-ink-2">Require working directory</span>
+                      <span class="text-xs italic text-ink-3/75">Hide Claude button when task has no cwd</span>
+                    </span>
+                  </label>
+                  <label class="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={settings.claude.close_tab_on_done}
+                      onchange={(e) =>
+                        patchIntegration('claude', {
+                          close_tab_on_done: (e.currentTarget as HTMLInputElement).checked
+                        })}
+                      class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                    />
+                    <span class="flex flex-col gap-0.5">
+                      <span class="text-sm text-ink-2">Close Herdr tab when done</span>
+                      <span class="text-xs italic text-ink-3/75">Remove Claude ticket tab when task moves to done</span>
+                    </span>
                   </label>
                 </div>
               </div>
@@ -368,26 +412,18 @@
                   </label>
                   <label class="block">
                     <span class="micro mb-1">Env start string</span>
-                    <input
+                    <ClearableField
                       value={settings.herdr.env_start}
-                      oninput={(e) =>
-                        patchIntegration('herdr', {
-                          env_start: (e.currentTarget as HTMLInputElement).value
-                        })}
                       placeholder="e.g. HERDR_CONFIG=… command args"
-                      class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                      onChange={(env_start) => patchIntegration('herdr', { env_start })}
                     />
                   </label>
                   <label class="block">
                     <span class="micro mb-1">Space name</span>
-                    <input
+                    <ClearableField
                       value={settings.herdr.space_name}
-                      oninput={(e) =>
-                        patchIntegration('herdr', {
-                          space_name: (e.currentTarget as HTMLInputElement).value
-                        })}
-                      placeholder="mhtodo"
-                      class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                      placeholder={DEFAULT_HERDR_SPACE_NAME}
+                      onChange={(space_name) => patchIntegration('herdr', { space_name })}
                     />
                   </label>
                 </div>

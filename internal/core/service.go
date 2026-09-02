@@ -24,9 +24,10 @@ type TaskRepository interface {
 	MaxBoardRank(ctx context.Context, status Status) (max float64, ok bool, err error)
 	ListRootsInStatus(ctx context.Context, status Status) ([]Task, error)
 	Delete(ctx context.Context, id string) (Task, error)
-	// ArchiveDone archives every non-archived done task in one statement and
-	// returns the archived tasks (v0.2). at is the service clock (tests inject it).
-	ArchiveDone(ctx context.Context, at time.Time) ([]Task, error)
+	// ArchiveDone archives non-archived done tasks in one statement and returns
+	// them (v0.2). When includeSubtasks is false, only root tasks are archived.
+	// at is the service clock (tests inject it).
+	ArchiveDone(ctx context.Context, at time.Time, includeSubtasks bool) ([]Task, error)
 	CountOpen(ctx context.Context) (int, error) // non-done tasks; tray tooltip only
 	CountChildren(ctx context.Context, parentID string) (int, error)
 
@@ -100,8 +101,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		ParentID:    parentID,
-		Cwd:         strings.TrimSpace(in.Cwd),
-		HumanOnly:   in.HumanOnly,
+		Cwd:             strings.TrimSpace(in.Cwd),
+		HumanOnly:       in.HumanOnly,
+		IncludeInReport: true,
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -207,6 +209,9 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	if in.HumanOnly != nil {
 		t.HumanOnly = *in.HumanOnly
 	}
+	if in.IncludeInReport != nil {
+		t.IncludeInReport = *in.IncludeInReport
+	}
 	t.UpdatedAt = s.now()
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
@@ -308,11 +313,12 @@ func (s *Service) ReorderBoardTask(ctx context.Context, ref string, beforeRef *s
 	return t, nil
 }
 
-// ArchiveDone archives all done tasks at once (board Done-column button / CLI
-// `archive`). It is reversible via Unarchive; no notification fires (the tasks
-// were already done). Returns the archived tasks, empty when there was nothing.
-func (s *Service) ArchiveDone(ctx context.Context) ([]Task, error) {
-	return s.repo.ArchiveDone(ctx, s.now())
+// ArchiveDone archives done tasks at once (board Done-column button / CLI
+// `archive`). When includeSubtasks is false, only root tasks are archived.
+// Reversible via Unarchive; no notification fires. Returns archived tasks,
+// empty when there was nothing to archive.
+func (s *Service) ArchiveDone(ctx context.Context, includeSubtasks bool) ([]Task, error) {
+	return s.repo.ArchiveDone(ctx, s.now(), includeSubtasks)
 }
 
 // Unarchive restores an archived task: it goes back to pending with progress
@@ -454,4 +460,36 @@ func (s *Service) DeleteActivity(ctx context.Context, ref string) (Activity, err
 		return Activity{}, err
 	}
 	return s.repo.DeleteActivity(ctx, id)
+}
+
+// TaskMarkdownReport returns a paste-ready markdown summary for one task.
+func (s *Service) TaskMarkdownReport(ctx context.Context, ref string) (string, error) {
+	t, err := s.Get(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+
+	var children []Task
+	if t.ParentID == nil {
+		all, err := s.List(ctx, ListFilter{IncludeDone: true, IncludeHumanOnly: true})
+		if err != nil {
+			return "", err
+		}
+		for _, c := range all {
+			if c.ParentID != nil && *c.ParentID == t.ID {
+				children = append(children, c)
+			}
+		}
+	}
+
+	taskIDs := []string{t.ID}
+	for _, c := range children {
+		taskIDs = append(taskIDs, c.ID)
+	}
+	activities, err := s.ListActivity(ctx, ActivityFilter{TaskIDs: taskIDs})
+	if err != nil {
+		return "", err
+	}
+
+	return FormatTaskMarkdown(t, children, activities), nil
 }
