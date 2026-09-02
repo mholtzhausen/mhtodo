@@ -110,6 +110,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `activity rm` | `mhtodo activity rm ID [--yes]` | non-TTY requires `--yes` |
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
+| `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; documents human-only and cwd rules) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is present, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
@@ -230,6 +231,7 @@ status transitions → activity → delete) using only this CLI.
 | `AddActivity` / `ListActivity` / `DeleteActivity` | `activity add\|list\|rm` | agent-authored |
 | `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
+| `SlackReport()` | `slack report` | GUI header copies report to clipboard |
 
 After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
 watcher emits the same event for CLI-side writes. New capability = core method + CLI command + bound

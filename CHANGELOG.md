@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.0 (1e1e3ab)
+
+### Features and Improvements
+- Slack board report: `mhtodo slack report` prints a paste-ready summary (Completed / Todo / WIP with status icons); GUI header button copies the same report to the clipboard
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 1.7.0 (99fd39f)
 
 ### Features and Improvements
