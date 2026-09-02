@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { fly } from 'svelte/transition'
   import Board from './components/Board.svelte'
   import FilterBar from './components/FilterBar.svelte'
   import List from './components/List.svelte'
@@ -86,7 +87,10 @@
   let activities = $state<Activity[]>([])
   let activityFilterIds = $state<string[]>([])
   let loading = $state(true)
-  let toast: { msg: string; kind: 'error' | 'info' } | null = $state(null)
+  const TOAST_MS = 3000
+  let toast: { id: number; msg: string; kind: 'error' | 'info' } | null = $state(null)
+  let toastSeq = 0
+  let toastTimer: ReturnType<typeof setTimeout> | undefined
   let selectedId: string | null = $state(null)
   let dialogOpen = $state(false)
   let dialogInitialStatus = $state<Status | ''>('')
@@ -114,11 +118,12 @@
       : null
   )
 
-  function showToast(msg: string, kind: 'error' | 'info' = 'error', ms = 3000) {
-    const t = { msg, kind }
-    toast = t
-    setTimeout(() => {
-      if (toast === t) toast = null
+  function showToast(msg: string, kind: 'error' | 'info' = 'error', ms = TOAST_MS) {
+    const id = ++toastSeq
+    toast = { id, msg, kind }
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => {
+      if (toast?.id === id) toast = null
     }, ms)
   }
 
@@ -415,6 +420,7 @@
   })
 
   onDestroy(() => {
+    clearTimeout(toastTimer)
     unbindChanged?.()
     unbindTrayNewTask?.()
     window.removeEventListener('keydown', onKeydown)
@@ -727,6 +733,8 @@
   {#if toast}
     <div
       role="alert"
+      in:fly={{ y: 8, duration: 150 }}
+      out:fly={{ y: 8, duration: 150 }}
       class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded border px-4 py-2 text-sm shadow-xl
         {toast.kind === 'error'
           ? 'border-danger/50 bg-card-hi text-danger'

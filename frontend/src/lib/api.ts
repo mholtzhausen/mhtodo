@@ -159,8 +159,14 @@ export const api = {
   setAlwaysOnTop(on: boolean): Promise<void> {
     return App.SetAlwaysOnTop(on)
   },
-  pickDirectory(start = ''): Promise<string> {
-    return App.PickDirectory(start)
+  async pickDirectory(start = ''): Promise<string> {
+    const trimmed = start.trim()
+    try {
+      return await App.PickDirectory(trimmed)
+    } catch (e) {
+      if (trimmed) return App.PickDirectory('')
+      throw e
+    }
   },
   getSettings(): Promise<GUISettings> {
     return App.GetGUISettings().then((s) => fromGoSettings(s))

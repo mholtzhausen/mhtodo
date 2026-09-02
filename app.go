@@ -278,17 +278,26 @@ func (a *App) DBPath() string { return store.DBPath() }
 
 // PickDirectory opens the system folder picker and returns the chosen path, or
 // "" when the user cancels. start, when a valid directory, is the initial location.
+// If start is missing or invalid, or the dialog fails with that default, the picker
+// opens again without a starting directory instead of surfacing an error.
 func (a *App) PickDirectory(start string) (string, error) {
 	opts := wruntime.OpenDialogOptions{
 		Title: "Select working directory",
 	}
 	start = strings.TrimSpace(start)
+	defaultDir := ""
 	if start != "" {
 		if info, err := os.Stat(start); err == nil && info.IsDir() {
+			defaultDir = start
 			opts.DefaultDirectory = start
 		}
 	}
-	return wruntime.OpenDirectoryDialog(a.ctx, opts)
+	path, err := wruntime.OpenDirectoryDialog(a.ctx, opts)
+	if err != nil && defaultDir != "" {
+		opts.DefaultDirectory = ""
+		return wruntime.OpenDirectoryDialog(a.ctx, opts)
+	}
+	return path, err
 }
 
 // GetGUISettings returns persisted GUI preferences (defaults when unset).
