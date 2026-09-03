@@ -27,6 +27,7 @@
   let description = $state('')
   let status = $state<Status>('pending')
   let cwd = $state('')
+  let slackThread = $state('')
   let humanOnly = $state(false)
 
   let progress = $state(0)
@@ -120,7 +121,8 @@
         progress,
         parentId: parentId || undefined,
         cwd: cwd.trim() || undefined,
-        humanOnly
+        humanOnly,
+        slackThread: slackThread.trim() || undefined
       })
       resetForm()
       onClose()
@@ -143,7 +145,8 @@
         progress,
         parentId: parentId || undefined,
         cwd: cwd.trim() || undefined,
-        humanOnly
+        humanOnly,
+        slackThread: slackThread.trim() || undefined
       })
       await api.openHerdrTicket(task.id)
       resetForm()
@@ -160,6 +163,7 @@
     description = ''
     status = 'pending'
     cwd = ''
+    slackThread = ''
     humanOnly = false
     progress = 0
   }
@@ -245,6 +249,15 @@
             </button>
           </div>
         </div>
+
+        <label class="block">
+          <span class="micro mb-1.5">Slack thread</span>
+          <input
+            bind:value={slackThread}
+            placeholder="https://… (optional Slack thread link)"
+            class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          />
+        </label>
 
         <label class="flex cursor-pointer items-center gap-2.5">
           <input
