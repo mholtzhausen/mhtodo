@@ -333,6 +333,49 @@ func TestArchiveDoneAndUnarchive(t *testing.T) {
 	}
 }
 
+func TestArchiveSingle(t *testing.T) {
+	svc, repo := newTestService(t)
+	ctx := context.Background()
+
+	seed(t, repo, "aaaa1111-0000-7000-8000-000000000001", "done one", core.StatusDone, 100)
+	seed(t, repo, "bbbb2222-0000-7000-8000-000000000001", "done two", core.StatusDone, 100)
+	seed(t, repo, "cccc3333-0000-7000-8000-000000000001", "wip task", core.StatusWIP, 50)
+
+	got, err := svc.Archive(ctx, "aaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ArchivedAt == nil || got.Status != core.StatusDone {
+		t.Fatalf("archive single wrong: %+v", got)
+	}
+
+	list, err := svc.List(ctx, core.ListFilter{IncludeDone: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var foundSibling bool
+	for _, tsk := range list {
+		if tsk.ID == "bbbb2222-0000-7000-8000-000000000001" {
+			foundSibling = true
+		}
+		if tsk.ID == "aaaa1111-0000-7000-8000-000000000001" {
+			t.Errorf("archived task should be excluded from IncludeDone list")
+		}
+	}
+	if !foundSibling {
+		t.Error("sibling done task missing from list")
+	}
+
+	_, err = svc.Archive(ctx, "aaaa")
+	if !errors.Is(err, core.ErrAlreadyArchived) {
+		t.Errorf("second archive: %v, want ErrAlreadyArchived", err)
+	}
+	_, err = svc.Archive(ctx, "cccc")
+	if !errors.Is(err, core.ErrNotDone) {
+		t.Errorf("archive wip: %v, want ErrNotDone", err)
+	}
+}
+
 func TestArchiveDoneExcludesSubtasksByDefault(t *testing.T) {
 	svc, _ := newTestService(t)
 	ctx := context.Background()

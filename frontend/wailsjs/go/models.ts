@@ -78,6 +78,8 @@ export namespace core {
 	    ParentID: string;
 	    Cwd: string;
 	    HumanOnly: boolean;
+	    // Go type: *bool
+	    IncludeInReport?: boolean;
 	    SlackThread: string;
 	
 	    static createFrom(source: any = {}) {
@@ -94,6 +96,7 @@ export namespace core {
 	        this.ParentID = source["ParentID"];
 	        this.Cwd = source["Cwd"];
 	        this.HumanOnly = source["HumanOnly"];
+	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
 	    }
 	}
@@ -282,6 +285,7 @@ export namespace settings {
 	export class GUISettings {
 	    default_cwd: string;
 	    default_human_only: boolean;
+	    default_include_in_report: boolean;
 	    archive_done_subtasks: boolean;
 	    start_hidden: boolean;
 	    claude: ClaudeConfig;
@@ -295,6 +299,7 @@ export namespace settings {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.default_cwd = source["default_cwd"];
 	        this.default_human_only = source["default_human_only"];
+	        this.default_include_in_report = source["default_include_in_report"];
 	        this.archive_done_subtasks = source["archive_done_subtasks"];
 	        this.start_hidden = source["start_hidden"];
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);

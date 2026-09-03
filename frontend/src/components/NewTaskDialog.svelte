@@ -3,7 +3,6 @@
   import { api, errMsg, type Status } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
   import StatusPicker from './StatusPicker.svelte'
-  import ProgressControl from './ProgressControl.svelte'
 
   let {
     open,
@@ -11,6 +10,7 @@
     parentId = '',
     defaultCwd = '',
     defaultHumanOnly = false,
+    defaultIncludeInReport = true,
     onClose,
     onError
   }: {
@@ -19,6 +19,7 @@
     parentId?: string
     defaultCwd?: string
     defaultHumanOnly?: boolean
+    defaultIncludeInReport?: boolean
     onClose: () => void
     onError?: (msg: string) => void
   } = $props()
@@ -29,8 +30,8 @@
   let cwd = $state('')
   let slackThread = $state('')
   let humanOnly = $state(false)
+  let includeInReport = $state(true)
 
-  let progress = $state(0)
   let submitting = $state(false)
   let herdrActive = $state(false)
   let claudeActive = $state(false)
@@ -85,6 +86,7 @@
     status = initialStatus
     cwd = defaultCwd
     humanOnly = defaultHumanOnly
+    includeInReport = defaultIncludeInReport
     dialogInitialized = true
     refreshIntegrationStatus()
   })
@@ -118,10 +120,10 @@
         title,
         description,
         status,
-        progress,
         parentId: parentId || undefined,
         cwd: cwd.trim() || undefined,
         humanOnly,
+        includeInReport,
         slackThread: slackThread.trim() || undefined
       })
       resetForm()
@@ -142,10 +144,10 @@
         title,
         description,
         status,
-        progress,
         parentId: parentId || undefined,
         cwd: cwd.trim() || undefined,
         humanOnly,
+        includeInReport,
         slackThread: slackThread.trim() || undefined
       })
       await api.openHerdrTicket(task.id)
@@ -165,7 +167,7 @@
     cwd = ''
     slackThread = ''
     humanOnly = false
-    progress = 0
+    includeInReport = true
   }
 
   function resetAndClose() {
@@ -257,6 +259,12 @@
             placeholder="https://… (optional Slack thread link)"
             class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
+          {#if slackThread.trim()}
+            <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
+              Linked Slack thread:
+              <a href={slackThread.trim()} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{slackThread.trim()}</a>
+            </p>
+          {/if}
         </label>
 
         <label class="flex cursor-pointer items-center gap-2.5">
@@ -268,14 +276,18 @@
           <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
         </label>
 
+        <label class="flex cursor-pointer items-center gap-2.5">
+          <input
+            type="checkbox"
+            bind:checked={includeInReport}
+            class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+          />
+          <span class="text-sm text-ink-2">Include in Slack report <span class="text-ink-3">(board summary copy)</span></span>
+        </label>
+
         <div>
           <span class="micro mb-1.5">Status</span>
           <StatusPicker value={status} onPick={(s) => (status = s)} />
-        </div>
-
-        <div>
-          <span class="micro mb-1.5">Progress</span>
-          <ProgressControl value={progress} onCommit={(p) => (progress = p)} />
         </div>
       </div>
 

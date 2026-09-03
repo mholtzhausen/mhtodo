@@ -20,6 +20,7 @@ export interface HerdrConfig extends IntegrationConfig {
 export interface GUISettings {
   default_cwd: string
   default_human_only: boolean
+  default_include_in_report: boolean
   archive_done_subtasks: boolean
   start_hidden: boolean
   claude: ClaudeConfig
@@ -44,6 +45,7 @@ export function effectiveHerdrSpaceName(s: GUISettings): string {
 export const defaultSettings = (): GUISettings => ({
   default_cwd: '',
   default_human_only: false,
+  default_include_in_report: true,
   archive_done_subtasks: false,
   start_hidden: false,
   claude: {
@@ -62,6 +64,7 @@ export function fromGoSettings(s: goSettings.GUISettings): GUISettings {
   return {
     default_cwd: s.default_cwd ?? '',
     default_human_only: !!s.default_human_only,
+    default_include_in_report: s.default_include_in_report !== false,
     archive_done_subtasks: !!s.archive_done_subtasks,
     start_hidden: !!s.start_hidden,
     claude: {
@@ -85,6 +88,7 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
   return new goSettings.GUISettings({
     default_cwd: s.default_cwd,
     default_human_only: s.default_human_only,
+    default_include_in_report: s.default_include_in_report,
     archive_done_subtasks: s.archive_done_subtasks,
     start_hidden: s.start_hidden,
     claude: {

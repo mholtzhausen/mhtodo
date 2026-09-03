@@ -609,6 +609,9 @@
     {#if task.feedback}
       <div>
         <span class="micro mb-1.5">Feedback</span>
+        <p class="mb-1.5 text-[11px] leading-snug text-ink-3">
+          Agent/CLI-authored (<code class="font-mono text-ink-3/90">mhtodo edit --feedback</code>); read-only here.
+        </p>
         <div
           class="md-scroll rounded border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
         >
@@ -660,7 +663,7 @@
       />
       {#if slackThread.trim()}
         <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
-          the primary thread on slack for communication regarding this ticket is :
+          Linked Slack thread:
           <a href={slackThread.trim()} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{slackThread.trim()}</a>
         </p>
       {/if}
@@ -726,15 +729,6 @@
     <div class="border-t border-line-soft pt-4">
       {@render infoSection()}
     </div>
-    {#if task.archived_at}
-      <button
-        onclick={unarchive}
-        title="Restore to pending (progress resets to 0)"
-        class="w-full rounded border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
-      >
-        Unarchive → pending
-      </button>
-    {/if}
   {/snippet}
 
   {#snippet activitySection()}
@@ -848,6 +842,12 @@
         </div>
       </div>
     </div>
+
+    {#if task.archived_at}
+      <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
+        {@render actionSection()}
+      </div>
+    {/if}
   {:else}
     <div class="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
       {@render overviewSection()}

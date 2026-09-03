@@ -65,12 +65,13 @@ type HerdrConfig struct {
 
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd           string       `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly     bool         `json:"default_human_only" yaml:"default_human_only"`
-	ArchiveDoneSubtasks  bool         `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
-	StartHidden          bool         `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
-	Claude               ClaudeConfig `json:"claude" yaml:"claude"`
-	Herdr                HerdrConfig  `json:"herdr" yaml:"herdr"`
+	DefaultCwd              string       `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly        bool         `json:"default_human_only" yaml:"default_human_only"`
+	DefaultIncludeInReport  bool         `json:"default_include_in_report" yaml:"default_include_in_report"`
+	ArchiveDoneSubtasks     bool         `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden             bool         `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	Claude                  ClaudeConfig `json:"claude" yaml:"claude"`
+	Herdr                   HerdrConfig  `json:"herdr" yaml:"herdr"`
 }
 
 type claudeFile struct {
@@ -99,12 +100,13 @@ type herdrFile struct {
 }
 
 type configFile struct {
-	DefaultCwd          string     `yaml:"default_cwd"`
-	DefaultHumanOnly    bool       `yaml:"default_human_only"`
-	ArchiveDoneSubtasks bool       `yaml:"archive_done_subtasks"`
-	StartHidden         bool       `yaml:"start_hidden"`
-	Claude              claudeFile `yaml:"claude"`
-	Herdr               herdrFile  `yaml:"herdr"`
+	DefaultCwd             string     `yaml:"default_cwd"`
+	DefaultHumanOnly       bool       `yaml:"default_human_only"`
+	DefaultIncludeInReport *bool      `yaml:"default_include_in_report,omitempty"`
+	ArchiveDoneSubtasks    bool       `yaml:"archive_done_subtasks"`
+	StartHidden            bool       `yaml:"start_hidden"`
+	Claude                 claudeFile `yaml:"claude"`
+	Herdr                  herdrFile  `yaml:"herdr"`
 }
 
 // Default returns factory defaults for a fresh install.
@@ -362,11 +364,16 @@ func stripStoredIntegrationDefaults(cf *configFile) {
 }
 
 func toGUI(cf configFile) GUISettings {
+	includeInReport := true
+	if cf.DefaultIncludeInReport != nil {
+		includeInReport = *cf.DefaultIncludeInReport
+	}
 	return GUISettings{
-		DefaultCwd:          cf.DefaultCwd,
-		DefaultHumanOnly:    cf.DefaultHumanOnly,
-		ArchiveDoneSubtasks: cf.ArchiveDoneSubtasks,
-		StartHidden:         cf.StartHidden,
+		DefaultCwd:             cf.DefaultCwd,
+		DefaultHumanOnly:       cf.DefaultHumanOnly,
+		DefaultIncludeInReport: includeInReport,
+		ArchiveDoneSubtasks:    cf.ArchiveDoneSubtasks,
+		StartHidden:            cf.StartHidden,
 		Claude: ClaudeConfig{
 			IntegrationConfig: IntegrationConfig{
 				Enabled:  cf.Claude.Enabled,
@@ -389,6 +396,8 @@ func toGUI(cf configFile) GUISettings {
 func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultCwd = s.DefaultCwd
 	cf.DefaultHumanOnly = s.DefaultHumanOnly
+	include := s.DefaultIncludeInReport
+	cf.DefaultIncludeInReport = &include
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.StartHidden = s.StartHidden
 	cf.Claude.Enabled = s.Claude.Enabled

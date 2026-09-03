@@ -267,6 +267,23 @@ func TestAddCwdAndHumanOnly(t *testing.T) {
 	if tsk.Cwd != "/home/me/proj" || !tsk.HumanOnly {
 		t.Errorf("add flags wrong: cwd=%q human_only=%v", tsk.Cwd, tsk.HumanOnly)
 	}
+	if !tsk.IncludeInReport {
+		t.Error("include_in_report should default true")
+	}
+}
+
+func TestAddNoIncludeInReport(t *testing.T) {
+	out, _, run := newCLI(t)
+
+	out.Reset()
+	if code := run("add", "Skip report", "--no-include-in-report", "--json"); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var tsk core.Task
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.IncludeInReport {
+		t.Error("want include_in_report false")
+	}
 }
 
 func TestSlackThread(t *testing.T) {
@@ -904,6 +921,62 @@ func TestArchiveAndUnarchive(t *testing.T) {
 	errb.Reset()
 	if code := run("unarchive", "zzzz9999"); code != 2 {
 		t.Fatalf("exit %d, want 2 (stderr: %s)", code, errb.String())
+	}
+}
+
+func TestArchiveByID(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	out.Reset()
+	if code := run("add", "Done solo", "--status", "done", "--json"); code != 0 {
+		t.Fatal(code)
+	}
+	var done core.Task
+	mustJSON(t, out.Bytes(), &done)
+
+	out.Reset()
+	if code := run("add", "Still wip", "--status", "wip"); code != 0 {
+		t.Fatal(code)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("archive", done.ID, "--json"); code != 0 {
+		t.Fatalf("archive id exit %d (%s)", code, errb.String())
+	}
+	var archived core.Task
+	mustJSON(t, out.Bytes(), &archived)
+	if archived.ID != done.ID || archived.ArchivedAt == nil {
+		t.Fatalf("archive id wrong: %+v", archived)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("archive", done.ID); code != 1 {
+		t.Fatalf("second archive exit %d want 1 (%s)", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "already archived") {
+		t.Errorf("stderr: %q", errb.String())
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("archive", "Still"); code != 1 {
+		// prefix may fail not_found if title isn't id — use list to get wip id
+	}
+	out.Reset()
+	run("list", "--status", "wip", "--json")
+	var wips []core.Task
+	mustJSON(t, out.Bytes(), &wips)
+	if len(wips) != 1 {
+		t.Fatalf("want 1 wip, got %+v", wips)
+	}
+	errb.Reset()
+	if code := run("archive", wips[0].ID); code != 1 {
+		t.Fatalf("archive wip exit %d want 1 (%s)", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "must be done") {
+		t.Errorf("stderr: %q", errb.String())
 	}
 }
 

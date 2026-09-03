@@ -6,6 +6,10 @@ export function AddActivity(arg1, arg2) {
   return window['go']['main']['App']['AddActivity'](arg1, arg2);
 }
 
+export function Archive(arg1) {
+  return window['go']['main']['App']['Archive'](arg1);
+}
+
 export function ArchiveDone() {
   return window['go']['main']['App']['ArchiveDone']();
 }

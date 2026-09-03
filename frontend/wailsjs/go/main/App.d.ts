@@ -6,6 +6,8 @@ import {settings} from '../models';
 
 export function AddActivity(arg1:string,arg2:core.ActivityInput):Promise<core.Activity>;
 
+export function Archive(arg1:string):Promise<core.Task>;
+
 export function ArchiveDone():Promise<Array<core.Task>>;
 
 export function CheckBinary(arg1:string):Promise<boolean>;

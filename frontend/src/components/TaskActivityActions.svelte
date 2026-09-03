@@ -14,6 +14,7 @@
       cwd?: string
       human_only?: boolean
       include_in_report?: boolean
+      archived_at?: string | null
     }
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
@@ -26,6 +27,7 @@
   let openingClaude = $state(false)
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
+  let archiving = $state(false)
   let claudeActive = $state(false)
   let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
@@ -34,6 +36,7 @@
     guiSettings ? claudeIconVisible(task, guiSettings) : false
   )
   const includeInReport = $derived(task.include_in_report !== false)
+  const canArchive = $derived(task.status === 'done' && !task.archived_at)
 
   function reportError(msg: string) {
     onError?.(msg)
@@ -140,6 +143,20 @@
     }
   }
 
+  async function archiveTask(e: MouseEvent) {
+    stop(e)
+    if (archiving || !canArchive) return
+    archiving = true
+    try {
+      await api.archive(task.id)
+      toast('Task archived', 'info')
+    } catch (err) {
+      reportError(errMsg(err))
+    } finally {
+      archiving = false
+    }
+  }
+
   const actionBtn =
     'rounded p-1 transition-all hover:bg-white/8 disabled:cursor-default disabled:opacity-40'
   const toggleBtn =
@@ -173,8 +190,10 @@
       </svg>
     {:else}
       <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M14 2v6h6" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M8 13h8" stroke-linecap="round" />
+        <path d="M8 17h5" stroke-linecap="round" />
       </svg>
     {/if}
   </button>
@@ -238,5 +257,22 @@
       <path d="M3 18h.01" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   </button>
+
+  {#if canArchive}
+    <button
+      type="button"
+      onclick={archiveTask}
+      disabled={archiving}
+      title="Archive this done task"
+      aria-label="Archive task"
+      class="{actionBtn} text-ink-3 hover:text-accent-hi"
+    >
+      <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="5" rx="1" />
+        <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M10 13h4" stroke-linecap="round" />
+      </svg>
+    </button>
+  {/if}
   </div>
 </div>

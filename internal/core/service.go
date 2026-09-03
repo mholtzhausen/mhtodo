@@ -91,6 +91,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 	if err != nil {
 		return Task{}, fmt.Errorf("generate id: %w", err)
 	}
+	includeInReport := true
+	if in.IncludeInReport != nil {
+		includeInReport = *in.IncludeInReport
+	}
 	t := Task{
 		ID:          id.String(),
 		Title:       title,
@@ -103,7 +107,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		ParentID:    parentID,
 		Cwd:             strings.TrimSpace(in.Cwd),
 		HumanOnly:       in.HumanOnly,
-		IncludeInReport: true,
+		IncludeInReport: includeInReport,
 		SlackThread:     strings.TrimSpace(in.SlackThread),
 	}
 	if st == StatusDone {
@@ -323,6 +327,32 @@ func (s *Service) ReorderBoardTask(ctx context.Context, ref string, beforeRef *s
 // empty when there was nothing to archive.
 func (s *Service) ArchiveDone(ctx context.Context, includeSubtasks bool) ([]Task, error) {
 	return s.repo.ArchiveDone(ctx, s.now(), includeSubtasks)
+}
+
+// Archive archives a single done task by ID/prefix. The task must be done and
+// not already archived. Only that task is archived (children are untouched).
+func (s *Service) Archive(ctx context.Context, ref string) (Task, error) {
+	id, err := s.ResolveID(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.ArchivedAt != nil {
+		return Task{}, ErrAlreadyArchived
+	}
+	if t.Status != StatusDone {
+		return Task{}, ErrNotDone
+	}
+	now := s.now()
+	t.ArchivedAt = &now
+	t.UpdatedAt = now
+	if err := s.repo.Update(ctx, t); err != nil {
+		return Task{}, err
+	}
+	return t, nil
 }
 
 // Unarchive restores an archived task: it goes back to pending with progress

@@ -88,7 +88,8 @@ concurrently with the GUI.
 
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
-`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `parent_is_child`, `not_root`,
+`invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
+`parent_is_child`, `not_root`,
 `reorder_status_mismatch`, `empty_activity`,
 `usage`, `storage`, `update`.
 
@@ -96,14 +97,14 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--human-only]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--human-only` marks a user-owned task agents must skip |
+| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--human-only \| --no-human-only]` | at least one flag required; never changes status; `--cwd ""` clears the path; `--slack-thread ""` clears the thread |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` clears the path; `--slack-thread ""` clears the thread |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
-| `archive` | `mhtodo archive` | archives **all** currently-done tasks in one step; reversible via `unarchive` |
+| `archive` | `mhtodo archive [ID]` | with no ID, archives **all** currently-done tasks; with ID, archives that single done task only (must be done; already archived → `already_archived`); reversible via `unarchive` |
 | `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
 | `activity add` | `mhtodo activity add ID --activity TEXT [--comment TEXT]` | agent/user-authored entry (at least one of activity/comment); not auto-logged |
 | `activity list` | `mhtodo activity list [--task ID]… [--limit N]` | newest first; non-archived tasks by default |
@@ -191,17 +192,21 @@ status transitions → activity → delete) using only this CLI.
   the status chip; title takes remaining width; updated shows elapsed + absolute time. Sub-tasks indent
   under parents when shown. Same human filter as the board. Toggle Board / List / Activity with `b` /
   `l` / `a`; choice persists.
-- **Activity view:** feed of agent/user activity across non-archived tickets (newest first), filterable
-  by ticket checkbox dropdown.
-- **Detail pane:** edit fields (including working directory with folder picker, human-only checkbox),
-  activity composer, Add sub-task (roots only). **Pin** switches from overlay drawer to an in-flow
-  right pane (persisted). Esc closes modals/unpinned detail, otherwise hides to tray.
-- **New task dialog:** optional working directory (text + system folder picker) and human-only checkbox.
-- **Sub-tasks toggle:** header control or `s` (persisted).
+- **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
+  shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
+- **Detail pane:** edit fields (including working directory with folder picker, human-only / Slack
+  report checkboxes, Slack thread URL), activity composer, Add sub-task (roots only). Feedback is
+  agent/CLI-authored (read-only in the GUI). **Pin** / Float / Modal detail modes (persisted). Esc
+  closes modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch;
+  `←`/`→` move to adjacent tasks.
+- **New task dialog:** optional working directory, Slack thread, human-only, include-in-Slack-report
+  (defaults from Settings), and initial status.
+- **Sub-tasks toggle:** header control (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
-- **Keyboard:** `/` search · `n` new · `s` sub-tasks · `esc` dismiss/hide · `1–5` status filter · `6` archived
-  (list) · `b`/`l`/`a` views · `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
+- **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
+  (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
+  `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
 - **System tray:** Show/Hide, New Task, Quit; close hides to tray; label shows open-task count.
   Global hotkey (X11) toggles the window and raises it on show. The grab is renewed periodically and after resume from suspend (screen lock can drop passive X11 grabs).
 - **Notifications:** on real →done and →waiting only (not →review).
@@ -220,11 +225,12 @@ status transitions → activity → delete) using only this CLI.
 |---|---|---|
 | `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
 | `GetTask(id)` | `show` | prefix match allowed |
-| `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly |
-| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only |
+| `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly, IncludeInReport (*bool, default true), SlackThread |
+| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting; assigns end rank on column change |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
+| `Archive(id)` | `archive ID` | single done task → archive |
 | `ArchiveDone()` | `archive` | bulk done → archive |
 | `Unarchive(id)` | `unarchive` | |
 | `DeleteTask(id)` | `rm` | cascades to children |

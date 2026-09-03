@@ -8,18 +8,20 @@ import (
 	"mhtodo/internal/settings"
 )
 
-// archive / unarchive (v0.2). Archive is bulk-only by design: the GUI button
-// sits on the Done column header and archives everything in it; there is no
-// per-task archive command. Unarchive restores a task to pending with
-// progress reset (core.Unarchive owns that rule).
+// archive / unarchive (v0.2+). Bare `archive` bulk-archives done tasks (board
+// Done-column button). `archive ID` archives a single done task. Unarchive
+// restores a task to pending with progress reset (core.Unarchive owns that rule).
 
 func newArchiveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "archive",
-		Short: "Archive all done tasks (reversible via unarchive)",
-		Long: `Archives every task currently in the done status. Archived tasks disappear
-from default lists and the board; list them with: mhtodo list --archived`,
-		Args: cobra.NoArgs,
+		Use:   "archive [ID]",
+		Short: "Archive done tasks (all done, or one by ID)",
+		Long: `With no ID, archives every task currently in the done status (same as the
+board Done-column button). With an ID, archives that single done task only.
+
+Archived tasks disappear from default lists and the board; list them with:
+  mhtodo list --archived`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o, err := o(cmd)
 			if err != nil {
@@ -30,6 +32,14 @@ from default lists and the board; list them with: mhtodo list --archived`,
 				return err
 			}
 			defer closeDB()
+
+			if len(args) == 1 {
+				t, err := svc.Archive(context.Background(), args[0])
+				if err != nil {
+					return mapError(err)
+				}
+				return o.printTask(t)
+			}
 
 			cfg, err := settings.Load(nil)
 			if err != nil {

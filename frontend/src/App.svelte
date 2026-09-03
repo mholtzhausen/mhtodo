@@ -11,7 +11,7 @@
   import ConfirmDialog from './components/ConfirmDialog.svelte'
   import { api, errMsg, type Activity, type GUISettings, type Status } from './lib/api'
   import { defaultSettings } from './lib/settings'
-  import { boardAdjacentTaskId } from './lib/boardOrder'
+  import { boardAdjacentTaskId, listAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
@@ -177,13 +177,27 @@
   }
 
   function selectTask(id: string) {
-    if (detailMode === 'modal' && selectedId) return
     selectedId = id
   }
 
-  function navigateBoardTask(dir: -1 | 1) {
-    if (detailMode !== 'modal' || !selectedId || view !== 'board') return
-    const nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+  function navigateModalTask(dir: -1 | 1) {
+    if (detailMode !== 'modal' || !selectedId) return
+    let nextId: string | null = null
+    if (view === 'board') {
+      nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+    } else if (view === 'list') {
+      nextId = listAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+    } else if (view === 'activity') {
+      // Prefer currently filtered activity order; fall back to task list.
+      const acts =
+        activityFilterIds.length === 0
+          ? activities
+          : activities.filter((a) => activityFilterIds.includes(a.task_id))
+      nextId = activityAdjacentTaskId(acts, selectedId, dir)
+      if (!nextId) {
+        nextId = listAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+      }
+    }
     if (nextId) selectedId = nextId
   }
 
@@ -314,6 +328,7 @@
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     if (e.key === 'Escape') {
       if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"]')) return
+      if (document.querySelector('[data-ticket-filter][data-open="true"]')) return
       e.preventDefault()
       if (confirmTask) confirmTask = null
       else if (settingsOpen) settingsOpen = false
@@ -333,7 +348,6 @@
       (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
       detailMode === 'modal' &&
       selectedId &&
-      view === 'board' &&
       !dialogOpen &&
       !confirmTask &&
       !typing &&
@@ -342,7 +356,7 @@
       !e.altKey
     ) {
       e.preventDefault()
-      navigateBoardTask(e.key === 'ArrowLeft' ? -1 : 1)
+      navigateModalTask(e.key === 'ArrowLeft' ? -1 : 1)
       return
     }
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return
@@ -393,7 +407,11 @@
         load()
         break
       case '6':
-        if (view === 'list') {
+        if (view === 'board') {
+          setView('list')
+          status = 'archived'
+          load()
+        } else if (view === 'list') {
           status = status === 'archived' ? '' : 'archived'
           load()
         }
@@ -581,12 +599,37 @@
       showSort={false}
       taskCount={displayRootCount}
       onStatusChange={(s: Status | '' | 'archived') => {
+        if (s === 'archived') {
+          status = 'archived'
+          setView('list')
+          return
+        }
         status = s
         load()
       }}
       onSearchInput={(v: string) => {
         search = v
         load()
+      }}
+      onSortChange={() => {}}
+      onToggleAsc={() => {}}
+      onHumanFilterChange={setHumanFilter}
+      onToggleSubtasks={toggleSubtasks}
+      onCopySlackReport={copySlackReport}
+    />
+  {:else if view === 'activity'}
+    <FilterBar
+      status=""
+      {search}
+      sort="title"
+      ascending={true}
+      {humanFilter}
+      {showSubtasks}
+      showStatus={false}
+      showSort={false}
+      onStatusChange={() => {}}
+      onSearchInput={(v: string) => {
+        search = v
       }}
       onSortChange={() => {}}
       onToggleAsc={() => {}}
@@ -608,6 +651,7 @@
           {search}
           selectedId={selectedId}
           {showSubtasks}
+          statusFilter={status}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           onSelect={selectTask}
           onQuickAdd={(s: Status) => {
@@ -632,7 +676,8 @@
       {:else}
         <ActivityView
           {activities}
-          {tasks}
+          tasks={displayTasks}
+          {search}
           selectedTaskIds={activityFilterIds}
           onToggleTask={(id) => {
             activityFilterIds = activityFilterIds.includes(id)
@@ -673,9 +718,10 @@
     <span class="truncate font-mono text-[11px]">{dbPath}</span>
     <div class="flex-1"></div>
     <span class="flex-none whitespace-nowrap"
-      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view
-      {#if view === 'list'}· <kbd>1–5</kbd> filter · <kbd>6</kbd> archived{/if} · <kbd>del</kbd> delete ·
-      <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle · <kbd>ctrl+q</kbd> quit</span
+      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
+      <kbd>1–5</kbd> status · <kbd>6</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
+      <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
+      <kbd>ctrl+q</kbd> quit</span
     >
   </footer>
 
@@ -733,6 +779,7 @@
     parentId={dialogParentId}
     defaultCwd={guiSettings.default_cwd}
     defaultHumanOnly={guiSettings.default_human_only}
+    defaultIncludeInReport={guiSettings.default_include_in_report}
     onClose={() => {
       dialogOpen = false
       dialogParentId = ''

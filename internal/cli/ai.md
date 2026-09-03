@@ -53,8 +53,8 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--slack-thread URL] [--human-only]
-mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--human-only | --no-human-only]  # at least one flag
+mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
@@ -64,7 +64,7 @@ mhtodo activity add ID [--activity S] [--comment S]       # at least one
 mhtodo activity list [--task ID ...] [--limit N]
 mhtodo activity rm ID --yes
 mhtodo rm ID --yes                                        # CASCADES to sub-tasks
-mhtodo archive | mhtodo unarchive ID
+mhtodo archive [ID] | mhtodo unarchive ID
 mhtodo path
 mhtodo slack report                                     # paste-ready board summary for Slack
 mhtodo ai                                                 # this document
@@ -422,7 +422,7 @@ asks about the board directly.
 
 ### 3.11 Housekeeping is the user's call
 
-`mhtodo archive` and `mhtodo rm` are never run unprompted. A `done` task staying
+`mhtodo archive` / `mhtodo archive ID` and `mhtodo rm` are never run unprompted. A `done` task staying
 visible is how the user sees what just finished, and `rm` cascades to sub-tasks.
 An agent may only `rm` a task it created in error.
 

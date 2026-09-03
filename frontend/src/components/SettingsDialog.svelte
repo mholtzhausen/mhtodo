@@ -42,6 +42,11 @@
 
   let persistTimer: ReturnType<typeof setTimeout> | undefined
 
+  const dirty = $derived(ready && !loading && snapshot(settings) !== lastSaved)
+  const saveStatus = $derived(
+    persisting ? 'Saving…' : dirty ? 'Unsaved' : ready && !loading ? 'Saved' : ''
+  )
+
   function snapshot(s: GUISettings) {
     return JSON.stringify(s)
   }
@@ -124,9 +129,18 @@
 
   $effect(() => {
     if (!open || !ready || loading) return
-    const { default_cwd, default_human_only, archive_done_subtasks, start_hidden, claude, herdr } = settings
+    const {
+      default_cwd,
+      default_human_only,
+      default_include_in_report,
+      archive_done_subtasks,
+      start_hidden,
+      claude,
+      herdr
+    } = settings
     void default_cwd
     void default_human_only
+    void default_include_in_report
     void archive_done_subtasks
     void start_hidden
     void claude.enabled
@@ -184,6 +198,12 @@
     >
       <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">Settings</h2>
+        {#if saveStatus}
+          <span
+            class="text-[11px] {persisting || dirty ? 'text-ink-3' : 'text-ink-3/70'}"
+            aria-live="polite"
+          >{saveStatus}</span>
+        {/if}
         <button
           type="button"
           onclick={handleClose}
@@ -260,6 +280,18 @@
                 />
                 <span class="text-sm text-ink-2"
                   >Human only by default <span class="text-ink-3">(agents skip new tasks)</span></span
+                >
+              </label>
+
+              <label class="flex cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  bind:checked={settings.default_include_in_report}
+                  class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                />
+                <span class="text-sm text-ink-2"
+                  >Include in Slack report by default
+                  <span class="text-ink-3">(board summary copy)</span></span
                 >
               </label>
 

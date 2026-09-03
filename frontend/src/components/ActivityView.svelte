@@ -6,6 +6,7 @@
   let {
     activities,
     tasks,
+    search = '',
     selectedTaskIds,
     onToggleTask,
     onSelectTask,
@@ -13,6 +14,7 @@
   }: {
     activities: Activity[]
     tasks: Task[]
+    search?: string
     selectedTaskIds: string[]
     onToggleTask: (id: string) => void
     onSelectTask: (id: string) => void
@@ -20,6 +22,7 @@
   } = $props()
 
   let filterOpen = $state(false)
+  let filterRoot = $state<HTMLDivElement | null>(null)
 
   /** Mouse-following ticket tooltip (null when not hovering a title link). */
   let tip = $state<{
@@ -40,6 +43,19 @@
     for (const t of tasks) m[t.id] = t
     return m
   })
+
+  const searchQ = $derived(search.trim().toLowerCase())
+
+  function taskMatchesSearch(t: Task | undefined): boolean {
+    if (!searchQ) return true
+    if (!t) return false
+    return (
+      t.title.toLowerCase().includes(searchQ) ||
+      t.id.toLowerCase().includes(searchQ) ||
+      shortId(t.id).toLowerCase().includes(searchQ) ||
+      (t.description ?? '').toLowerCase().includes(searchQ)
+    )
+  }
 
   $effect(() => {
     if (!tip || !tipEl) {
@@ -81,22 +97,57 @@
     tip = null
   }
 
+  function onWindowPointerDown(e: PointerEvent) {
+    if (!filterOpen || !filterRoot) return
+    if (!filterRoot.contains(e.target as Node)) filterOpen = false
+  }
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (filterOpen && e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      filterOpen = false
+    }
+  }
+
   const ticketOptions = $derived(
-    [...tasks].sort((a, b) => a.title.localeCompare(b.title))
+    [...tasks]
+      .filter((t) => taskMatchesSearch(t))
+      .sort((a, b) => a.title.localeCompare(b.title))
   )
 
-  const filtered = $derived(
-    selectedTaskIds.length === 0
-      ? activities
-      : activities.filter((a) => selectedTaskIds.includes(a.task_id))
-  )
+  const filtered = $derived.by(() => {
+    let list = activities
+    if (selectedTaskIds.length > 0) {
+      list = list.filter((a) => selectedTaskIds.includes(a.task_id))
+    }
+    if (searchQ) {
+      list = list.filter((a) => {
+        const task = taskById[a.task_id]
+        if (taskMatchesSearch(task)) return true
+        return (
+          (a.activity ?? '').toLowerCase().includes(searchQ) ||
+          (a.comment ?? '').toLowerCase().includes(searchQ)
+        )
+      })
+    }
+    return list
+  })
 </script>
 
+<svelte:window onpointerdown={onWindowPointerDown} onkeydown={onWindowKeydown} />
+
 <div class="flex h-full flex-col gap-3">
-  <div class="relative flex flex-none items-center gap-3">
+  <div
+    class="relative flex flex-none items-center gap-3"
+    bind:this={filterRoot}
+    data-ticket-filter
+    data-open={filterOpen ? 'true' : 'false'}
+  >
     <button
       type="button"
       onclick={() => (filterOpen = !filterOpen)}
+      aria-expanded={filterOpen}
       class="rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] hover:bg-card-hi"
     >
       Filter by ticket

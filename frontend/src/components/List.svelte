@@ -65,7 +65,7 @@
       <p class="text-xs text-ink-3/70">Clear the filters above to see everything.</p>
     {:else}
       <p class="text-sm text-ink-3">No tasks yet.</p>
-      <p class="text-xs text-ink-3/70">Press <kbd>n</kbd> or use a column’s + button on the board to create one.</p>
+      <p class="text-xs text-ink-3/70">Press <kbd>n</kbd> or use <strong class="font-medium text-ink-2">New task</strong> in the header.</p>
     {/if}
   </div>
 {:else}

@@ -207,6 +207,15 @@ func (a *App) ReorderBoardTask(id string, beforeID string) (core.Task, error) {
 	return t, err
 }
 
+// Archive maps to CLI `archive ID`: archives a single done task.
+func (a *App) Archive(id string) (core.Task, error) {
+	t, err := a.svc.Archive(a.ctx, id)
+	if err == nil {
+		a.emitChanged(t.ID, "archive")
+	}
+	return t, err
+}
+
 // ArchiveDone maps to CLI `archive`: archives every done task at once (the
 // board's Done-column button). Emits tasks:changed only when something moved,
 // so an empty click is a true no-op for the UI.

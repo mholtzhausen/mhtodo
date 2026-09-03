@@ -17,6 +17,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want := Default()
 	want.DefaultCwd = "/tmp/proj"
 	want.DefaultHumanOnly = true
+	want.DefaultIncludeInReport = false
 	want.ArchiveDoneSubtasks = true
 	want.StartHidden = true
 	want.Claude.Enabled = true

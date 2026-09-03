@@ -12,6 +12,7 @@
     humanFilter,
     showSubtasks,
     showSort = true,
+    showStatus = true,
     taskCount,
     onStatusChange,
     onSearchInput,
@@ -28,6 +29,7 @@
     humanFilter: HumanFilter
     showSubtasks: boolean
     showSort?: boolean
+    showStatus?: boolean
     taskCount?: number
     onStatusChange: (s: Status | '' | 'archived') => void
     onSearchInput: (v: string) => void
@@ -83,6 +85,7 @@
 
 <div class="flex items-center gap-2 border-b border-line-soft px-5 py-2.5">
   <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+  {#if showStatus}
   <DropdownSelect
     value={status}
     options={statusOptions}
@@ -90,6 +93,7 @@
     minWidth="8.5rem"
     onChange={onStatusChange}
   />
+  {/if}
 
   <DropdownSelect
     value={humanFilter}
@@ -179,7 +183,8 @@
     <button
       type="button"
       onclick={onCopySlackReport}
-      title="Copy Slack report"
+      title="Copy Slack board report"
+      aria-label="Copy Slack board report"
       class="grid h-8 w-8 shrink-0 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
     >
       <svg
@@ -192,8 +197,12 @@
         stroke-linejoin="round"
         aria-hidden="true"
       >
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        <path d="M8 6h13" />
+        <path d="M8 12h13" />
+        <path d="M8 18h13" />
+        <path d="M3 6h.01" />
+        <path d="M3 12h.01" />
+        <path d="M3 18h.01" />
       </svg>
     </button>
   {/if}

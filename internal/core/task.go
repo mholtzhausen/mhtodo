@@ -70,7 +70,9 @@ type CreateInput struct {
 	ParentID    string // optional; empty = root. Must resolve to a root task.
 	Cwd         string // optional working directory path
 	HumanOnly   bool   // mark as human-only (agents exclude from default lists)
-	SlackThread string // optional Slack thread URL
+	// IncludeInReport: nil → true (default); explicit false excludes from Slack report.
+	IncludeInReport *bool
+	SlackThread     string // optional Slack thread URL
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
@@ -164,6 +166,12 @@ var ErrNoFieldsToUpdate = errors.New("no fields to update")
 
 // ErrNotArchived is returned when unarchive is called on a non-archived task.
 var ErrNotArchived = errors.New("task is not archived")
+
+// ErrNotDone is returned when archive is called on a non-done task.
+var ErrNotDone = errors.New("task must be done to archive")
+
+// ErrAlreadyArchived is returned when archive is called on an already-archived task.
+var ErrAlreadyArchived = errors.New("task is already archived")
 
 // ErrParentIsChild is returned when --parent points at a sub-task (one level only).
 var ErrParentIsChild = errors.New("parent must be a top-level task (sub-tasks cannot have children)")

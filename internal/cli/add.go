@@ -13,6 +13,7 @@ func newAddCmd() *cobra.Command {
 	var desc, feedback, status, parent, cwd, slackThread string
 	var progress int
 	var humanOnly bool
+	var includeInReport, noIncludeInReport bool
 	cmd := &cobra.Command{
 		Use:   "add TITLE",
 		Short: "Create a task",
@@ -28,7 +29,7 @@ func newAddCmd() *cobra.Command {
 			}
 			defer closeDB()
 
-			t, err := svc.Create(context.Background(), core.CreateInput{
+			in := core.CreateInput{
 				Title:       args[0],
 				Description: desc,
 				Feedback:    feedback,
@@ -38,7 +39,17 @@ func newAddCmd() *cobra.Command {
 				Cwd:         cwd,
 				HumanOnly:   humanOnly,
 				SlackThread: slackThread,
-			})
+			}
+			switch {
+			case cmd.Flags().Changed("include-in-report"):
+				v := includeInReport
+				in.IncludeInReport = &v
+			case cmd.Flags().Changed("no-include-in-report"):
+				v := false
+				in.IncludeInReport = &v
+			}
+
+			t, err := svc.Create(context.Background(), in)
 			if err != nil {
 				return mapError(err)
 			}
@@ -62,5 +73,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
+	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default)")
+	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")
 	return cmd
 }

@@ -87,6 +87,7 @@ export const api = {
     parentId?: string
     cwd?: string
     humanOnly?: boolean
+    includeInReport?: boolean
     slackThread?: string
   }): Promise<Task> {
     return App.CreateTask({
@@ -98,6 +99,7 @@ export const api = {
       ParentID: input.parentId ?? '',
       Cwd: input.cwd ?? '',
       HumanOnly: !!input.humanOnly,
+      IncludeInReport: input.includeInReport,
       SlackThread: input.slackThread ?? ''
     }) as Promise<Task>
   },
@@ -130,6 +132,9 @@ export const api = {
   },
   archiveDone(): Promise<Task[]> {
     return App.ArchiveDone().then((t) => t ?? []) as Promise<Task[]>
+  },
+  archive(id: string) {
+    return App.Archive(id) as Promise<Task>
   },
   unarchive(id: string) {
     return App.Unarchive(id)

@@ -61,6 +61,10 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "no_fields", msg: err.Error()}
 		case errors.Is(err, core.ErrNotArchived):
 			return &errExit{code: ExitUsage, name: "not_archived", msg: err.Error()}
+		case errors.Is(err, core.ErrNotDone):
+			return &errExit{code: ExitUsage, name: "not_done", msg: err.Error()}
+		case errors.Is(err, core.ErrAlreadyArchived):
+			return &errExit{code: ExitUsage, name: "already_archived", msg: err.Error()}
 		case errors.Is(err, core.ErrParentIsChild):
 			return &errExit{code: ExitUsage, name: "parent_is_child", msg: err.Error()}
 		case errors.Is(err, core.ErrNotRoot):
