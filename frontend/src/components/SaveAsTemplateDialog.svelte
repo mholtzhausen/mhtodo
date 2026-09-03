@@ -127,23 +127,35 @@
     }
   }
 
+  // App.svelte listens for Escape on window to dismiss the detail pane. While
+  // this dialog is up it owns Escape, so it is claimed in the capture phase
+  // before that listener can close whatever is behind us.
+  function onWindowKeydownCapture(e: KeyboardEvent) {
+    if (!open || e.key !== 'Escape') return
+    e.preventDefault()
+    e.stopPropagation()
+    onClose()
+  }
+
   const fieldClass =
     'w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
 </script>
 
+<svelte:window onkeydowncapture={onWindowKeydownCapture} />
+
 {#if open}
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]">
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <!-- This dialog is mounted inside TaskDetail, which in modal mode sits in a
+       backdrop whose click handler clears the selected task. Swallowing clicks
+       here keeps interacting with the form from closing whatever is behind it. -->
+  <!-- Purely a click sink, not a control: Escape is handled at window capture. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+  <div
+    onclick={(e) => e.stopPropagation()}
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+  >
     <form
       in:fly={{ y: 12, duration: 150 }}
       onsubmit={submit}
-      onkeydown={(e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          onClose()
-        }
-      }}
       class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-2xl"
     >
       <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">

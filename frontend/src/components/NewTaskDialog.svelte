@@ -265,7 +265,10 @@
           </svg>
         </button>
 
-        <div class="relative">
+        <!-- The toggle lives inside the picker's marker element so the picker's
+             outside-click handler does not treat the very click that opened it
+             as a click-away and close it again. -->
+        <div class="relative" data-template-picker>
           <button
             type="button"
             onclick={() => (pickerOpen = !pickerOpen)}
