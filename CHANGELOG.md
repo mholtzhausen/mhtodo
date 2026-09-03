@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.0.0 (b9fe34c)
+
+### Features and Improvements
+- **Task templates** — named sets of task presets (title prefix, description, status, cwd, Slack thread, human-only, include-in-report) stored in the database (migration v9). Every preset is nullable: unset fields fall back to the normal defaults, while an empty string or an explicit `false` is a real override
+- Templates are authored in **Settings → Task Templates**, with each template as its own sub-nav entry, a trash-can to clear any field back to unset, and tri-state controls for the boolean presets
+- Apply a template from the new-task dialog's template picker (searchable with `/`, showing a chip per preset field), from the header's **New task** split button, or from the tray's **New Task from Template**
+- Capture a template with **Save as template** in the new-task and task-detail headers: tick the fields to include and edit their values inline before saving
+- Single-task archiving: `mhtodo archive ID` and a card archive action for done tasks, with clear errors when a task is already archived
+- Task detail modal navigates to adjacent tasks consistently across the board, list, and activity views
+- Slack thread URL can be set directly when creating a task in the new-task dialog
+- Board and list views handle the archived filter without falling into a blank state, and the owner filter now explains itself when it matches nothing
+
+### Bugfixes
+- Template picker stays open when launched from the **New task** split button or the tray; the launching click was being read as a click-away
+- Save-as-template modal no longer closes the task detail behind it when a checkbox is clicked, and Escape closes the modal rather than the task
+
+### Deprecations
+- (none)
+
+### Notes
+- Task templates ship **GUI-only** in this release. The rules live in `core.Service`, so `mhtodo template …` and `add --template` are a thin later addition — a deliberate, temporary exception to the CLI/GUI parity rule
+
 ## 1.10.0 (ee9a638)
 
 ### Features and Improvements
