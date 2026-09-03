@@ -110,6 +110,7 @@
 
   const displayTasks = $derived(applyHumanFilter(tasks, humanFilter))
   const displayRootCount = $derived(displayTasks.filter((t) => !t.parent_id).length)
+  const rawRootCount = $derived(tasks.filter((t) => !t.parent_id).length)
 
   const selectedTask = $derived(tasks.find((t) => t.id === selectedId) ?? null)
   const selectedParentTitle = $derived(
@@ -148,6 +149,10 @@
 
   function setView(v: View) {
     if (view === v) return
+    // Archived is list-only; keep it from blanking the board/activity.
+    if (v !== 'list' && status === 'archived') {
+      status = ''
+    }
     view = v
     try {
       localStorage.setItem('mhtodo.view', v)
@@ -276,9 +281,13 @@
       } else {
         const filter =
           view === 'board'
-            ? status === 'archived'
-              ? { archived: true, search, sort: 'board' as const, ascending: false }
-              : { status, search, sort: 'board' as const, ascending: false }
+            ? {
+                // Board never shows archived; statusFilter==='archived' is cleared in setView.
+                status: status === 'archived' ? '' : status,
+                search,
+                sort: 'board' as const,
+                ascending: false
+              }
             : status === 'archived'
               ? { archived: true, search, sort, ascending }
               : { status, search, sort, ascending }
@@ -408,9 +417,8 @@
         break
       case '6':
         if (view === 'board') {
-          setView('list')
           status = 'archived'
-          load()
+          setView('list')
         } else if (view === 'list') {
           status = status === 'archived' ? '' : 'archived'
           load()
@@ -651,7 +659,8 @@
           {search}
           selectedId={selectedId}
           {showSubtasks}
-          statusFilter={status}
+          statusFilter={status === 'archived' ? '' : status}
+          humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           onSelect={selectTask}
           onQuickAdd={(s: Status) => {
@@ -667,6 +676,7 @@
         <List
           tasks={displayTasks}
           hasFilters={status !== '' || search.trim() !== '' || humanFilter !== 'all'}
+          humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           selectedId={selectedId}
           {showSubtasks}
           onSelect={selectTask}

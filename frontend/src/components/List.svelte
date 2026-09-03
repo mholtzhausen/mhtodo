@@ -6,6 +6,7 @@
   let {
     tasks,
     hasFilters,
+    humanFilterEmpty = false,
     selectedId,
     showSubtasks,
     onSelect,
@@ -14,6 +15,7 @@
   }: {
     tasks: any[]
     hasFilters: boolean
+    humanFilterEmpty?: boolean
     selectedId: string | null
     showSubtasks: boolean
     onSelect: (id: string) => void
@@ -60,7 +62,10 @@
 
 {#if rows.length === 0}
   <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
-    {#if hasFilters}
+    {#if humanFilterEmpty}
+      <p class="text-sm text-ink-3">No tasks match the owner filter.</p>
+      <p class="text-xs text-ink-3/70">Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or <strong class="font-medium text-ink-2">Human</strong>.</p>
+    {:else if hasFilters}
       <p class="text-sm text-ink-3">No tasks match.</p>
       <p class="text-xs text-ink-3/70">Clear the filters above to see everything.</p>
     {:else}

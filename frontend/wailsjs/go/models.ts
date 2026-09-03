@@ -78,7 +78,6 @@ export namespace core {
 	    ParentID: string;
 	    Cwd: string;
 	    HumanOnly: boolean;
-	    // Go type: *bool
 	    IncludeInReport?: boolean;
 	    SlackThread: string;
 	

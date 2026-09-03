@@ -10,6 +10,7 @@
     selectedId,
     showSubtasks,
     statusFilter = '',
+    humanFilterEmpty = false,
     archiveDoneSubtasks = false,
     onSelect,
     onQuickAdd,
@@ -22,6 +23,7 @@
     selectedId: string | null
     showSubtasks: boolean
     statusFilter?: Status | '' | 'archived'
+    humanFilterEmpty?: boolean
     archiveDoneSubtasks?: boolean
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
@@ -291,6 +293,12 @@
     {#if search}
       <p class="text-sm text-ink-3">No tasks match “{search}”.</p>
       <p class="text-xs text-ink-3/70">Clear the search above to see everything.</p>
+    {:else if humanFilterEmpty}
+      <p class="text-sm text-ink-3">No tasks match the owner filter.</p>
+      <p class="text-xs text-ink-3/70">Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or <strong class="font-medium text-ink-2">Human</strong>.</p>
+    {:else if statusFilter && statusFilter !== 'archived'}
+      <p class="text-sm text-ink-3">No {STATUS_LABELS[statusFilter] ?? statusFilter} tasks.</p>
+      <p class="text-xs text-ink-3/70">Clear the status filter above to see all columns.</p>
     {:else}
       <p class="text-sm text-ink-3">No tasks yet.</p>
       <p class="text-xs text-ink-3/70">Press <kbd>n</kbd> or use a column’s + button to create one.</p>
