@@ -6,6 +6,7 @@
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
+  import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
 
   type DetailMode = 'pinned' | 'floating' | 'modal'
 
@@ -18,6 +19,7 @@
     onResizeStart,
     onClose,
     onError,
+    onNotify,
     onDelete,
     onSetMode,
     onAddSubtask,
@@ -31,6 +33,7 @@
     onResizeStart?: (e: PointerEvent) => void
     onClose: () => void
     onError: (msg: string) => void
+    onNotify?: (msg: string) => void
     onDelete: (task: any) => void
     onSetMode: (mode: DetailMode) => void
     onAddSubtask: (parentId: string) => void
@@ -45,6 +48,8 @@
 
   type ModalSection = 'task' | 'subtasks' | 'activity'
   let activeSection = $state<ModalSection>('task')
+
+  let saveAsOpen = $state(false)
 
   const modalSections = $derived.by(() => {
     const sections: { id: ModalSection; label: string }[] = [
@@ -480,6 +485,28 @@
     </div>
     <button
       type="button"
+      onclick={() => (saveAsOpen = true)}
+      title="Save this task's fields as a template"
+      aria-label="Save as template"
+      class="rounded p-1.5 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+    >
+      <svg
+        class="h-3.5 w-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <path d="M17 21v-8H7v8" />
+        <path d="M7 3v5h8" />
+      </svg>
+    </button>
+    <button
+      type="button"
       onclick={() => onDelete(task)}
       title="Delete task (del)"
       aria-label="Delete task"
@@ -873,3 +900,19 @@
     {/if}
   {/if}
 </aside>
+
+<SaveAsTemplateDialog
+  open={saveAsOpen}
+  source={{
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    cwd: task.cwd,
+    slackThread: task.slack_thread,
+    humanOnly: task.human_only,
+    includeInReport: task.include_in_report
+  }}
+  onClose={() => (saveAsOpen = false)}
+  onSaved={(n) => onNotify?.(`Template “${n}” saved`)}
+  {onError}
+/>

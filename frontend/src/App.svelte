@@ -95,6 +95,8 @@
   let dialogOpen = $state(false)
   let dialogInitialStatus = $state<Status | ''>('')
   let dialogParentId = $state('')
+  /** Open the create dialog with the template picker already showing. */
+  let dialogTemplatePicker = $state(false)
   let settingsOpen = $state(false)
   let guiSettings = $state<GUISettings>(defaultSettings())
   let confirmTask = $state<any | null>(null)
@@ -302,6 +304,15 @@
 
   let unbindChanged: (() => void) | undefined
   let unbindTrayNewTask: (() => void) | undefined
+  let unbindTrayNewTaskTemplate: (() => void) | undefined
+
+  /** Single entry point for every "create a task" affordance. */
+  function openNewTask(opts: { status?: Status | ''; parentId?: string; template?: boolean } = {}) {
+    dialogInitialStatus = opts.status ?? ''
+    dialogParentId = opts.parentId ?? ''
+    dialogTemplatePicker = !!opts.template
+    dialogOpen = true
+  }
 
   function requestDelete(t: any) {
     if (deleting || confirmTask) return
@@ -371,14 +382,15 @@
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return
     switch (e.key) {
       case '/':
+        // The create dialog owns `/` while it is up (the template picker uses
+        // it to focus its filter), so it must not reach the board search.
+        if (dialogOpen) return
         e.preventDefault()
         document.getElementById('task-search')?.focus()
         break
       case 'n':
         e.preventDefault()
-        dialogInitialStatus = ''
-        dialogParentId = ''
-        dialogOpen = true
+        openNewTask()
         break
       case 'Delete':
         if (!dialogOpen && !confirmTask && selectedTask) {
@@ -454,11 +466,10 @@
       /* ignore */
     }
     unbindChanged = EventsOn('tasks:changed', () => load())
-    unbindTrayNewTask = EventsOn('tray:new-task', () => {
-      dialogInitialStatus = ''
-      dialogParentId = ''
-      dialogOpen = true
-    })
+    unbindTrayNewTask = EventsOn('tray:new-task', () => openNewTask())
+    unbindTrayNewTaskTemplate = EventsOn('tray:new-task-template', () =>
+      openNewTask({ template: true })
+    )
     window.addEventListener('keydown', onKeydown)
     window.addEventListener('resize', onWindowResize)
     await load()
@@ -468,6 +479,7 @@
     clearTimeout(toastTimer)
     unbindChanged?.()
     unbindTrayNewTask?.()
+    unbindTrayNewTaskTemplate?.()
     window.removeEventListener('keydown', onKeydown)
     window.removeEventListener('resize', onWindowResize)
     if (resizingDetail) {
@@ -555,17 +567,39 @@
       </svg>
     </button>
 
-    <button
-      onclick={() => {
-        dialogInitialStatus = ''
-        dialogParentId = ''
-        dialogOpen = true
-      }}
-      class="btn-primary flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi"
-    >
-      <span class="font-semibold leading-none">+</span>
-      New task <kbd>n</kbd>
-    </button>
+    <!-- Split button: the main half creates a blank task, the template half
+         opens the same dialog with the picker already up. -->
+    <div class="btn-primary flex items-stretch overflow-hidden rounded bg-accent shadow-sm">
+      <button
+        onclick={() => openNewTask()}
+        class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hi"
+      >
+        <span class="font-semibold leading-none">+</span>
+        New task <kbd>n</kbd>
+      </button>
+      <span class="my-1 w-px bg-accent-ink/25" aria-hidden="true"></span>
+      <button
+        onclick={() => openNewTask({ template: true })}
+        title="New task from template"
+        aria-label="New task from template"
+        class="grid place-items-center px-2 text-accent-ink transition-colors hover:bg-accent-hi"
+      >
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M9 21V9" />
+        </svg>
+      </button>
+    </div>
   </header>
 
   {#if view === 'list'}
@@ -663,11 +697,7 @@
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           onSelect={selectTask}
-          onQuickAdd={(s: Status) => {
-            dialogInitialStatus = s
-            dialogParentId = ''
-            dialogOpen = true
-          }}
+          onQuickAdd={(s: Status) => openNewTask({ status: s })}
           onArchived={(n: number) => showToast(`Archived ${n} task${n === 1 ? '' : 's'}`, 'info')}
           onError={showToast}
           onToast={showToast}
@@ -711,14 +741,11 @@
           onResizeStart={startDetailResize}
           onClose={() => (selectedId = null)}
           onError={showToast}
+          onNotify={(m) => showToast(m, 'info')}
           onDelete={(t: any) => requestDelete(t)}
           onSetMode={setDetailMode}
           onSelectParent={selectTask}
-          onAddSubtask={(pid) => {
-            dialogParentId = pid
-            dialogInitialStatus = 'pending'
-            dialogOpen = true
-          }}
+          onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
         />
       {/key}
     {/if}
@@ -746,14 +773,11 @@
         onResizeStart={startDetailResize}
         onClose={() => (selectedId = null)}
         onError={showToast}
+        onNotify={(m) => showToast(m, 'info')}
         onDelete={(t: any) => requestDelete(t)}
         onSetMode={setDetailMode}
         onSelectParent={selectTask}
-        onAddSubtask={(pid) => {
-          dialogParentId = pid
-          dialogInitialStatus = 'pending'
-          dialogOpen = true
-        }}
+        onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
       />
     {/key}
   {/if}
@@ -770,14 +794,11 @@
           mode="modal"
           onClose={() => (selectedId = null)}
           onError={showToast}
+          onNotify={(m) => showToast(m, 'info')}
           onDelete={(t: any) => requestDelete(t)}
           onSetMode={setDetailMode}
           onSelectParent={selectTask}
-          onAddSubtask={(pid) => {
-            dialogParentId = pid
-            dialogInitialStatus = 'pending'
-            dialogOpen = true
-          }}
+          onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
         />
       </div>
     {/key}
@@ -790,11 +811,14 @@
     defaultCwd={guiSettings.default_cwd}
     defaultHumanOnly={guiSettings.default_human_only}
     defaultIncludeInReport={guiSettings.default_include_in_report}
+    openWithTemplatePicker={dialogTemplatePicker}
     onClose={() => {
       dialogOpen = false
       dialogParentId = ''
+      dialogTemplatePicker = false
     }}
     onError={showToast}
+    onNotify={(m) => showToast(m, 'info')}
   />
 
   <SettingsDialog

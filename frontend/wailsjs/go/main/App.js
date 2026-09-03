@@ -26,6 +26,10 @@ export function CreateTask(arg1) {
   return window['go']['main']['App']['CreateTask'](arg1);
 }
 
+export function CreateTemplate(arg1) {
+  return window['go']['main']['App']['CreateTemplate'](arg1);
+}
+
 export function DBPath() {
   return window['go']['main']['App']['DBPath']();
 }
@@ -36,6 +40,10 @@ export function DeleteActivity(arg1) {
 
 export function DeleteTask(arg1) {
   return window['go']['main']['App']['DeleteTask'](arg1);
+}
+
+export function DeleteTemplate(arg1) {
+  return window['go']['main']['App']['DeleteTemplate'](arg1);
 }
 
 export function EnsureHerdrReady() {
@@ -58,6 +66,10 @@ export function GetTask(arg1) {
   return window['go']['main']['App']['GetTask'](arg1);
 }
 
+export function GetTemplate(arg1) {
+  return window['go']['main']['App']['GetTemplate'](arg1);
+}
+
 export function HideWindow() {
   return window['go']['main']['App']['HideWindow']();
 }
@@ -68,6 +80,10 @@ export function ListActivity(arg1) {
 
 export function ListTasks(arg1) {
   return window['go']['main']['App']['ListTasks'](arg1);
+}
+
+export function ListTemplates() {
+  return window['go']['main']['App']['ListTemplates']();
 }
 
 export function OpenHerdrTicket(arg1) {
@@ -116,4 +132,8 @@ export function Unarchive(arg1) {
 
 export function UpdateTask(arg1, arg2) {
   return window['go']['main']['App']['UpdateTask'](arg1, arg2);
+}
+
+export function UpdateTemplate(arg1, arg2) {
+  return window['go']['main']['App']['UpdateTemplate'](arg1, arg2);
 }

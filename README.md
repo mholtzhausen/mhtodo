@@ -200,14 +200,26 @@ status transitions → activity → delete) using only this CLI.
   closes modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch;
   `←`/`→` move to adjacent tasks.
 - **New task dialog:** optional working directory, Slack thread, human-only, include-in-Slack-report
-  (defaults from Settings), and initial status.
+  (defaults from Settings), and initial status. Header icons apply a **task template** or save the
+  current fields as one.
+- **Task templates:** named sets of presets — title prefix, description, status, working directory,
+  Slack thread, human-only, include-in-report. Authored under **Settings → Task Templates**, where
+  each template is its own sub-nav item. Only the fields you set are applied; anything left unset
+  keeps its normal default, so a template that only sets a working directory still picks up your
+  default human-only and report settings. Clear a field with its trash-can to unset it; the two
+  boolean fields use a three-state control (`default` / `off` / `on`). Apply one from the template
+  icon in the new-task dialog, the right half of the header's **New task** split button, or the
+  tray's *New Task from Template* — the picker filters with `/`, navigates with arrows, and shows
+  chips for the fields each template presets. Save the current new-task form or an existing task as
+  a template from the save icon in either header. Templates are GUI-only today (no CLI commands).
 - **Sub-tasks toggle:** header control (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
   `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
-- **System tray:** Show/Hide, New Task, Quit; close hides to tray; label shows open-task count.
+- **System tray:** Show/Hide, New Task, New Task from Template, Quit; close hides to tray; label shows
+  open-task count.
   Global hotkey (X11) toggles the window and raises it on show. The grab is renewed periodically and after resume from suspend (screen lock can drop passive X11 grabs).
 - **Notifications:** on real →done and →waiting only (not →review).
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
@@ -239,10 +251,13 @@ status transitions → activity → delete) using only this CLI.
 | `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
+| `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | — | task templates (v0.5): **GUI-only for now**; rules live in `core.Service`, update is full replace (nil clears a preset) |
 
 After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
-watcher emits the same event for CLI-side writes. New capability = core method + CLI command + bound
-method — never business logic in either frontend.
+watcher emits the same event for CLI-side writes. Template mutations emit `templates:changed`
+instead, so they do not trigger a task reload. New capability = core method + CLI command + bound
+method — never business logic in either frontend. Task templates are the one tracked exception: the
+core methods (including `CreateFromTemplate`) exist, but the CLI commands are deliberately deferred.
 
 ## Development notes
 

@@ -2,7 +2,9 @@
 // The frontend never touches SQL or business rules — this is the parity
 // contract from .agent/plan/02-architecture.md.
 import * as App from '../../wailsjs/go/main/App'
+import type { core } from '../../wailsjs/go/models'
 import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from './settings'
+import { toGoTemplateInput, type TaskTemplate, type TemplateValues } from './templates'
 
 export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
 
@@ -204,10 +206,34 @@ export const api = {
   },
   taskMarkdownReport(id: string): Promise<string> {
     return App.TaskMarkdownReport(id)
+  },
+
+  // --- task templates (v0.5) ---
+  listTemplates(): Promise<TaskTemplate[]> {
+    return App.ListTemplates().then((t) => t ?? []) as Promise<TaskTemplate[]>
+  },
+  getTemplate(ref: string): Promise<TaskTemplate> {
+    return App.GetTemplate(ref) as Promise<TaskTemplate>
+  },
+  // Wails types Go pointer fields as `?: T` (optional/undefined), but null is
+  // what actually marshals back to a nil pointer, i.e. "field not set". The
+  // cast reconciles the generated shape with the value the backend needs.
+  createTemplate(name: string, values: TemplateValues): Promise<TaskTemplate> {
+    const input = toGoTemplateInput(name, values) as unknown as core.TemplateInput
+    return App.CreateTemplate(input) as Promise<TaskTemplate>
+  },
+  /** Full replace: values left null are cleared on the stored template. */
+  updateTemplate(id: string, name: string, values: TemplateValues): Promise<TaskTemplate> {
+    const input = toGoTemplateInput(name, values) as unknown as core.TemplateInput
+    return App.UpdateTemplate(id, input) as Promise<TaskTemplate>
+  },
+  deleteTemplate(id: string): Promise<TaskTemplate> {
+    return App.DeleteTemplate(id) as Promise<TaskTemplate>
   }
 }
 
 export type { GUISettings } from './settings'
+export type { TaskTemplate, TemplateValues } from './templates'
 
 export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message

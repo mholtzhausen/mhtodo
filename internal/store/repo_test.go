@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 8 {
-		t.Fatalf("schema_version = %d, want 8", version)
+	if version != 9 {
+		t.Fatalf("schema_version = %d, want 9", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 8 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 8", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 9 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 9", version, err)
 	}
 
 	// WAL must be active.
@@ -313,7 +313,7 @@ func ids(ts []core.Task) []string {
 }
 
 // TestV1ToV5Upgrade simulates a pre-v0.2 database (schema v1 only) and verifies
-// Open migrates it forward through v2–v6 in place.
+// Open migrates it forward through the remaining versions in place.
 func TestV1ToV5Upgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mhtodo.db")
 	db, err := sql.Open("sqlite", path)
@@ -332,8 +332,8 @@ func TestV1ToV5Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 8 {
-		t.Fatalf("schema_version = %d (err=%v), want 8", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 9 {
+		t.Fatalf("schema_version = %d (err=%v), want 9", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)

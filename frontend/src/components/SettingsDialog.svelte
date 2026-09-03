@@ -9,7 +9,9 @@
     type GUISettings,
     type HerdrConfig
   } from '../lib/settings'
+  import { emptyValues, type TaskTemplate } from '../lib/templates'
   import ClearableField from './ClearableField.svelte'
+  import SettingsTemplates from './SettingsTemplates.svelte'
 
   let {
     open,
@@ -32,20 +34,89 @@
   let claudeFound = $state(false)
   let herdrFound = $state(false)
 
-  type SettingsPage = 'general' | 'integrations'
+  type SettingsPage = 'general' | 'integrations' | 'templates'
   let activePage = $state<SettingsPage>('general')
 
   const pages: { id: SettingsPage; label: string }[] = [
     { id: 'general', label: 'General' },
-    { id: 'integrations', label: 'Integrations' }
+    { id: 'integrations', label: 'Integrations' },
+    { id: 'templates', label: 'Task Templates' }
   ]
+
+  // --- task templates ---
+  // Templates persist through their own bound methods, not the whole-settings
+  // save path, so they carry a separate save-status signal that is merged into
+  // the shared header indicator below.
+  let templates = $state<TaskTemplate[]>([])
+  let activeTemplateId = $state('')
+  let templateStatus = $state<'idle' | 'saving' | 'dirty'>('idle')
+  let creatingTemplate = $state(false)
+  let templateEditor = $state<{ flush: () => Promise<void> } | null>(null)
+
+  const activeTemplate = $derived(templates.find((t) => t.id === activeTemplateId) ?? null)
 
   let persistTimer: ReturnType<typeof setTimeout> | undefined
 
-  const dirty = $derived(ready && !loading && snapshot(settings) !== lastSaved)
-  const saveStatus = $derived(
-    persisting ? 'Saving…' : dirty ? 'Unsaved' : ready && !loading ? 'Saved' : ''
+  const dirty = $derived(
+    (ready && !loading && snapshot(settings) !== lastSaved) || templateStatus === 'dirty'
   )
+  const saveStatus = $derived(
+    persisting || templateStatus === 'saving'
+      ? 'Saving…'
+      : dirty
+        ? 'Unsaved'
+        : ready && !loading
+          ? 'Saved'
+          : ''
+  )
+
+  async function loadTemplates(selectId?: string) {
+    try {
+      templates = await api.listTemplates()
+      if (selectId) activeTemplateId = selectId
+      else if (!templates.some((t) => t.id === activeTemplateId)) {
+        activeTemplateId = templates[0]?.id ?? ''
+      }
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
+  async function createTemplate() {
+    if (creatingTemplate) return
+    creatingTemplate = true
+    try {
+      // Names are unique, so a fresh one is suffixed until it does not collide.
+      const base = 'New template'
+      let name = base
+      let n = 2
+      while (templates.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+        name = `${base} ${n++}`
+      }
+      const created = await api.createTemplate(name, emptyValues())
+      templates = [...templates, created].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+      activeTemplateId = created.id
+      activePage = 'templates'
+    } catch (err) {
+      onError?.(errMsg(err))
+    } finally {
+      creatingTemplate = false
+    }
+  }
+
+  function onTemplateSaved(saved: TaskTemplate) {
+    templates = templates
+      .map((t) => (t.id === saved.id ? saved : t))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  }
+
+  function onTemplateDeleted(id: string) {
+    templates = templates.filter((t) => t.id !== id)
+    templateStatus = 'idle'
+    if (activeTemplateId === id) activeTemplateId = templates[0]?.id ?? ''
+  }
 
   function snapshot(s: GUISettings) {
     return JSON.stringify(s)
@@ -81,7 +152,9 @@
   }
 
   async function handleClose() {
-    await flushPersist()
+    // Templates save through their own path, so both pending writes must land
+    // before the dialog goes away.
+    await Promise.all([flushPersist(), templateEditor?.flush() ?? Promise.resolve()])
     onClose()
   }
 
@@ -104,10 +177,12 @@
     if (!open) {
       ready = false
       activePage = 'general'
+      templateStatus = 'idle'
       return
     }
     loading = true
     ready = false
+    void loadTemplates()
     api
       .getSettings()
       .then((s) => {
@@ -230,6 +305,38 @@
             >
               {page.label}
             </button>
+
+            <!-- Task Templates is the one section with a second nav tier: each
+                 template is its own sub-item, always visible so the set is
+                 discoverable without opening the section first. -->
+            {#if page.id === 'templates'}
+              <div class="mb-1 flex flex-col gap-0.5 pl-3">
+                {#each templates as tpl (tpl.id)}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      activePage = 'templates'
+                      activeTemplateId = tpl.id
+                    }}
+                    title={tpl.name}
+                    class="truncate rounded px-3 py-1.5 text-left text-[12px] transition-colors
+                      {activePage === 'templates' && activeTemplateId === tpl.id
+                      ? 'bg-accent/10 text-ink'
+                      : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+                  >
+                    {tpl.name}
+                  </button>
+                {/each}
+                <button
+                  type="button"
+                  onclick={createTemplate}
+                  disabled={creatingTemplate}
+                  class="rounded px-3 py-1.5 text-left text-[12px] text-ink-3 transition-colors hover:bg-white/5 hover:text-accent disabled:opacity-50"
+                >
+                  + New template
+                </button>
+              </div>
+            {/if}
           {/each}
         </nav>
 
@@ -477,6 +584,37 @@
               </div>
               </div>
             </section>
+          {:else if activePage === 'templates'}
+            {#if activeTemplate}
+              {#key activeTemplate.id}
+                <SettingsTemplates
+                  bind:this={templateEditor}
+                  template={activeTemplate}
+                  defaultHumanOnly={settings.default_human_only}
+                  defaultIncludeInReport={settings.default_include_in_report}
+                  onSaved={onTemplateSaved}
+                  onDeleted={onTemplateDeleted}
+                  onStatus={(s) => (templateStatus = s)}
+                  onError={(m) => onError?.(m)}
+                />
+              {/key}
+            {:else}
+              <section>
+                <h3 class="mb-2 text-sm font-semibold text-ink">Task Templates</h3>
+                <p class="mb-4 text-sm leading-relaxed text-ink-3">
+                  A template pre-fills the new-task form. Only the fields you set are applied —
+                  anything you leave out keeps its normal default.
+                </p>
+                <button
+                  type="button"
+                  onclick={createTemplate}
+                  disabled={creatingTemplate}
+                  class="btn-primary rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:opacity-50"
+                >
+                  + New template
+                </button>
+              </section>
+            {/if}
           {/if}
         </div>
       </div>

@@ -15,9 +15,10 @@ import (
 // goroutine (not the GTK main thread); they must only touch Go state and Wails
 // runtime APIs, which are safe from any goroutine.
 type Handlers struct {
-	ToggleWindow func() // Show / Hide mhtodo
-	NewTask      func() // show window + open create dialog
-	Quit         func() // real exit (systray.Quit + wails quit)
+	ToggleWindow        func() // Show / Hide mhtodo
+	NewTask             func() // show window + open create dialog
+	NewTaskFromTemplate func() // show window + open create dialog with the template picker
+	Quit                func() // real exit (systray.Quit + wails quit)
 }
 
 // Register installs the tray icon and menu. Must be called before wails.Run().
@@ -29,6 +30,7 @@ func Register(icon []byte, h Handlers) {
 
 		mToggle := systray.AddMenuItem("Show / Hide mhtodo", "Toggle the mhtodo window")
 		mNew := systray.AddMenuItem("New Task", "Open a new task in the window")
+		mNewFromTpl := systray.AddMenuItem("New Task from Template", "Open a new task and pick a template")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit mhtodo")
 
@@ -39,6 +41,10 @@ func Register(icon []byte, h Handlers) {
 					h.ToggleWindow()
 				case <-mNew.ClickedCh:
 					h.NewTask()
+				case <-mNewFromTpl.ClickedCh:
+					if h.NewTaskFromTemplate != nil {
+						h.NewTaskFromTemplate()
+					}
 				case <-mQuit.ClickedCh:
 					h.Quit()
 					return

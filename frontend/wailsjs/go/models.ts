@@ -191,6 +191,84 @@ export namespace core {
 		    return a;
 		}
 	}
+	export class Template {
+	    id: string;
+	    name: string;
+	    title_prefix?: string;
+	    description?: string;
+	    status?: string;
+	    cwd?: string;
+	    slack_thread?: string;
+	    human_only?: boolean;
+	    include_in_report?: boolean;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Template(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.title_prefix = source["title_prefix"];
+	        this.description = source["description"];
+	        this.status = source["status"];
+	        this.cwd = source["cwd"];
+	        this.slack_thread = source["slack_thread"];
+	        this.human_only = source["human_only"];
+	        this.include_in_report = source["include_in_report"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TemplateInput {
+	    Name: string;
+	    TitlePrefix?: string;
+	    Description?: string;
+	    Status?: string;
+	    Cwd?: string;
+	    SlackThread?: string;
+	    HumanOnly?: boolean;
+	    IncludeInReport?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Name = source["Name"];
+	        this.TitlePrefix = source["TitlePrefix"];
+	        this.Description = source["Description"];
+	        this.Status = source["Status"];
+	        this.Cwd = source["Cwd"];
+	        this.SlackThread = source["SlackThread"];
+	        this.HumanOnly = source["HumanOnly"];
+	        this.IncludeInReport = source["IncludeInReport"];
+	    }
+	}
 	export class UpdateInput {
 	    Title?: string;
 	    Desc?: string;

@@ -16,11 +16,15 @@ export function CountChildren(arg1:string):Promise<number>;
 
 export function CreateTask(arg1:core.CreateInput):Promise<core.Task>;
 
+export function CreateTemplate(arg1:core.TemplateInput):Promise<core.Template>;
+
 export function DBPath():Promise<string>;
 
 export function DeleteActivity(arg1:string):Promise<core.Activity>;
 
 export function DeleteTask(arg1:string):Promise<core.Task>;
+
+export function DeleteTemplate(arg1:string):Promise<core.Template>;
 
 export function EnsureHerdrReady():Promise<integrations.HerdrTaskStatus>;
 
@@ -32,11 +36,15 @@ export function GetGUISettings():Promise<settings.GUISettings>;
 
 export function GetTask(arg1:string):Promise<core.Task>;
 
+export function GetTemplate(arg1:string):Promise<core.Template>;
+
 export function HideWindow():Promise<void>;
 
 export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activity>>;
 
 export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
+
+export function ListTemplates():Promise<Array<core.Template>>;
 
 export function OpenHerdrTicket(arg1:string):Promise<void>;
 
@@ -61,3 +69,5 @@ export function TaskMarkdownReport(arg1:string):Promise<string>;
 export function Unarchive(arg1:string):Promise<core.Task>;
 
 export function UpdateTask(arg1:string,arg2:core.UpdateInput):Promise<core.Task>;
+
+export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core.Template>;

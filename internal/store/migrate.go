@@ -22,6 +22,7 @@ var migrations = []migration{
 	{version: 6, up: schemaV6},
 	{version: 7, up: schemaV7},
 	{version: 8, up: schemaV8},
+	{version: 9, up: schemaV9},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -102,6 +103,27 @@ ALTER TABLE tasks ADD COLUMN include_in_report INTEGER NOT NULL DEFAULT 1
 // v8: optional Slack thread URL for per-task communication context.
 const schemaV8 = `
 ALTER TABLE tasks ADD COLUMN slack_thread TEXT NOT NULL DEFAULT '';
+`
+
+// v9: named task templates (v0.5). Every preset field is NULLable on purpose —
+// unlike tasks, which are NOT NULL with empty-string defaults, a template must distinguish
+// "not part of this template" (NULL → task creation falls back to the normal
+// default) from an explicit empty/false value that overrides that default.
+const schemaV9 = `
+CREATE TABLE task_templates (
+  id                TEXT PRIMARY KEY,            -- UUIDv7 string
+  name              TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  title_prefix      TEXT,
+  description       TEXT,
+  status            TEXT CHECK (status IS NULL OR status IN
+                      ('pending','wip','waiting','review','done')),
+  cwd               TEXT,
+  slack_thread      TEXT,
+  human_only        INTEGER CHECK (human_only IS NULL OR human_only IN (0, 1)),
+  include_in_report INTEGER CHECK (include_in_report IS NULL OR include_in_report IN (0, 1)),
+  created_at        TEXT NOT NULL,               -- RFC3339 UTC
+  updated_at        TEXT NOT NULL
+);
 `
 
 const schemaV1 = `

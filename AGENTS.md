@@ -42,8 +42,19 @@ interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (s
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to
 reorder; cross-column drag changes status (appends to target column). CLI: `mhtodo reorder`.
 
+**Task templates (v0.5):** named sets of task presets (`title_prefix`, `description`, `status`, `cwd`,
+`slack_thread`, `human_only`, `include_in_report`) in a `task_templates` table (migration v9). Every
+preset column is NULLable: `NULL` means "not part of this template" and the normal default applies,
+while an empty string or an explicit `false` is a real override. Authored in Settings → Task Templates
+(per-template sub-nav); applied from the template picker in the new-task dialog, the header split
+button, or the tray's *New Task from Template*; captured via *Save as template* from the new-task and
+task-detail headers. **GUI-only for now** — a deliberate, temporary break from the parity rule below.
+All rules live in `core.Service` (including `CreateFromTemplate`), so `mhtodo template …` and
+`add --template` are a thin later add. See [`.agent/plan/08-task-templates.md`](.agent/plan/08-task-templates.md).
+
 **Out of scope (stretch):** cross-column insert index, sub-task reorder, list-view drag reorder,
-light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
+light theme, Windows/macOS support, tags/labels/projects, due dates/reminders,
+CLI surface for task templates.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
 (when not in an input/textarea). Detail-pane description & feedback grow with content
@@ -56,7 +67,9 @@ up to 500px, then scroll.
   GUI binaries also need a Wails *mode* tag: `wails build`/`wails dev` inject `production`/`dev`
   automatically; plain `go build` must add `-tags "webkit2_41 production"` or the binary fails at runtime.
 - **Parity is structural:** CLI and GUI both call the same `internal/core.Service`; neither may contain
-  business rules or SQL of its own. New capability = core method + CLI command + bound GUI method.
+ business rules or SQL of its own. New capability = core method + CLI command + bound GUI method.
+ (One tracked exception: task templates ship GUI-only in v0.5; the core methods exist, the CLI commands
+ do not yet.)
 - **DB concurrency:** WAL mode + busy_timeout; single-statement transactions only (CLI and GUI run concurrently).
 - **Agent contract stability:** CLI JSON field names, flags, and exit codes are API — change deliberately and document in README.
 

@@ -37,6 +37,16 @@ type TaskRepository interface {
 	FindActivityBySuffix(ctx context.Context, suffix string) ([]Activity, error)
 	ListActivity(ctx context.Context, f ActivityFilter) ([]Activity, error)
 	DeleteActivity(ctx context.Context, id string) (Activity, error)
+
+	// Task templates (v0.5). Create/Update return DuplicateTemplateNameError
+	// when the NOCASE-unique name collides; the getters return
+	// ErrTemplateNotFound when nothing matches.
+	CreateTemplate(ctx context.Context, t Template) error
+	GetTemplateByID(ctx context.Context, id string) (Template, error)
+	GetTemplateByName(ctx context.Context, name string) (Template, error)
+	ListTemplates(ctx context.Context) ([]Template, error)
+	UpdateTemplate(ctx context.Context, t Template) error
+	DeleteTemplate(ctx context.Context, id string) (Template, error)
 }
 
 // Service holds all business rules shared by CLI and GUI. Neither frontend

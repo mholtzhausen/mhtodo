@@ -2,7 +2,10 @@
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
+  import TemplatePicker from './TemplatePicker.svelte'
+  import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
 
   let {
     open,
@@ -11,8 +14,11 @@
     defaultCwd = '',
     defaultHumanOnly = false,
     defaultIncludeInReport = true,
+    /** Open with the template picker already showing and its filter focused. */
+    openWithTemplatePicker = false,
     onClose,
-    onError
+    onError,
+    onNotify
   }: {
     open: boolean
     initialStatus?: Status
@@ -20,8 +26,10 @@
     defaultCwd?: string
     defaultHumanOnly?: boolean
     defaultIncludeInReport?: boolean
+    openWithTemplatePicker?: boolean
     onClose: () => void
     onError?: (msg: string) => void
+    onNotify?: (msg: string) => void
   } = $props()
 
   let title = $state('')
@@ -31,6 +39,13 @@
   let slackThread = $state('')
   let humanOnly = $state(false)
   let includeInReport = $state(true)
+
+  let pickerOpen = $state(false)
+  let saveAsOpen = $state(false)
+  let titleEl = $state<HTMLInputElement | null>(null)
+  /** Prefix contributed by the last applied template, so switching swaps it. */
+  let appliedPrefix = $state('')
+  let appliedTemplateName = $state('')
 
   let submitting = $state(false)
   let herdrActive = $state(false)
@@ -80,6 +95,8 @@
   $effect(() => {
     if (!open) {
       dialogInitialized = false
+      pickerOpen = false
+      saveAsOpen = false
       return
     }
     if (dialogInitialized) return
@@ -88,8 +105,35 @@
     humanOnly = defaultHumanOnly
     includeInReport = defaultIncludeInReport
     dialogInitialized = true
+    pickerOpen = openWithTemplatePicker
     refreshIntegrationStatus()
   })
+
+  function onTemplatePicked(t: TaskTemplate) {
+    const { values, titlePrefix } = applyTemplate(
+      t,
+      { title, description, status, cwd, slackThread, humanOnly, includeInReport },
+      appliedPrefix
+    )
+    title = values.title
+    description = values.description
+    status = values.status
+    cwd = values.cwd
+    slackThread = values.slackThread
+    humanOnly = values.humanOnly
+    includeInReport = values.includeInReport
+    appliedPrefix = titlePrefix
+    appliedTemplateName = t.name
+    pickerOpen = false
+
+    // Focus the title with the caret after the prefix so the user types the
+    // rest of the title straight away.
+    requestAnimationFrame(() => {
+      titleEl?.focus()
+      const at = Math.min(titlePrefix.length, title.length)
+      titleEl?.setSelectionRange(at, at)
+    })
+  }
 
   $effect(() => {
     if (!open || !dialogInitialized) return
@@ -168,6 +212,10 @@
     slackThread = ''
     humanOnly = false
     includeInReport = true
+    appliedPrefix = ''
+    appliedTemplateName = ''
+    pickerOpen = false
+    saveAsOpen = false
   }
 
   function resetAndClose() {
@@ -186,10 +234,71 @@
       onsubmit={submit}
       class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-2xl"
     >
-      <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
+      <div class="relative flex flex-none items-center gap-1 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">
           {parentId ? 'New sub-task' : 'New task'}
+          {#if appliedTemplateName}
+            <span class="ml-1.5 text-xs font-normal text-ink-3">from {appliedTemplateName}</span>
+          {/if}
         </h2>
+
+        <button
+          type="button"
+          onclick={() => (saveAsOpen = true)}
+          title="Save these fields as a template"
+          aria-label="Save as template"
+          class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <path d="M17 21v-8H7v8" />
+            <path d="M7 3v5h8" />
+          </svg>
+        </button>
+
+        <div class="relative">
+          <button
+            type="button"
+            onclick={() => (pickerOpen = !pickerOpen)}
+            title="Apply a template"
+            aria-label="Apply a template"
+            aria-expanded={pickerOpen}
+            class="rounded p-1.5 leading-none transition-colors hover:bg-white/5 hover:text-ink
+              {pickerOpen ? 'bg-white/5 text-accent' : 'text-ink-3'}"
+          >
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M9 21V9" />
+            </svg>
+          </button>
+
+          <TemplatePicker
+            open={pickerOpen}
+            onPick={onTemplatePicked}
+            onClose={() => (pickerOpen = false)}
+            {onError}
+          />
+        </div>
+
         <button
           type="button"
           onclick={resetAndClose}
@@ -205,6 +314,7 @@
           <span class="micro mb-1.5">Title <em class="not-italic text-danger">*</em></span>
           <input
             autofocus
+            bind:this={titleEl}
             bind:value={title}
             onkeydown={(e) => e.key === 'Enter' && title.trim() && (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
             placeholder="What needs doing?"
@@ -331,4 +441,12 @@
       </div>
     </form>
   </div>
+
+  <SaveAsTemplateDialog
+    open={saveAsOpen}
+    source={{ title, description, status, cwd, slackThread, humanOnly, includeInReport }}
+    onClose={() => (saveAsOpen = false)}
+    onSaved={(n) => onNotify?.(`Template “${n}” saved`)}
+    {onError}
+  />
 {/if}

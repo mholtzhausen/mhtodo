@@ -287,6 +287,56 @@ func (a *App) DeleteActivity(id string) (core.Activity, error) {
 	return act, err
 }
 
+// --- task templates (v0.5) ---------------------------------------------------
+//
+// Templates have no CLI surface yet; all rules live in core.Service so
+// `mhtodo template ...` is a thin later add (see .agent/plan/10-task-templates.md).
+
+// ListTemplates returns every template, name-ordered.
+func (a *App) ListTemplates() ([]core.Template, error) {
+	list, err := a.svc.ListTemplates(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []core.Template{} // Wails marshals nil slices as null; the frontend expects an array
+	}
+	return list, nil
+}
+
+// GetTemplate resolves a template by ID or name (case-insensitive).
+func (a *App) GetTemplate(ref string) (core.Template, error) {
+	return a.svc.GetTemplate(a.ctx, ref)
+}
+
+// CreateTemplate stores a new template. Nil input fields are presets the
+// template does not define.
+func (a *App) CreateTemplate(in core.TemplateInput) (core.Template, error) {
+	t, err := a.svc.CreateTemplate(a.ctx, in)
+	if err == nil {
+		a.emitTemplatesChanged(t.ID, "create")
+	}
+	return t, err
+}
+
+// UpdateTemplate replaces every preset on a template (nil clears a field).
+func (a *App) UpdateTemplate(id string, in core.TemplateInput) (core.Template, error) {
+	t, err := a.svc.UpdateTemplate(a.ctx, id, in)
+	if err == nil {
+		a.emitTemplatesChanged(t.ID, "update")
+	}
+	return t, err
+}
+
+// DeleteTemplate removes a template and returns it.
+func (a *App) DeleteTemplate(id string) (core.Template, error) {
+	t, err := a.svc.DeleteTemplate(a.ctx, id)
+	if err == nil {
+		a.emitTemplatesChanged(t.ID, "delete")
+	}
+	return t, err
+}
+
 // DBPath maps to CLI `path`; shown in the GUI footer.
 func (a *App) DBPath() string { return store.DBPath() }
 
@@ -427,6 +477,17 @@ func (a *App) emitChanged(id, op string) {
 	}
 	wruntime.EventsEmit(a.ctx, "tasks:changed", map[string]string{"id": id, "op": op})
 	a.refreshTooltip()
+}
+
+// emitTemplatesChanged notifies the frontend that the template set changed, so
+// an open settings page or template picker reloads. Kept separate from
+// tasks:changed because it must not trigger a task list refresh or a tray
+// count recount.
+func (a *App) emitTemplatesChanged(id, op string) {
+	if a.ctx == nil {
+		return
+	}
+	wruntime.EventsEmit(a.ctx, "templates:changed", map[string]string{"id": id, "op": op})
 }
 
 // refreshTooltip updates the tray count (open = not done), refreshed on every
@@ -666,6 +727,16 @@ func (a *App) openNewTaskFromTray() {
 	a.showWindow()
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "tray:new-task")
+	}
+}
+
+// openNewTaskFromTemplateFromTray is the tray "New Task from Template" action:
+// show the window and open the create dialog with the template picker already
+// open and its filter focused.
+func (a *App) openNewTaskFromTemplateFromTray() {
+	a.showWindow()
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "tray:new-task-template")
 	}
 }
 

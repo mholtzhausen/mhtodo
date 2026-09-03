@@ -149,8 +149,9 @@ func runGUI(args []string) {
 				app.showWindow()
 			}
 		},
-		NewTask: app.openNewTaskFromTray,
-		Quit:    app.Quit,
+		NewTask:             app.openNewTaskFromTray,
+		NewTaskFromTemplate: app.openNewTaskFromTemplateFromTray,
+		Quit:                app.Quit,
 	})
 
 	if *selftest {
