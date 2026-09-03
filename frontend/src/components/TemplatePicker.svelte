@@ -90,15 +90,27 @@
       searchEl?.focus()
     }
   }
-</script>
 
-<svelte:window
-  onclick={(e) => {
+  // Close on click-away. The listener is armed a tick after opening: the picker
+  // can be opened by a control that is nowhere near it (the header's New task
+  // split button, the tray menu), and that very click would otherwise reach the
+  // document as a click-away and shut the picker again.
+  $effect(() => {
     if (!open) return
-    const target = e.target as HTMLElement
-    if (!target.closest('[data-template-picker]')) onClose()
-  }}
-/>
+    let armed = false
+    const arm = setTimeout(() => (armed = true), 0)
+    const onDocumentClick = (e: MouseEvent) => {
+      if (!armed) return
+      const target = e.target as HTMLElement | null
+      if (!target?.closest('[data-template-picker]')) onClose()
+    }
+    document.addEventListener('click', onDocumentClick)
+    return () => {
+      clearTimeout(arm)
+      document.removeEventListener('click', onDocumentClick)
+    }
+  })
+</script>
 
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
