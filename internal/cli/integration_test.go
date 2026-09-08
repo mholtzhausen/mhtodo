@@ -17,6 +17,9 @@ func TestReplaceOrAppendBlock(t *testing.T) {
 	if !strings.Contains(got, "claude.todo()") || !strings.Contains(got, shellBlockBegin) {
 		t.Fatalf("missing snippet: %q", got)
 	}
+	if !strings.Contains(got, "--session-id") || !strings.Contains(got, "--resume") {
+		t.Fatalf("snippet missing session-id/resume: %q", got)
+	}
 
 	updated, err := replaceOrAppendBlock(got+"# leftover\n", block)
 	if err != nil {

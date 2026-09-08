@@ -132,7 +132,7 @@ CREATE TABLE task_templates (
 );
 `
 
-// v10: per-task session identity for Claude --resume/--name, Zed MHTODO_SESSION, shell claude.todo.
+// v10: per-task session identity for Claude --session-id/--resume/--name, Zed MHTODO_SESSION, shell claude.todo.
 const schemaV10 = `
 ALTER TABLE tasks ADD COLUMN todo_session TEXT NOT NULL DEFAULT '';
 `

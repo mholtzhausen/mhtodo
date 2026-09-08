@@ -23,7 +23,10 @@ func launchInTerminalPreferred(preferredBinary, commandLine string) (int, error)
 	if commandLine == "" {
 		return 0, errors.New("empty command")
 	}
-	shellCmd := "exec " + commandLine
+	// Do not prefix with `exec`: commandLine often starts with `cd … && …` or
+	// `create || resume`. `exec cd` fails (cd is a builtin), and `exec create`
+	// replaces the shell so the `|| resume` fallback never runs.
+	shellCmd := commandLine
 
 	type launcher struct {
 		name string
@@ -31,10 +34,12 @@ func launchInTerminalPreferred(preferredBinary, commandLine string) (int, error)
 	}
 	launchers := []launcher{
 		{"xdg-terminal-exec", []string{"bash", "-lc", shellCmd}},
-		{"gnome-terminal", []string{"--", "bash", "-lc", shellCmd}},
+		// --window forces a new window; otherwise gnome-terminal may only add a
+		// tab to an existing (minimized / other-workspace) window.
+		{"gnome-terminal", []string{"--window", "--", "bash", "-lc", shellCmd}},
 		{"kgx", []string{"--", "bash", "-lc", shellCmd}},
 		{"konsole", []string{"-e", "bash", "-lc", shellCmd}},
-		{"xfce4-terminal", []string{"-e", "bash", "-lc", shellCmd}},
+		{"xfce4-terminal", []string{"--disable-server", "-e", "bash", "-lc", shellCmd}},
 		{"kitty", []string{"bash", "-lc", shellCmd}},
 		{"alacritty", []string{"-e", "bash", "-lc", shellCmd}},
 		{"wezterm", []string{"start", "--", "bash", "-lc", shellCmd}},
@@ -87,10 +92,14 @@ func launchInTerminalPreferred(preferredBinary, commandLine string) (int, error)
 
 func terminalArgsFor(name, shellCmd string) []string {
 	switch name {
-	case "gnome-terminal", "kgx":
+	case "gnome-terminal":
+		return []string{"--window", "--", "bash", "-lc", shellCmd}
+	case "kgx":
 		return []string{"--", "bash", "-lc", shellCmd}
-	case "konsole", "xfce4-terminal", "xterm":
+	case "konsole", "xterm":
 		return []string{"-e", "bash", "-lc", shellCmd}
+	case "xfce4-terminal":
+		return []string{"--disable-server", "-e", "bash", "-lc", shellCmd}
 	case "alacritty":
 		return []string{"-e", "bash", "-lc", shellCmd}
 	case "wezterm":

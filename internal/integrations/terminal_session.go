@@ -24,31 +24,38 @@ func (c Client) OpenTerminalSession(cwd, shortID, title, todoSession string, sto
 	}
 
 	session := strings.TrimSpace(todoSession)
+	displayName := core.ClaudeDisplayName(shortID, title, session)
 	if session == "" {
-		session = core.DefaultTodoSession(shortID, title)
+		session = displayName
 	}
 
-	if storedPID > 0 && processAlive(storedPID) {
+	if storedPID > 0 && processAlive(storedPID) && processHasMHTODOSession(storedPID, session) {
 		if err := activateWindowForPIDWalk(storedPID); err == nil {
 			return storedPID, nil
 		}
-		// Window focus failed; still treat as alive and return the PID.
-		return storedPID, nil
+		// Process is alive with our session but has no raisable window (e.g. a
+		// Herdr pane shell left over from a prior spawn mode). Fall through and
+		// open a real terminal emulator instead of silently succeeding.
 	}
 
-	cmdLine := c.claudeTerminalCommandLine(cwd, shortID, title, session)
+	cmdLine := c.claudeTerminalCommandLine(cwd, shortID, title, session, displayName)
 	launchPID, err := launchInTerminalPreferred(c.Terminal.Binary, cmdLine)
 	if err != nil {
 		return 0, err
 	}
 
-	if pid, ok := waitForSessionPID(session, 3*time.Second); ok {
-		return pid, nil
+	// Prefer a Claude process for this session, skipping the stale stored PID
+	// that may still hold MHTODO_SESSION inside Herdr.
+	pid := launchPID
+	if found, ok := waitForSessionPID(session, storedPID, 3*time.Second); ok {
+		pid = found
+	} else if launchPID > 0 && processAlive(launchPID) {
+		pid = launchPID
 	}
-	if launchPID > 0 && processAlive(launchPID) {
-		return launchPID, nil
+	if pid > 0 {
+		_ = activateWindowForPIDWalk(pid)
 	}
-	return launchPID, nil
+	return pid, nil
 }
 
 // MaybeCloseTerminalSessionOnDone kills the managed terminal when
@@ -102,15 +109,19 @@ func (c Client) MaybeCloseSessionOnDone(taskID, shortID, title string, terminalP
 	}
 }
 
-func (c Client) claudeTerminalCommandLine(cwd, shortID, title, session string) string {
+func (c Client) claudeTerminalCommandLine(cwd, shortID, title, sessionUUID, displayName string) string {
 	prompt := c.ticketPrompt(shortID)
 	bin := strings.TrimSpace(c.Claude.Binary)
 	if bin == "" {
 		bin = "claude"
 	}
-	displayName := session
-	if core.LooksLikeSessionUUID(session) || session == "" {
-		displayName = core.DefaultTodoSession(shortID, title)
+	sessionUUID = strings.TrimSpace(sessionUUID)
+	displayName = strings.TrimSpace(displayName)
+	if displayName == "" {
+		displayName = core.ClaudeDisplayName(shortID, title, sessionUUID)
+	}
+	if sessionUUID == "" {
+		sessionUUID = displayName
 	}
 
 	claudeEnv, claudePrefix := ParseEnvStart(c.Claude.EnvStart)
@@ -120,7 +131,9 @@ func (c Client) claudeTerminalCommandLine(cwd, shortID, title, session string) s
 	if d := strings.TrimSpace(cwd); d != "" {
 		parts = append(parts, "cd", shellWord(d), "&&")
 	}
-	parts = append(parts, "MHTODO_SESSION="+shellWord(session))
+	for _, e := range ClaudeSessionEnv(sessionUUID, displayName) {
+		parts = append(parts, shellEnvAssign(e))
+	}
 	for _, e := range append(append([]string{}, termEnv...), claudeEnv...) {
 		parts = append(parts, shellWord(e))
 	}
@@ -128,24 +141,18 @@ func (c Client) claudeTerminalCommandLine(cwd, shortID, title, session string) s
 		parts = append(parts, shellWord(a))
 	}
 
-	quotedPrompt := ShellDoubleQuote(prompt)
-	resumeCmd := strings.Join([]string{shellWord(bin), "--resume", shellWord(session), quotedPrompt}, " ")
-	nameCmd := strings.Join([]string{shellWord(bin), "--name", shellWord(displayName), quotedPrompt}, " ")
-	if session != "" {
-		parts = append(parts, "("+resumeCmd+" || "+nameCmd+")")
-	} else {
-		parts = append(parts, nameCmd)
-	}
+	parts = append(parts, ClaudeLaunchShell(bin, sessionUUID, displayName, prompt))
 	return strings.Join(parts, " ")
 }
 
 func activateWindowForPIDWalk(pid int) error {
-	for walk := pid; walk > 1; {
+	self := os.Getpid()
+	for walk := pid; walk > 1 && walk != self; {
 		if err := activateWindowForPID(walk); err == nil {
 			return nil
 		}
 		parent, err := processParentPID(walk)
-		if err != nil || parent <= 1 || parent == walk {
+		if err != nil || parent <= 1 || parent == walk || parent == self {
 			break
 		}
 		walk = parent
@@ -164,10 +171,22 @@ func processAlive(pid int) bool {
 	return processSignalZero(p)
 }
 
-func waitForSessionPID(session string, timeout time.Duration) (int, bool) {
+func processHasMHTODOSession(pid int, session string) bool {
+	session = strings.TrimSpace(session)
+	if pid <= 0 || session == "" {
+		return false
+	}
+	env, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
+	if err != nil {
+		return false
+	}
+	return environContains(env, "MHTODO_SESSION="+session)
+}
+
+func waitForSessionPID(session string, excludePID int, timeout time.Duration) (int, bool) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if pid, ok := findPIDByMHTODOSession(session); ok {
+		if pid, ok := findPIDByMHTODOSession(session, excludePID); ok {
 			return pid, true
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -175,7 +194,7 @@ func waitForSessionPID(session string, timeout time.Duration) (int, bool) {
 	return 0, false
 }
 
-func findPIDByMHTODOSession(session string) (int, bool) {
+func findPIDByMHTODOSession(session string, excludePID int) (int, bool) {
 	session = strings.TrimSpace(session)
 	if session == "" {
 		return 0, false
@@ -192,7 +211,7 @@ func findPIDByMHTODOSession(session string) (int, bool) {
 			continue
 		}
 		pid, err := strconv.Atoi(e.Name())
-		if err != nil || pid <= 1 || pid == self {
+		if err != nil || pid <= 1 || pid == self || pid == excludePID {
 			continue
 		}
 		env, err := os.ReadFile(filepath.Join("/proc", e.Name(), "environ"))

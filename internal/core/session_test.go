@@ -49,6 +49,36 @@ func TestLooksLikeSessionUUID(t *testing.T) {
 	}
 }
 
+func TestClaudeDisplayName(t *testing.T) {
+	t.Parallel()
+	if got := ClaudeDisplayName("81abc903", "Hello", "019be00a-5f3a-7abc-8000-abc123456789"); got != "81abc903-hello" {
+		t.Fatalf("uuid session display = %q", got)
+	}
+	if got := ClaudeDisplayName("81abc903", "Hello", "custom-name"); got != "custom-name" {
+		t.Fatalf("legacy slug display = %q", got)
+	}
+	if got := ClaudeDisplayName("81abc903", "Hello", ""); got != "81abc903-hello" {
+		t.Fatalf("empty session display = %q", got)
+	}
+}
+
+func TestEnsureClaudeSessionID(t *testing.T) {
+	t.Parallel()
+	const existing = "019be00a-5f3a-7abc-8000-abc123456789"
+	got, gen, err := EnsureClaudeSessionID(existing)
+	if err != nil || gen || got != existing {
+		t.Fatalf("uuid passthrough: got=%q gen=%v err=%v", got, gen, err)
+	}
+	got, gen, err = EnsureClaudeSessionID("legacy-slug")
+	if err != nil || !gen || !LooksLikeSessionUUID(got) {
+		t.Fatalf("legacy mint: got=%q gen=%v err=%v", got, gen, err)
+	}
+	got, gen, err = EnsureClaudeSessionID("")
+	if err != nil || !gen || !LooksLikeSessionUUID(got) {
+		t.Fatalf("empty mint: got=%q gen=%v err=%v", got, gen, err)
+	}
+}
+
 func stringsHasPrefix(s, p string) bool {
 	return len(s) >= len(p) && s[:len(p)] == p
 }

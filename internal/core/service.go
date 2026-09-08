@@ -108,7 +108,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 	idStr := id.String()
 	session := strings.TrimSpace(in.TodoSession)
 	if session == "" {
-		session = DefaultTodoSession(ShortID(idStr), title)
+		session, err = NewTodoSessionID()
+		if err != nil {
+			return Task{}, err
+		}
 	}
 	t := Task{
 		ID:          idStr,

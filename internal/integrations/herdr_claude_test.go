@@ -19,8 +19,12 @@ func TestClaudeTabEnvIncludesSession(t *testing.T) {
 	t.Parallel()
 	env := claudeTabEnv(settings.ClaudeConfig{
 		IntegrationConfig: settings.IntegrationConfig{EnvStart: "FOO=bar"},
-	}, "81abc903-title")
-	want := map[string]bool{"FOO=bar": true, "MHTODO_SESSION=81abc903-title": true}
+	}, "019be00a-5f3a-7abc-8000-abc123456789", "81abc903-title")
+	want := map[string]bool{
+		"FOO=bar":                 true,
+		"MHTODO_SESSION=019be00a-5f3a-7abc-8000-abc123456789": true,
+		"MHTODO_SESSION_NAME=81abc903-title":                   true,
+	}
 	for _, e := range env {
 		if !want[e] {
 			t.Fatalf("unexpected env %q in %#v", e, env)

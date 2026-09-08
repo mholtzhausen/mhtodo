@@ -295,9 +295,8 @@ func TestTodoSession(t *testing.T) {
 	}
 	var tsk core.Task
 	mustJSON(t, out.Bytes(), &tsk)
-	wantSeed := core.DefaultTodoSession(core.ShortID(tsk.ID), "Session seed")
-	if tsk.TodoSession != wantSeed {
-		t.Fatalf("seeded todo_session = %q, want %q", tsk.TodoSession, wantSeed)
+	if !core.LooksLikeSessionUUID(tsk.TodoSession) {
+		t.Fatalf("seeded todo_session = %q, want UUID", tsk.TodoSession)
 	}
 
 	out.Reset()
@@ -715,7 +714,7 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 9",
+		"Integration contract version: 10",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
@@ -723,6 +722,7 @@ func TestAI(t *testing.T) {
 		"board|created|updated|status|progress|title",
 		"todo_session",
 		"terminal_pid",
+		"v10 todo_session is a Claude session UUID",
 		"v9  Per-task todo_session",
 		"v7  Task-picker options show status",
 		"AskUserQuestion",
@@ -753,7 +753,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 9 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 10 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

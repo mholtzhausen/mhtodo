@@ -14,10 +14,16 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 9
+const IntegrationVersion = 10
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v9  Per-task todo_session (--session on add/edit; auto-seeded to "{short8}-{slug}",
+const integrationChangelog = `v10 todo_session is a Claude session UUID (auto-seeded UUIDv7). Launch uses
+    claude --session-id <uuid> --name <slug> || claude --resume <uuid> --name <slug>
+    because --resume with a missing name opens Claude's search TUI (no error), and
+    --session-id errors when the session already exists. Display slug remains
+    {short8}-{slug} via --name / MHTODO_SESSION_NAME. Legacy non-UUID todo_session
+    values are minted to a UUID on first Claude/Zed open. claude.todo updated.
+v9  Per-task todo_session (--session on add/edit; auto-seeded to "{short8}-{slug}",
     no spaces). Claude/Zed/shell use it via --resume/--name and MHTODO_SESSION. After /new or
     /clear, agents should mhtodo edit ID --session <new-id>. Herdr tab labels stay
     on shortID-title. mhtodo integration bash|zsh installs claude.todo.

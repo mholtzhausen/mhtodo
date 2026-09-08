@@ -113,7 +113,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
-| `integration bash\|zsh` | `mhtodo integration bash\|zsh [--remove]` | install/update (or remove) a managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that resumes `$MHTODO_SESSION` |
+| `integration bash\|zsh` | `mhtodo integration bash\|zsh [--remove]` | install/update (or remove) a managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that runs `claude --session-id "$MHTODO_SESSION"` then `--resume` (optional `--name` from `MHTODO_SESSION_NAME`) |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; documents human-only, cwd, and todo_session rules) |
 | `install` | `mhtodo install [--prefix DIR] [--service \| --no-service] [--integration bash\|zsh\|none]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service and `claude.todo` shell helper; flags skip prompts (non-TTY skips optionals unless flagged) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
@@ -140,7 +140,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "human_only": false,
   "include_in_report": true,
   "slack_thread": "",
-  "todo_session": "a6b7c-ship-mhtodo-v0-1",
+  "todo_session": "019be00a-5f3a-7abc-8000-abc123456789",
   "terminal_pid": 0
 }
 ```
@@ -161,8 +161,9 @@ Activity entry:
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
 `parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
 (lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
-directory. `todo_session` is the Claude/Zed/shell session identity (auto-seeded to `{short8}-{slugified-title}`
-on create — no spaces; update with `--session` after Claude `/new` or `/clear`). `terminal_pid` is the OS
+directory. `todo_session` is the Claude session UUID (auto-seeded UUIDv7 on create; used with
+`--session-id` / `--resume`; display slug `{short8}-{slugified-title}` goes to `--name` /
+`MHTODO_SESSION_NAME` — update with `--session` after Claude `/new` or `/clear`). `terminal_pid` is the OS
 PID of an mhtodo-managed Claude terminal when Claude spawn mode is `terminal` (0 when unused). `human_only` marks a task the
 user handles themselves — agents must not adopt or update such tasks; default `list` hides them
 unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
@@ -174,11 +175,10 @@ Claude sessions open via a **spawn** mode in config (`~/.config/mhtodo/config.ym
 | Spawn | Behavior |
 |-------|----------|
 | `herdr` | Open/focus a Herdr workspace tab and run Claude in the pane (default when Herdr + Claude are on PATH) |
-| `terminal` | Open Claude in a terminal emulator; store `terminal_pid` on the task and focus that process on reopen |
+| `terminal` | Open Claude in a system terminal window; store `terminal_pid` and raise that window on reopen when still alive |
 | `disabled` | Hide Claude actions |
 
-Terminal mode uses an optional preferred emulator binary (empty = auto-pick). When a task moves to done and
-“Close session when done” is enabled, Herdr closes the tab; Terminal kills the managed process.
+When a task moves to done and “Close session when done” is enabled, Herdr closes the tab; Terminal kills the managed terminal process.
 
 ### Agent usage examples
 
@@ -240,6 +240,7 @@ status transitions → activity → delete) using only this CLI.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
+  detail short-ID: copy button for short ID, `Ctrl+click` (⌘-click) for full UUID ·
   `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
 - **System tray:** Show/Hide, New Task, New Task from Template, Quit; close hides to tray; label shows
   open-task count.

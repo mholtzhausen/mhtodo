@@ -45,11 +45,15 @@ interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (s
 running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service + shell
 integration prompts.
-Per-task `todo_session` (migration v10–v11) seeds to a space-free `{short8}-{slug}` and drives
-Claude `--resume`/`--name`, Zed `MHTODO_SESSION`, and `claude.todo`. Empty or legacy spaced
-auto-seeds are backfilled on open. Claude spawn mode in Settings is `herdr` | `terminal` | `disabled`
-(Herdr fields or terminal emulator fields show conditionally). Migration v12 adds `terminal_pid`
-for mhtodo-managed Claude terminals. Zed remains a separate integration.
+Per-task `todo_session` (migration v10–v11) is a Claude session UUID (UUIDv7 on
+create). Launch uses `claude --session-id <uuid> --name <slug> || claude --resume
+<uuid> --name <slug>` (Herdr, system terminal, `claude.todo`). Display slug remains
+`{short8}-{slug}` via `--name` / `MHTODO_SESSION_NAME`. Zed sets `MHTODO_SESSION`.
+Empty or legacy spaced auto-seeds are backfilled on open; non-UUID values are
+minted to a UUID on first Claude/Zed open. Claude spawn mode in Settings is `herdr` | `terminal` | `disabled`
+(Herdr fields or terminal binary/env_start show conditionally). Terminal spawn opens Claude
+in a system terminal emulator window (raise existing by `terminal_pid` when alive). Migration v12 adds `terminal_pid`
+for the managed process. Zed remains a separate integration.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to

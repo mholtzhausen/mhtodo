@@ -19,8 +19,8 @@ func (c ZedClient) Found() bool {
 	return settings.BinaryFound(c.Zed.Binary)
 }
 
-// OpenTicket opens Zed at cwd with MHTODO_SESSION=<todoSession> (plus zed.env_start).
-func (c ZedClient) OpenTicket(cwd, shortID, title, todoSession string) error {
+// OpenTicket opens Zed at cwd with MHTODO_SESSION / MHTODO_SESSION_NAME (plus zed.env_start).
+func (c ZedClient) OpenTicket(cwd, shortID, title, sessionUUID, displayName string) error {
 	if !c.Zed.Enabled || !c.Found() {
 		return fmt.Errorf("zed integration is not available")
 	}
@@ -28,7 +28,7 @@ func (c ZedClient) OpenTicket(cwd, shortID, title, todoSession string) error {
 	if cwd == "" {
 		return fmt.Errorf("task has no working directory")
 	}
-	bin, args, env := c.ticketInvocation(cwd, shortID, title, todoSession)
+	bin, args, env := c.ticketInvocation(cwd, shortID, title, sessionUUID, displayName)
 	cmd := exec.Command(bin, args...)
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Stdout = nil
@@ -42,9 +42,9 @@ func (c ZedClient) OpenTicket(cwd, shortID, title, todoSession string) error {
 
 // TicketCommand returns the shell-equivalent command OpenTicket would start
 // (env assignments + binary + args), for UI tooltips.
-func (c ZedClient) TicketCommand(cwd, shortID, title, todoSession string) string {
+func (c ZedClient) TicketCommand(cwd, shortID, title, sessionUUID, displayName string) string {
 	cwd = strings.TrimSpace(cwd)
-	bin, args, env := c.ticketInvocation(cwd, shortID, title, todoSession)
+	bin, args, env := c.ticketInvocation(cwd, shortID, title, sessionUUID, displayName)
 	parts := make([]string, 0, len(env)+1+len(args))
 	for _, e := range env {
 		parts = append(parts, shellEnvAssign(e))
@@ -65,17 +65,21 @@ func shellEnvAssign(kv string) string {
 	return kv[:i+1] + ShellDoubleQuote(kv[i+1:])
 }
 
-func (c ZedClient) ticketInvocation(cwd, shortID, title, todoSession string) (bin string, args, env []string) {
-	session := strings.TrimSpace(todoSession)
+func (c ZedClient) ticketInvocation(cwd, shortID, title, sessionUUID, displayName string) (bin string, args, env []string) {
+	session := strings.TrimSpace(sessionUUID)
+	name := strings.TrimSpace(displayName)
+	if name == "" {
+		name = core.ClaudeDisplayName(shortID, title, session)
+	}
 	if session == "" {
-		session = core.DefaultTodoSession(shortID, title)
+		session = name
 	}
 	bin = strings.TrimSpace(c.Zed.Binary)
 	if bin == "" {
 		bin = "zed"
 	}
 	envPairs, prefixArgs := ParseEnvStart(c.Zed.EnvStart)
-	env = append(append([]string{}, envPairs...), "MHTODO_SESSION="+session)
+	env = append(append([]string{}, envPairs...), ClaudeSessionEnv(session, name)...)
 	args = append(append([]string{}, prefixArgs...), cwd)
 	return bin, args, env
 }

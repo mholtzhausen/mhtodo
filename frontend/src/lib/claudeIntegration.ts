@@ -25,13 +25,17 @@ export async function claudeBackendReady(
   if (!claude) {
     return { claude: false, backend: false }
   }
+  // terminal: system emulator window (optional preferred binary; auto-pick when empty)
   if (spawn === 'herdr') {
     const backend = await checkBinary(settings.herdr.binary)
     return { claude, backend }
   }
-  // terminal: optional preferred emulator; empty binary means auto-pick at launch
-  if (settings.terminal.binary.trim()) {
-    const backend = await checkBinary(settings.terminal.binary)
+  if (spawn === 'terminal') {
+    const termBin = settings.terminal.binary.trim()
+    if (!termBin) {
+      return { claude, backend: true }
+    }
+    const backend = await checkBinary(termBin)
     return { claude, backend }
   }
   return { claude, backend: true }

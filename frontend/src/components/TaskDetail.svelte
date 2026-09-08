@@ -88,7 +88,7 @@
   let actText = $state('')
   let commentText = $state('')
   let posting = $state(false)
-  let copiedId = $state(false)
+  let copiedKind = $state<'short' | 'full' | null>(null)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
   let herdrActive = $state(false)
   let claudeActive = $state(false)
@@ -133,18 +133,24 @@
     }
   }
 
-  async function copyShortId() {
-    const code = shortId(task.id)
+  async function copyTaskId(kind: 'short' | 'full') {
+    const text = kind === 'short' ? shortId(task.id) : task.id
     try {
-      await navigator.clipboard.writeText(code)
-      copiedId = true
+      await navigator.clipboard.writeText(text)
+      copiedKind = kind
       clearTimeout(copyTimer)
       copyTimer = setTimeout(() => {
-        copiedId = false
+        copiedKind = null
       }, 1500)
     } catch {
       onError('Could not copy to clipboard')
     }
+  }
+
+  function onShortIdClick(e: MouseEvent) {
+    if (!(e.ctrlKey || e.metaKey)) return
+    e.preventDefault()
+    void copyTaskId('full')
   }
 
   async function loadSubtasks() {
@@ -171,7 +177,7 @@
   $effect(() => {
     void task.id
     editingDesc = false
-    copiedId = false
+    copiedKind = null
     activeSection = 'task'
     loadActivity()
     loadSubtasks()
@@ -403,17 +409,44 @@
     <div class="flex items-center gap-1">
       <div
         class="flex items-center gap-0.5 rounded border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
-        title={task.id}
       >
-        <span class="py-1">{shortId(task.id)}</span>
         <button
           type="button"
-          onclick={copyShortId}
-          title={copiedId ? 'Copied' : 'Copy short ID'}
-          aria-label={copiedId ? 'Copied short ID' : 'Copy short ID'}
+          onclick={onShortIdClick}
+          title={
+            copiedKind === 'full'
+              ? 'Copied full UUID'
+              : `${task.id} — Ctrl+click to copy full UUID`
+          }
+          aria-label={
+            copiedKind === 'full'
+              ? 'Copied full UUID'
+              : `Task ID ${shortId(task.id)}. Ctrl+click to copy full UUID`
+          }
+          class="cursor-copy py-1 transition-colors hover:text-ink-2"
+        >
+          {shortId(task.id)}
+        </button>
+        <button
+          type="button"
+          onclick={() => void copyTaskId('short')}
+          title={
+            copiedKind === 'short'
+              ? 'Copied short ID'
+              : copiedKind === 'full'
+                ? 'Copied full UUID'
+                : 'Copy short ID'
+          }
+          aria-label={
+            copiedKind === 'short'
+              ? 'Copied short ID'
+              : copiedKind === 'full'
+                ? 'Copied full UUID'
+                : 'Copy short ID'
+          }
           class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
         >
-          {#if copiedId}
+          {#if copiedKind}
             <svg
               class="h-3 w-3"
               viewBox="0 0 24 24"
@@ -693,7 +726,7 @@
         placeholder="Claude / Zed session id or name"
         class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       />
-      <p class="mt-1 text-[11px] text-ink-3">Used for Claude --resume/--name, Zed MHTODO_SESSION, and claude.todo</p>
+      <p class="mt-1 text-[11px] text-ink-3">Claude session UUID (--session-id/--resume); --name uses shortID-title slug. Also MHTODO_SESSION / claude.todo</p>
     </label>
 
     <label class="block">

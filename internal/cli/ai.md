@@ -104,17 +104,29 @@ mhtodo service install|stop|start|restart|uninstall       # user systemd unit fo
 belongs to. Set it with `--cwd` on `add`/`edit` when the job is tied to a specific
 checkout. The GUI folder picker sets the same field.
 
-**`todo_session`** is the Claude / Zed / shell session identity for this ticket.
-On create, if `--session` is omitted, mhtodo seeds it to a **space-free** slug
-`{last-8-hex}-{slugified-title}` (letters/digits/hyphens only). Herdr tab labels
-remain the human-readable `{shortID} - {title}` form and are separate. GUI Claude
-launch (Herdr or terminal spawn) and `claude.todo` try `claude --resume <todo_session>`
-first, then fall back to `claude --name <…>` when the session does not exist yet.
-Zed and spawn backends set `MHTODO_SESSION` to this value. **When Claude's session id
-changes** (typical after `/new` or `/clear`), update the ticket so resume stays current:
+**`todo_session`** is the Claude session UUID for this ticket (`--session-id` /
+`--resume`). On create, if `--session` is omitted, mhtodo seeds a fresh **UUIDv7**.
+The human display name for Claude (`--name`, terminal title, `/resume` picker) is
+the space-free slug `{last-8-hex}-{slugified-title}` (also exported as
+`MHTODO_SESSION_NAME`). Herdr tab labels remain the human-readable
+`{shortID} - {title}` form and are separate. GUI Claude launch (Herdr or terminal
+spawn) and `claude.todo` run:
 
 ```
-mhtodo edit <id> --session <new-session-id>
+claude --session-id <todo_session> --name <slug> … || claude --resume <todo_session> --name <slug> …
+```
+
+`--session-id` creates the session when it does not exist and **errors** when it
+already does; `--resume` then attaches. Do **not** rely on `claude --resume <name>`
+failing for missing sessions — recent Claude builds open a search TUI instead.
+Zed and spawn backends set `MHTODO_SESSION` to the UUID and `MHTODO_SESSION_NAME`
+to the display slug. Legacy non-UUID `todo_session` values are replaced with a
+new UUID on first Claude/Zed open (the old value is kept as `--name` when it was
+a custom slug). **When Claude's session id changes** (typical after `/new` or
+`/clear`), update the ticket so resume stays current:
+
+```
+mhtodo edit <id> --session <new-session-uuid>
 ```
 
 **`terminal_pid`** is the OS PID of an mhtodo-managed Claude terminal when Claude
@@ -122,7 +134,7 @@ spawn mode is `terminal` (0 otherwise). Agents should treat it as opaque bookkee
 do not invent or edit it via CLI.
 
 Herdr **tab labels** stay on the human shortID-title form and are **not** renamed when
-`todo_session` becomes a Claude UUID.
+`todo_session` is a Claude UUID.
 
 **`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
 `show --markdown`, and `slack report` include the reminder:
@@ -135,8 +147,9 @@ include them when the user explicitly asks to see their personal queue
 (`mhtodo list --human-only`).
 
 **Shell helper:** `mhtodo integration bash` / `mhtodo integration zsh` installs a
-managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that resumes
-`$MHTODO_SESSION` (then `--name` on failure). Use `--remove` to uninstall.
+managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that runs
+`claude --session-id "$MHTODO_SESSION"` then falls back to `--resume` (optional
+`--name` from `MHTODO_SESSION_NAME`). Use `--remove` to uninstall.
 
 ### Markdown fields
 

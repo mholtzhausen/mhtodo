@@ -638,9 +638,12 @@
                     {:else if normalizeSpawn(settings.claude.spawn) === 'terminal'}
                       <div class="mt-1 border-t border-line-soft pt-3">
                         <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">Terminal</div>
+                        <p class="mb-2 text-xs italic text-ink-3/75">
+                          Claude opens in a system terminal window. Leave binary empty to auto-pick an emulator.
+                        </p>
                         <div class="flex flex-col gap-2.5">
                           <label class="block">
-                            <span class="micro mb-1">Binary</span>
+                            <span class="micro mb-1">Preferred emulator</span>
                             <div class="flex items-center gap-2">
                               <input
                                 value={settings.terminal.binary}
@@ -648,25 +651,35 @@
                                   patchIntegration('terminal', {
                                     binary: (e.currentTarget as HTMLInputElement).value
                                   })}
-                                placeholder="auto (kitty, alacritty, gnome-terminal, …)"
+                                placeholder="gnome-terminal, kitty, … (empty = auto)"
                                 class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                               />
-                              {#if settings.terminal.binary.trim()}
-                                <span
-                                  title={terminalFound ? 'Binary found' : 'Binary not found'}
-                                  class="h-2.5 w-2.5 shrink-0 rounded-full {terminalFound
-                                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.55)]'
-                                    : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}"
-                                  aria-label={terminalFound ? 'Binary found' : 'Binary not found'}
-                                ></span>
-                              {/if}
+                              <span
+                                title={
+                                  settings.terminal.binary.trim()
+                                    ? terminalFound
+                                      ? 'Binary found'
+                                      : 'Binary not found'
+                                    : 'Auto-pick emulator'
+                                }
+                                class="h-2.5 w-2.5 shrink-0 rounded-full {terminalFound
+                                  ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.55)]'
+                                  : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}"
+                                aria-label={
+                                  settings.terminal.binary.trim()
+                                    ? terminalFound
+                                      ? 'Binary found'
+                                      : 'Binary not found'
+                                    : 'Auto-pick emulator'
+                                }
+                              ></span>
                             </div>
                           </label>
                           <label class="block">
                             <span class="micro mb-1">Env start string</span>
                             <ClearableField
                               value={settings.terminal.env_start}
-                              placeholder="e.g. TERM=xterm-256color"
+                              placeholder="e.g. EXTRA_VAR=1"
                               onChange={(env_start) => patchIntegration('terminal', { env_start })}
                             />
                           </label>

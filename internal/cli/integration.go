@@ -20,10 +20,17 @@ const ClaudeTodoSnippet = `claude.todo() {
     echo "mhtodo: MHTODO_SESSION is not set" >&2
     return 1
   fi
-  if command claude --resume "$MHTODO_SESSION" "$@"; then
+  name_args=()
+  if [ -n "${MHTODO_SESSION_NAME:-}" ]; then
+    name_args=(--name "$MHTODO_SESSION_NAME")
+  fi
+  # --session-id creates when missing and errors when the session already exists;
+  # --resume then attaches. Do not use bare --resume with a name: missing names
+  # open Claude's search TUI instead of failing.
+  if command claude --session-id "$MHTODO_SESSION" "${name_args[@]}" "$@"; then
     return 0
   fi
-  command claude --name "$MHTODO_SESSION" "$@"
+  command claude --resume "$MHTODO_SESSION" "${name_args[@]}" "$@"
 }`
 
 func newIntegrationCmd() *cobra.Command {

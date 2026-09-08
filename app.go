@@ -451,7 +451,7 @@ func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskSta
 }
 
 // OpenHerdrTicket opens or focuses a Claude session for the task (Herdr tab or
-// managed terminal), depending on Claude spawn mode.
+// system terminal window), depending on Claude spawn mode.
 func (a *App) OpenHerdrTicket(ref string) error {
 	s, err := settings.Load(a.repo)
 	if err != nil {
@@ -468,13 +468,17 @@ func (a *App) OpenHerdrTicket(ref string) error {
 		return fmt.Errorf("task is not eligible for Claude (must not be human-only)")
 	}
 	shortID := core.ShortID(t.ID)
+	sessionUUID, displayName, err := a.ensureClaudeSession(&t)
+	if err != nil {
+		return err
+	}
 	client := integrations.Client{Herdr: s.Herdr, Claude: s.Claude, Terminal: s.Terminal}
 	spawn := settings.NormalizeSpawn(s.Claude.Spawn)
 	switch spawn {
 	case settings.SpawnHerdr:
-		return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, t.TodoSession)
+		return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, sessionUUID, displayName)
 	case settings.SpawnTerminal:
-		pid, err := client.OpenTerminalSession(t.Cwd, shortID, t.Title, t.TodoSession, t.TerminalPID)
+		pid, err := client.OpenTerminalSession(t.Cwd, shortID, t.Title, sessionUUID, t.TerminalPID)
 		if err != nil {
 			return err
 		}
@@ -490,6 +494,24 @@ func (a *App) OpenHerdrTicket(ref string) error {
 	}
 }
 
+// ensureClaudeSession returns a Claude session UUID and --name, minting and
+// persisting a UUID when todo_session is still a legacy slug or empty.
+func (a *App) ensureClaudeSession(t *core.Task) (sessionUUID, displayName string, err error) {
+	sessionUUID, displayName, generated, err := integrations.ResolveClaudeSession(core.ShortID(t.ID), t.Title, t.TodoSession)
+	if err != nil {
+		return "", "", err
+	}
+	if !generated {
+		return sessionUUID, displayName, nil
+	}
+	if _, err := a.svc.Edit(a.ctx, t.ID, core.UpdateInput{TodoSession: &sessionUUID}); err != nil {
+		return "", "", err
+	}
+	t.TodoSession = sessionUUID
+	a.emitChanged(t.ID, "edit")
+	return sessionUUID, displayName, nil
+}
+
 // OpenZedTicket opens Zed at the task cwd with MHTODO_SESSION set from todo_session.
 func (a *App) OpenZedTicket(ref string) error {
 	s, err := settings.Load(a.repo)
@@ -500,11 +522,15 @@ func (a *App) OpenZedTicket(ref string) error {
 	if err != nil {
 		return err
 	}
+	sessionUUID, displayName, err := a.ensureClaudeSession(&t)
+	if err != nil {
+		return err
+	}
 	client := integrations.ZedClient{Zed: s.Zed}
-	return client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, t.TodoSession)
+	return client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName)
 }
 
-// ZedTicketCommand returns the shell-equivalent command OpenZedTicket would run.
+// ZedTicketCommand returns the shell-equivalent Zed launch line for tooltips.
 func (a *App) ZedTicketCommand(ref string) (string, error) {
 	s, err := settings.Load(a.repo)
 	if err != nil {
@@ -514,8 +540,20 @@ func (a *App) ZedTicketCommand(ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Tooltip only — do not mint/persist a UUID here.
+	sessionUUID, displayName, _, err := integrations.ResolveClaudeSession(core.ShortID(t.ID), t.Title, t.TodoSession)
+	if err != nil {
+		return "", err
+	}
+	if !core.LooksLikeSessionUUID(strings.TrimSpace(t.TodoSession)) {
+		// Show the stored value until OpenZedTicket persists a UUID.
+		sessionUUID = strings.TrimSpace(t.TodoSession)
+		if sessionUUID == "" {
+			sessionUUID = displayName
+		}
+	}
 	client := integrations.ZedClient{Zed: s.Zed}
-	return client.TicketCommand(t.Cwd, core.ShortID(t.ID), t.Title, t.TodoSession), nil
+	return client.TicketCommand(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName), nil
 }
 
 // emitChanged is the single refresh path for the frontend: every local
