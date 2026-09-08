@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0 (29f1e16)
+
+### Features and Improvements
+- CLI: `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `mhtodo update` still detects an attached unit and restarts it after a binary swap
+- Zed: `ZedTicketCommand` / GUI tooltip shows the shell-equivalent open command (cwd + `MHTODO_SESSION`)
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 2.1.0 (54cf2a2)
 
 ### Features and Improvements
