@@ -209,6 +209,9 @@ export const api = {
   openZedTicket(taskId: string): Promise<void> {
     return App.OpenZedTicket(taskId)
   },
+  zedTicketCommand(taskId: string): Promise<string> {
+    return App.ZedTicketCommand(taskId)
+  },
   slackReport(): Promise<string> {
     return App.SlackReport()
   },

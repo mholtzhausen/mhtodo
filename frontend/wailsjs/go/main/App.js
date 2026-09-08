@@ -141,3 +141,7 @@ export function UpdateTask(arg1, arg2) {
 export function UpdateTemplate(arg1, arg2) {
   return window['go']['main']['App']['UpdateTemplate'](arg1, arg2);
 }
+
+export function ZedTicketCommand(arg1) {
+  return window['go']['main']['App']['ZedTicketCommand'](arg1);
+}

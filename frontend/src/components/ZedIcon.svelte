@@ -1,7 +1,7 @@
 <script lang="ts">
   let {
     class: className = 'h-3 w-3',
-    title = 'Zed'
+    title = ''
   }: {
     class?: string
     title?: string

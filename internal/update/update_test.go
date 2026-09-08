@@ -236,6 +236,77 @@ func TestRunCheckAndUpdateWithService(t *testing.T) {
 	}
 }
 
+func TestManageServiceLifecycle(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "bin", AppName)
+	if err := os.MkdirAll(filepath.Dir(exe), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(exe, []byte("bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	unitPath := filepath.Join(t.TempDir(), ServiceUnit)
+
+	var stopped, started, restarted, enabled, disabled, removed, reloaded int
+	ops := &ServiceOps{
+		Stop:         func() error { stopped++; return nil },
+		Start:        func() error { started++; return nil },
+		Restart:      func() error { restarted++; return nil },
+		WriteUnit:    writeUnitFile,
+		EnableNow:    func() error { enabled++; return nil },
+		DisableNow:   func() error { disabled++; return nil },
+		RemoveUnit:   func(p string) error { removed++; return os.Remove(p) },
+		DaemonReload: func() error { reloaded++; return nil },
+		ImportEnv:    func() error { return nil },
+	}
+	detect := func() (InstallInfo, error) {
+		return InstallInfo{Executable: exe, UnitPath: unitPath, Arch: "amd64"}, nil
+	}
+
+	_, err := ManageService(ServiceOptions{Action: ServiceStop, Detect: detect, Service: ops})
+	if err == nil || !strings.Contains(err.Error(), "not installed") {
+		t.Fatalf("stop without unit: err=%v", err)
+	}
+
+	inst, err := ManageService(ServiceOptions{Action: ServiceInstall, Detect: detect, Service: ops})
+	if err != nil || !inst.Installed || enabled == 0 {
+		t.Fatalf("install: %+v err=%v enabled=%d", inst, err, enabled)
+	}
+	if _, err := os.Stat(unitPath); err != nil {
+		t.Fatalf("unit missing after install: %v", err)
+	}
+
+	if _, err := ManageService(ServiceOptions{Action: ServiceStop, Detect: detect, Service: ops}); err != nil || stopped == 0 {
+		t.Fatalf("stop: err=%v stopped=%d", err, stopped)
+	}
+	if _, err := ManageService(ServiceOptions{Action: ServiceStart, Detect: detect, Service: ops}); err != nil || started == 0 {
+		t.Fatalf("start: err=%v started=%d", err, started)
+	}
+	if _, err := ManageService(ServiceOptions{Action: ServiceRestart, Detect: detect, Service: ops}); err != nil || restarted == 0 {
+		t.Fatalf("restart: err=%v restarted=%d", err, restarted)
+	}
+
+	un, err := ManageService(ServiceOptions{Action: ServiceUninstall, Detect: detect, Service: ops})
+	if err != nil || un.Installed || disabled == 0 || removed == 0 || reloaded == 0 {
+		t.Fatalf("uninstall: %+v err=%v d=%d r=%d reload=%d", un, err, disabled, removed, reloaded)
+	}
+	if _, err := os.Stat(unitPath); !os.IsNotExist(err) {
+		t.Fatalf("unit should be gone: %v", err)
+	}
+
+	again, err := ManageService(ServiceOptions{Action: ServiceUninstall, Detect: detect, Service: ops})
+	if err != nil || again.Installed || !strings.Contains(again.Message, "not installed") {
+		t.Fatalf("idempotent uninstall: %+v err=%v", again, err)
+	}
+
+	ephemeral := func() (InstallInfo, error) {
+		return InstallInfo{Executable: "/tmp/go-build123/exe/mhtodo", UnitPath: unitPath}, nil
+	}
+	if _, err := ManageService(ServiceOptions{Action: ServiceInstall, Detect: ephemeral, Service: ops}); err == nil {
+		t.Fatal("expected ephemeral install refusal")
+	}
+}
+
 func buildTestTarball(t *testing.T, binContents string) ([]byte, error) {
 	t.Helper()
 	dir := t.TempDir()

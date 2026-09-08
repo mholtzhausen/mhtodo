@@ -13,12 +13,14 @@
   }: {
     task: {
       id: string
+      title?: string
       status?: string
       cwd?: string
       human_only?: boolean
       include_in_report?: boolean
       archived_at?: string | null
       slack_thread?: string
+      todo_session?: string
     }
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
@@ -36,6 +38,7 @@
   let archiving = $state(false)
   let claudeActive = $state(false)
   let zedActive = $state(false)
+  let zedCommand = $state('')
   let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -47,6 +50,7 @@
       zedActive &&
       !!(task.cwd ?? '').trim()
   )
+  const zedTitle = $derived(zedCommand || 'Open in Zed')
   const slackURL = $derived((task.slack_thread ?? '').trim())
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
@@ -62,11 +66,14 @@
   $effect(() => {
     void task.id
     void task.cwd
+    void task.title
+    void task.todo_session
     void task.human_only
     void task.status
     copied = false
     claudeActive = false
     zedActive = false
+    zedCommand = ''
     guiSettings = null
     ;(async () => {
       try {
@@ -77,10 +84,18 @@
         }
         if (settings.zed.enabled && (task.cwd ?? '').trim()) {
           zedActive = await api.checkBinary(settings.zed.binary)
+          if (zedActive) {
+            try {
+              zedCommand = await api.zedTicketCommand(task.id)
+            } catch {
+              zedCommand = ''
+            }
+          }
         }
       } catch {
         claudeActive = false
         zedActive = false
+        zedCommand = ''
       }
     })()
   })
@@ -258,11 +273,11 @@
       type="button"
       onclick={openZed}
       disabled={openingZed}
-      title="Open in Zed"
+      title={zedTitle}
       aria-label="Open in Zed"
       class="{actionBtn} text-ink-3 hover:text-ink"
     >
-      <ZedIcon class="h-3 w-3" />
+      <ZedIcon class="h-3 w-3" title="" />
     </button>
   {/if}
 

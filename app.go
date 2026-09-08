@@ -481,6 +481,20 @@ func (a *App) OpenZedTicket(ref string) error {
 	return client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, t.TodoSession)
 }
 
+// ZedTicketCommand returns the shell-equivalent command OpenZedTicket would run.
+func (a *App) ZedTicketCommand(ref string) (string, error) {
+	s, err := settings.Load(a.repo)
+	if err != nil {
+		return "", err
+	}
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	client := integrations.ZedClient{Zed: s.Zed}
+	return client.TicketCommand(t.Cwd, core.ShortID(t.ID), t.Title, t.TodoSession), nil
+}
+
 // emitChanged is the single refresh path for the frontend: every local
 // mutation emits tasks:changed; the external watcher (internal/sync) emits the
 // same event on foreign writes, so the UI has exactly one refetch handler. It

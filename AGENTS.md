@@ -4,11 +4,12 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|update`) — the interface for **agentic tool
-  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
-  `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
-  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
-  `mhtodo integration bash|zsh` installs a managed `claude.todo` shell helper for `$MHTODO_SESSION`.
+- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|update|service`) — the interface for **agentic tool
+ access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
+ `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
+ `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
+ `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install.
+ `mhtodo integration bash|zsh` installs a managed `claude.todo` shell helper for `$MHTODO_SESSION`.
 - **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
@@ -38,6 +39,8 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
 interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (see README).
+`mhtodo service …` installs/controls/removes `~/.config/systemd/user/mhtodo.service` for the
+running binary (from-source bootstrap remains `make service-install`).
 Per-task `todo_session` (migration v10–v11) seeds to a space-free `{short8}-{slug}` and drives
 Claude `--resume`/`--name`, Zed `MHTODO_SESSION`, and `claude.todo`. Empty or legacy spaced
 auto-seeds are backfilled on open. Settings include Claude, Herdr, and Zed integrations.

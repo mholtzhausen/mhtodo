@@ -794,6 +794,41 @@ func TestUpdateCheckJSON(t *testing.T) {
 	}
 }
 
+func TestServiceCommandJSON(t *testing.T) {
+	prev := cli.ServiceManageForTest(func(opts update.ServiceOptions) (update.ServiceResult, error) {
+		if opts.Action != update.ServiceRestart {
+			t.Fatalf("unexpected action: %q", opts.Action)
+		}
+		return update.ServiceResult{
+			Action:     "restart",
+			Unit:       "mhtodo.service",
+			UnitPath:   "/tmp/mhtodo.service",
+			Executable: "/tmp/bin/mhtodo",
+			Installed:  true,
+			Message:    "restarted mhtodo.service",
+		}, nil
+	})
+	defer prev()
+
+	out, errb, run := newCLI(t)
+	if code := run("service", "restart", "--json"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	var res update.ServiceResult
+	mustJSON(t, out.Bytes(), &res)
+	if res.Action != "restart" || !res.Installed || res.Unit != "mhtodo.service" {
+		t.Fatalf("json: %+v", res)
+	}
+
+	out.Reset()
+	if code := run("service", "restart"); code != 0 {
+		t.Fatalf("human: exit %d", code)
+	}
+	if !strings.Contains(out.String(), "restarted mhtodo.service") {
+		t.Errorf("human: %q", out.String())
+	}
+}
+
 func TestUnknownCommandAndVersion(t *testing.T) {
 	out, errb, run := newCLI(t)
 
@@ -807,6 +842,9 @@ func TestUnknownCommandAndVersion(t *testing.T) {
 	}
 	if !strings.Contains(got, "update") {
 		t.Errorf("available commands missing update: %q", got)
+	}
+	if !strings.Contains(got, "service") {
+		t.Errorf("available commands missing service: %q", got)
 	}
 
 	out.Reset()

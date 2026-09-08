@@ -70,6 +70,7 @@ mhtodo slack report                                     # paste-ready board summ
 mhtodo integration bash|zsh [--remove]                  # install/remove claude.todo in shell rc
 mhtodo ai                                                 # this document
 mhtodo update [--check] [--force]                         # self-update from GitHub Releases
+mhtodo service install|stop|start|restart|uninstall       # user systemd unit for this install
 ```
 
 - Global flags: `--json`, `-q/--quiet`.

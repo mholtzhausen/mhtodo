@@ -34,7 +34,7 @@ Other useful targets:
 | `make release-tag [BUMP=major\|minor\|patch]` | **release process** — asks for major/minor/patch (or takes `BUMP=`), bumps `VERSION`, commits + tags, builds tarballs, publishes a GitHub Release and pushes main + tag |
 | `make publish` | cross-build with the current version, then `gh release create v$(VERSION)` + push main and the tag |
 | `make install` / `uninstall` | user-local install into `$PREFIX` (default `~/.local`) |
-| `make service-install` / `service-remove` | build + install, then run as a user systemd service at login (re-running replaces the installed version) |
+| `make service-install` / `service-remove` | build + install, then run as a user systemd service at login (re-running replaces the installed version); after install, prefer `mhtodo service install\|stop\|start\|restart\|uninstall` |
 | `make path` | print where the DB lives |
 
 ### From a release tarball
@@ -91,7 +91,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
 `parent_is_child`, `not_root`,
 `reorder_status_mismatch`, `empty_activity`,
-`usage`, `storage`, `update`.
+`usage`, `storage`, `update`, `service`.
 
 ### Commands
 
@@ -114,7 +114,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
 | `integration bash\|zsh` | `mhtodo integration bash\|zsh [--remove]` | install/update (or remove) a managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that resumes `$MHTODO_SESSION` |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; documents human-only, cwd, and todo_session rules) |
-| `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is present, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
+| `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
+| `service` | `mhtodo service install\|stop\|start\|restart\|uninstall` | manage the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `install` writes `ExecStart=<this binary> gui` and enables it; `uninstall` removes the unit (binary stays). From-source bootstrap remains `make service-install` |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
 ### Canonical JSON object

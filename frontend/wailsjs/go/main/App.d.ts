@@ -73,3 +73,5 @@ export function Unarchive(arg1:string):Promise<core.Task>;
 export function UpdateTask(arg1:string,arg2:core.UpdateInput):Promise<core.Task>;
 
 export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core.Template>;
+
+export function ZedTicketCommand(arg1:string):Promise<string>;

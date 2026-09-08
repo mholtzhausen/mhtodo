@@ -177,12 +177,15 @@ func replaceFile(src, dest string, mode os.FileMode) error {
 	return nil
 }
 
-// ServiceOps runs systemctl --user for stop / unit rewrite / enable --now.
-// Overridable in tests.
+// ServiceOps runs systemctl --user for unit lifecycle. Overridable in tests.
 type ServiceOps struct {
 	Stop         func() error
+	Start        func() error
+	Restart      func() error
 	WriteUnit    func(unitPath, execStart string) error
 	EnableNow    func() error
+	DisableNow   func() error
+	RemoveUnit   func(unitPath string) error
 	DaemonReload func() error
 	ImportEnv    func() error
 }
@@ -194,9 +197,26 @@ func DefaultServiceOps() ServiceOps {
 			_ = exec.Command("systemctl", "--user", "stop", ServiceUnit).Run()
 			return nil
 		},
+		Start: func() error {
+			return runSystemctl("--user", "start", ServiceUnit)
+		},
+		Restart: func() error {
+			return runSystemctl("--user", "restart", ServiceUnit)
+		},
 		WriteUnit: writeUnitFile,
 		EnableNow: func() error {
 			return runSystemctl("--user", "enable", "--now", ServiceUnit)
+		},
+		DisableNow: func() error {
+			_ = exec.Command("systemctl", "--user", "disable", "--now", ServiceUnit).Run()
+			return nil
+		},
+		RemoveUnit: func(unitPath string) error {
+			err := os.Remove(unitPath)
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			return nil
 		},
 		DaemonReload: func() error {
 			return runSystemctl("--user", "daemon-reload")
