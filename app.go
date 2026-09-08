@@ -476,7 +476,9 @@ func (a *App) OpenHerdrTicket(ref string) error {
 	spawn := settings.NormalizeSpawn(s.Claude.Spawn)
 	switch spawn {
 	case settings.SpawnHerdr:
-		return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, sessionUUID, displayName)
+		if err := client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, sessionUUID, displayName); err != nil {
+			return err
+		}
 	case settings.SpawnTerminal:
 		pid, err := client.OpenTerminalSession(t.Cwd, shortID, t.Title, sessionUUID, t.TerminalPID)
 		if err != nil {
@@ -488,10 +490,11 @@ func (a *App) OpenHerdrTicket(ref string) error {
 			}
 			a.emitChanged(t.ID, "edit")
 		}
-		return nil
 	default:
 		return fmt.Errorf("Claude spawn is disabled")
 	}
+	a.hideIfAlwaysOnTop()
+	return nil
 }
 
 // ensureClaudeSession returns a Claude session UUID and --name, minting and
@@ -527,7 +530,11 @@ func (a *App) OpenZedTicket(ref string) error {
 		return err
 	}
 	client := integrations.ZedClient{Zed: s.Zed}
-	return client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName)
+	if err := client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName); err != nil {
+		return err
+	}
+	a.hideIfAlwaysOnTop()
+	return nil
 }
 
 // ZedTicketCommand returns the shell-equivalent Zed launch line for tooltips.
@@ -638,6 +645,14 @@ func (a *App) hideWindow() {
 	a.captureWindowPos() // must run while still mapped
 	wruntime.WindowHide(a.ctx)
 	a.visible.Store(false)
+}
+
+// hideIfAlwaysOnTop hides to tray after Claude/Zed open so the activated
+// terminal or IDE is not covered by a pinned mhtodo window.
+func (a *App) hideIfAlwaysOnTop() {
+	if a.alwaysOnTop.Load() {
+		a.hideWindow()
+	}
 }
 
 // captureWindowPos reads the current position into memory and persists it.

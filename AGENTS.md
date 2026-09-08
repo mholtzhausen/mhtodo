@@ -28,6 +28,7 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock.
   GUI also supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
+  With always-on-top on, a successful Claude or Zed open hides the window to tray.
 - Desktop notifications on →done and →waiting (`notify-send`).
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 
