@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.0 (54cf2a2)
+
+### Features and Improvements
+- Per-task **`todo_session`** (migrations v10–v11): auto-seeded to a space-free `{short8}-{slug}` on create; empty or legacy spaced values are backfilled on open
+- CLI: `--session` on `add`/`edit`, and `mhtodo integration bash|zsh` to install a managed `claude.todo` helper that resumes `$MHTODO_SESSION`
+- Zed integration: open tasks with `MHTODO_SESSION` set; Settings cover Claude, Herdr, and Zed
+- Claude/Herdr resume and naming use the task session; GUI actions and docs (`mhtodo ai`) document the contract
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 2.0.0 (b9fe34c)
 
 ### Features and Improvements
