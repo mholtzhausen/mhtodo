@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.0 (e9f007c)
+
+### Features and Improvements
+- CLI: `mhtodo install [--prefix DIR] [--service|--no-service] [--integration bash|zsh|none]` copies this binary into `~/.local` (desktop + icon), then can install the user systemd unit and/or `claude.todo` shell helper (TTY prompts; flags for non-interactive)
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 2.2.0 (29f1e16)
 
 ### Features and Improvements
