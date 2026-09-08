@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.4.0 (dbffb30)
+
+### Features and Improvements
+- Claude spawn mode **`terminal`**: open Claude in a system terminal emulator, persist `terminal_pid`, and raise/focus the existing window on reopen (session PID + `mhtodo:<session>` title) instead of spawning duplicates
+- Claude spawn settings: choose `herdr` | `terminal` | `disabled` (Herdr vs terminal fields shown conditionally)
+- `todo_session` is a Claude session UUID (UUIDv7); launch uses `claude --session-id` / `--resume` with `--name`; legacy non-UUID values are minted on first Claude/Zed open
+- Always-on-top: opening Claude or Zed hides mhtodo to the tray so the activated terminal/IDE is not covered
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 2.3.0 (e9f007c)
 
 ### Features and Improvements
