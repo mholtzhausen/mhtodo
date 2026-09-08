@@ -20,6 +20,7 @@ Requirements: Go ≥ 1.25, Node.js (frontend build), the Wails v2 CLI
 
 ```sh
 make install   # builds and installs into ~/.local: binary + launcher entry + icon
+# or with an existing binary: mhtodo install  # same layout; prompts for service + shell helper
 mhtodo         # opens the GUI; tray icon appears in the panel
 ```
 
@@ -91,7 +92,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
 `parent_is_child`, `not_root`,
 `reorder_status_mismatch`, `empty_activity`,
-`usage`, `storage`, `update`, `service`.
+`usage`, `storage`, `update`, `service`, `install`.
 
 ### Commands
 
@@ -114,6 +115,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
 | `integration bash\|zsh` | `mhtodo integration bash\|zsh [--remove]` | install/update (or remove) a managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that resumes `$MHTODO_SESSION` |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; documents human-only, cwd, and todo_session rules) |
+| `install` | `mhtodo install [--prefix DIR] [--service \| --no-service] [--integration bash\|zsh\|none]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service and `claude.todo` shell helper; flags skip prompts (non-TTY skips optionals unless flagged) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `service` | `mhtodo service install\|stop\|start\|restart\|uninstall` | manage the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `install` writes `ExecStart=<this binary> gui` and enables it; `uninstall` removes the unit (binary stays). From-source bootstrap remains `make service-install` |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |

@@ -69,6 +69,7 @@ mhtodo path
 mhtodo slack report                                     # paste-ready board summary for Slack
 mhtodo integration bash|zsh [--remove]                  # install/remove claude.todo in shell rc
 mhtodo ai                                                 # this document
+mhtodo install [--prefix DIR] [--service|--no-service] [--integration bash|zsh|none]
 mhtodo update [--check] [--force]                         # self-update from GitHub Releases
 mhtodo service install|stop|start|restart|uninstall       # user systemd unit for this install
 ```

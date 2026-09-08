@@ -794,6 +794,90 @@ func TestUpdateCheckJSON(t *testing.T) {
 	}
 }
 
+func TestInstallCommandJSON(t *testing.T) {
+	restoreFiles := cli.InstallLocalForTest(func(opts update.LocalInstallOptions) (update.LocalInstallResult, error) {
+		if opts.Prefix != "/tmp/prefix" {
+			t.Fatalf("prefix: %q", opts.Prefix)
+		}
+		return update.LocalInstallResult{
+			Prefix:     opts.Prefix,
+			Executable: opts.Prefix + "/bin/mhtodo",
+			Desktop:    opts.Prefix + "/share/applications/mhtodo.desktop",
+			Icon:       opts.Prefix + "/share/icons/hicolor/512x512/apps/mhtodo.png",
+			UnitPath:   "/tmp/mhtodo.service",
+			Message:    "installed mhtodo into /tmp/prefix",
+		}, nil
+	})
+	defer restoreFiles()
+
+	var gotAction update.ServiceAction
+	restoreSvc := cli.ServiceManageForTest(func(opts update.ServiceOptions) (update.ServiceResult, error) {
+		gotAction = opts.Action
+		info, err := opts.Detect()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Executable != "/tmp/prefix/bin/mhtodo" {
+			t.Fatalf("service exe: %q", info.Executable)
+		}
+		return update.ServiceResult{
+			Action:    "install",
+			Unit:      "mhtodo.service",
+			Installed: true,
+			Message:   "installed and started mhtodo.service",
+		}, nil
+	})
+	defer restoreSvc()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	out, errb, run := newCLI(t)
+	if code := run("install", "--prefix", "/tmp/prefix", "--service", "--integration", "zsh", "--json"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	if gotAction != update.ServiceInstall {
+		t.Fatalf("service action: %q", gotAction)
+	}
+	var res map[string]any
+	mustJSON(t, out.Bytes(), &res)
+	if res["executable"] != "/tmp/prefix/bin/mhtodo" || res["service"] != true {
+		t.Fatalf("json: %v", res)
+	}
+	if res["integration"] != "zsh" {
+		t.Fatalf("integration: %v", res["integration"])
+	}
+	rc := filepath.Join(home, ".zshrc")
+	body, err := os.ReadFile(rc)
+	if err != nil || !strings.Contains(string(body), "claude.todo") {
+		t.Fatalf("zshrc: %s err=%v", body, err)
+	}
+}
+
+func TestInstallCommandSkipsOptionalsNonTTY(t *testing.T) {
+	restoreFiles := cli.InstallLocalForTest(func(opts update.LocalInstallOptions) (update.LocalInstallResult, error) {
+		return update.LocalInstallResult{
+			Prefix:     "/x",
+			Executable: "/x/bin/mhtodo",
+			Message:    "installed mhtodo into /x",
+		}, nil
+	})
+	defer restoreFiles()
+	restoreSvc := cli.ServiceManageForTest(func(opts update.ServiceOptions) (update.ServiceResult, error) {
+		t.Fatal("service should not run")
+		return update.ServiceResult{}, nil
+	})
+	defer restoreSvc()
+
+	out, errb, run := newCLI(t) // Stdin is not a TTY in tests
+	if code := run("install", "--no-service", "--integration", "none"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "installed mhtodo into /x") {
+		t.Errorf("out: %q", out.String())
+	}
+}
+
 func TestServiceCommandJSON(t *testing.T) {
 	prev := cli.ServiceManageForTest(func(opts update.ServiceOptions) (update.ServiceResult, error) {
 		if opts.Action != update.ServiceRestart {
@@ -845,6 +929,9 @@ func TestUnknownCommandAndVersion(t *testing.T) {
 	}
 	if !strings.Contains(got, "service") {
 		t.Errorf("available commands missing service: %q", got)
+	}
+	if !strings.Contains(got, "install") {
+		t.Errorf("available commands missing install: %q", got)
 	}
 
 	out.Reset()

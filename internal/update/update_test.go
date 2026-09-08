@@ -236,6 +236,37 @@ func TestRunCheckAndUpdateWithService(t *testing.T) {
 	}
 }
 
+func TestInstallLocal(t *testing.T) {
+	srcDir := t.TempDir()
+	src := filepath.Join(srcDir, AppName)
+	if err := os.WriteFile(src, []byte("fake-mhtodo-bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	prefix := t.TempDir()
+	res, err := InstallLocal(LocalInstallOptions{
+		Prefix:           prefix,
+		SourceExecutable: src,
+		UnitPath:         filepath.Join(t.TempDir(), ServiceUnit),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(res.Executable)
+	if err != nil || string(got) != "fake-mhtodo-bin" {
+		t.Fatalf("binary: %q err=%v", got, err)
+	}
+	if _, err := os.Stat(res.Desktop); err != nil {
+		t.Fatalf("desktop: %v", err)
+	}
+	if _, err := os.Stat(res.Icon); err != nil {
+		t.Fatalf("icon: %v", err)
+	}
+	info := InstallInfoForPrefix(prefix, res.UnitPath)
+	if info.Executable != res.Executable || info.Prefix != prefix {
+		t.Fatalf("info: %+v", info)
+	}
+}
+
 func TestManageServiceLifecycle(t *testing.T) {
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "bin", AppName)

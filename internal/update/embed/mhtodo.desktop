@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=mhtodo
+GenericName=Todo Manager
+Comment=Personal todo manager — board and list views, scriptable CLI over the same data
+Exec=mhtodo
+Icon=mhtodo
+Terminal=false
+Categories=Utility;
+Keywords=todo;task;project;planner;
+StartupNotify=true
