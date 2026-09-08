@@ -175,7 +175,7 @@ Claude sessions open via a **spawn** mode in config (`~/.config/mhtodo/config.ym
 | Spawn | Behavior |
 |-------|----------|
 | `herdr` | Open/focus a Herdr workspace tab and run Claude in the pane (default when Herdr + Claude are on PATH) |
-| `terminal` | Open Claude in a system terminal window; store `terminal_pid` and raise that window on reopen when still alive |
+| `terminal` | Open Claude in a system terminal window; store `terminal_pid` and raise/focus that window on reopen (by session PID or `mhtodo:<session>` title) when still alive |
 | `disabled` | Hide Claude actions |
 
 When a task moves to done and “Close session when done” is enabled, Herdr closes the tab; Terminal kills the managed terminal process.

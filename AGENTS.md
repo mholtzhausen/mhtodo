@@ -29,6 +29,8 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   GUI also supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
   With always-on-top on, a successful Claude or Zed open hides the window to tray.
+  Terminal spawn raises an existing Claude window by session PID / `mhtodo:<session>` title
+  instead of opening a duplicate.
 - Desktop notifications on →done and →waiting (`notify-send`).
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 

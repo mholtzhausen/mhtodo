@@ -13,7 +13,7 @@ func launchInTerminal(string) (int, error) {
 	return 0, errNoTerminal
 }
 
-func launchInTerminalPreferred(string, string) (int, error) {
+func launchInTerminalPreferred(string, string, string) (int, error) {
 	return 0, errNoTerminal
 }
 
@@ -22,6 +22,14 @@ func activateHerdrWindow() error {
 }
 
 func activateWindowForPID(int) error {
+	return errHerdrWindowNotFound
+}
+
+func activateWindowForPIDPreferTitle(int, string) error {
+	return errHerdrWindowNotFound
+}
+
+func activateWindowByTitle(string) error {
 	return errHerdrWindowNotFound
 }
 

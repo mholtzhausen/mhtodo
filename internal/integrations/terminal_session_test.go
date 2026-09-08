@@ -29,6 +29,9 @@ func TestClaudeTerminalCommandLineSessionIDAndResume(t *testing.T) {
 	if !strings.Contains(line, `MHTODO_SESSION_NAME="abcd1234-my-task"`) {
 		t.Fatalf("missing session name env: %s", line)
 	}
+	if !strings.Contains(line, "mhtodo:"+uuid) {
+		t.Fatalf("missing window title marker: %s", line)
+	}
 	if !strings.Contains(line, "--session-id "+uuid) {
 		t.Fatalf("missing session-id: %s", line)
 	}
@@ -45,6 +48,15 @@ func TestClaudeTerminalCommandLineSessionIDAndResume(t *testing.T) {
 	resumeIdx := strings.Index(line, "--resume")
 	if createIdx < 0 || resumeIdx < 0 || createIdx > resumeIdx {
 		t.Fatalf("expected session-id before resume: %s", line)
+	}
+}
+
+func TestMhtodoTerminalTitle(t *testing.T) {
+	if got := mhtodoTerminalTitle("  abc  "); got != "mhtodo:abc" {
+		t.Fatalf("got %q", got)
+	}
+	if got := mhtodoTerminalTitle(""); got != "" {
+		t.Fatalf("empty session should be empty title, got %q", got)
 	}
 }
 

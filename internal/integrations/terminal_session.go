@@ -13,8 +13,8 @@ import (
 )
 
 // OpenTerminalSession focuses an existing mhtodo-managed Claude terminal when
-// storedPID is still alive; otherwise launches Claude in a new terminal and
-// returns the PID to persist on the task.
+// the session process (or titled window) is still alive; otherwise launches
+// Claude in a new terminal and returns the PID to persist on the task.
 func (c Client) OpenTerminalSession(cwd, shortID, title, todoSession string, storedPID int) (int, error) {
 	if settings.NormalizeSpawn(c.Claude.Spawn) != settings.SpawnTerminal {
 		return 0, fmt.Errorf("Claude spawn mode is not terminal")
@@ -28,18 +28,29 @@ func (c Client) OpenTerminalSession(cwd, shortID, title, todoSession string, sto
 	if session == "" {
 		session = displayName
 	}
+	winTitle := mhtodoTerminalTitle(session)
 
-	if storedPID > 0 && processAlive(storedPID) && processHasMHTODOSession(storedPID, session) {
-		if err := activateWindowForPIDWalk(storedPID); err == nil {
-			return storedPID, nil
+	if pid := resolveLiveSessionPID(storedPID, session); pid > 0 {
+		if err := activateMHTODOTerminal(pid, winTitle); err == nil {
+			return pid, nil
 		}
 		// Process is alive with our session but has no raisable window (e.g. a
 		// Herdr pane shell left over from a prior spawn mode). Fall through and
 		// open a real terminal emulator instead of silently succeeding.
+	} else if err := activateWindowByTitle(winTitle); err == nil {
+		// Window still up (title match) even if the stored PID went stale —
+		// do not spawn a second terminal.
+		if found, ok := findPIDByMHTODOSession(session, 0); ok {
+			return found, nil
+		}
+		if storedPID > 0 {
+			return storedPID, nil
+		}
+		return 0, nil
 	}
 
 	cmdLine := c.claudeTerminalCommandLine(cwd, shortID, title, session, displayName)
-	launchPID, err := launchInTerminalPreferred(c.Terminal.Binary, cmdLine)
+	launchPID, err := launchInTerminalPreferred(c.Terminal.Binary, cmdLine, winTitle)
 	if err != nil {
 		return 0, err
 	}
@@ -52,8 +63,8 @@ func (c Client) OpenTerminalSession(cwd, shortID, title, todoSession string, sto
 	} else if launchPID > 0 && processAlive(launchPID) {
 		pid = launchPID
 	}
-	if pid > 0 {
-		_ = activateWindowForPIDWalk(pid)
+	if pid > 0 || winTitle != "" {
+		_ = activateMHTODOTerminal(pid, winTitle)
 	}
 	return pid, nil
 }
@@ -128,6 +139,11 @@ func (c Client) claudeTerminalCommandLine(cwd, shortID, title, sessionUUID, disp
 	termEnv, termPrefix := ParseEnvStart(c.Terminal.EnvStart)
 
 	var parts []string
+	if winTitle := mhtodoTerminalTitle(sessionUUID); winTitle != "" {
+		// OSC 0 so emulators without a --title flag still get a searchable name.
+		// Use a quoted escape sequence (not raw ESC/BEL bytes) for a safe bash -lc line.
+		parts = append(parts, "printf", ShellDoubleQuote(`\033]0;`+winTitle+`\007`), ";")
+	}
 	if d := strings.TrimSpace(cwd); d != "" {
 		parts = append(parts, "cd", shellWord(d), "&&")
 	}
@@ -145,10 +161,46 @@ func (c Client) claudeTerminalCommandLine(cwd, shortID, title, sessionUUID, disp
 	return strings.Join(parts, " ")
 }
 
-func activateWindowForPIDWalk(pid int) error {
+// mhtodoTerminalTitle is the WM title used to find an existing Claude terminal.
+func mhtodoTerminalTitle(session string) string {
+	session = strings.TrimSpace(session)
+	if session == "" {
+		return ""
+	}
+	return "mhtodo:" + session
+}
+
+// activateMHTODOTerminal raises the Claude terminal by title (precise) then PID walk.
+func activateMHTODOTerminal(pid int, winTitle string) error {
+	winTitle = strings.TrimSpace(winTitle)
+	if winTitle != "" {
+		if err := activateWindowByTitle(winTitle); err == nil {
+			return nil
+		}
+	}
+	if pid > 0 {
+		if err := activateWindowForPIDWalk(pid, winTitle); err == nil {
+			return nil
+		}
+	}
+	return errHerdrWindowNotFound
+}
+
+func resolveLiveSessionPID(storedPID int, session string) int {
+	session = strings.TrimSpace(session)
+	if storedPID > 0 && processAlive(storedPID) && processHasMHTODOSession(storedPID, session) {
+		return storedPID
+	}
+	if found, ok := findPIDByMHTODOSession(session, 0); ok {
+		return found
+	}
+	return 0
+}
+
+func activateWindowForPIDWalk(pid int, titleHint string) error {
 	self := os.Getpid()
 	for walk := pid; walk > 1 && walk != self; {
-		if err := activateWindowForPID(walk); err == nil {
+		if err := activateWindowForPIDPreferTitle(walk, titleHint); err == nil {
 			return nil
 		}
 		parent, err := processParentPID(walk)
