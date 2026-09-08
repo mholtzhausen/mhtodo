@@ -90,6 +90,10 @@ export function OpenHerdrTicket(arg1) {
   return window['go']['main']['App']['OpenHerdrTicket'](arg1);
 }
 
+export function OpenZedTicket(arg1) {
+  return window['go']['main']['App']['OpenZedTicket'](arg1);
+}
+
 export function PickDirectory(arg1) {
   return window['go']['main']['App']['PickDirectory'](arg1);
 }

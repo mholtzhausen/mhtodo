@@ -25,6 +25,7 @@ export interface GUISettings {
   start_hidden: boolean
   claude: ClaudeConfig
   herdr: HerdrConfig
+  zed: IntegrationConfig
 }
 
 export const DEFAULT_CLAUDE_TICKET_PROMPT =
@@ -56,7 +57,8 @@ export const defaultSettings = (): GUISettings => ({
     close_tab_on_done: false,
     require_cwd: true
   },
-  herdr: { enabled: false, binary: 'herdr', env_start: '', space_name: '' }
+  herdr: { enabled: false, binary: 'herdr', env_start: '', space_name: '' },
+  zed: { enabled: false, binary: 'zed', env_start: '' }
 })
 
 // Wails codegen uses json struct tags → snake_case field names on the wire.
@@ -80,6 +82,11 @@ export function fromGoSettings(s: goSettings.GUISettings): GUISettings {
       binary: s.herdr?.binary ?? 'herdr',
       env_start: s.herdr?.env_start ?? '',
       space_name: s.herdr?.space_name ?? ''
+    },
+    zed: {
+      enabled: !!s.zed?.enabled,
+      binary: s.zed?.binary ?? 'zed',
+      env_start: s.zed?.env_start ?? ''
     }
   }
 }
@@ -104,6 +111,11 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
       binary: s.herdr.binary,
       env_start: s.herdr.env_start,
       space_name: s.herdr.space_name
+    },
+    zed: {
+      enabled: s.zed.enabled,
+      binary: s.zed.binary,
+      env_start: s.zed.env_start
     }
   })
 }

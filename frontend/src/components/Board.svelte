@@ -401,18 +401,10 @@
                 >
                   <div class="mb-2 flex items-start gap-1.5">
                     <p class="min-w-0 flex-1 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
-                    {#if t.human_only || (t.slack_thread ?? '').trim() || t.include_in_report === false}
+                    {#if t.human_only || t.include_in_report === false}
                       <span class="flex flex-none items-center gap-0.5 pt-0.5 text-ink-3" aria-hidden="true">
                         {#if t.human_only}
                           <span title="Human only"><HumanIcon class="h-3 w-3" /></span>
-                        {/if}
-                        {#if (t.slack_thread ?? '').trim()}
-                          <span title="Has Slack thread">
-                            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke-linecap="round" stroke-linejoin="round" />
-                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                          </span>
                         {/if}
                         {#if t.include_in_report === false}
                           <span title="Excluded from Slack report">

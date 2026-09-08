@@ -105,8 +105,13 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 	if in.IncludeInReport != nil {
 		includeInReport = *in.IncludeInReport
 	}
+	idStr := id.String()
+	session := strings.TrimSpace(in.TodoSession)
+	if session == "" {
+		session = DefaultTodoSession(ShortID(idStr), title)
+	}
 	t := Task{
-		ID:          id.String(),
+		ID:          idStr,
 		Title:       title,
 		Description: in.Description,
 		Feedback:    in.Feedback,
@@ -119,6 +124,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,
 		SlackThread:     strings.TrimSpace(in.SlackThread),
+		TodoSession:     session,
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -229,6 +235,9 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	if in.SlackThread != nil {
 		t.SlackThread = strings.TrimSpace(*in.SlackThread)
+	}
+	if in.TodoSession != nil {
+		t.TodoSession = strings.TrimSpace(*in.TodoSession)
 	}
 	t.UpdatedAt = s.now()
 	if err := s.repo.Update(ctx, t); err != nil {

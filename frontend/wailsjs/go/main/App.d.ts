@@ -48,6 +48,8 @@ export function ListTemplates():Promise<Array<core.Template>>;
 
 export function OpenHerdrTicket(arg1:string):Promise<void>;
 
+export function OpenZedTicket(arg1:string):Promise<void>;
+
 export function PickDirectory(arg1:string):Promise<string>;
 
 export function Quit():Promise<void>;

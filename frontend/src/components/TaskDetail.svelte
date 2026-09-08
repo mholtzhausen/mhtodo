@@ -3,6 +3,7 @@
   import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
+  import { openExternalUrl } from '../lib/openExternal'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
@@ -75,6 +76,7 @@
   let progress = $state(task.progress)
   let cwd = $state(task.cwd ?? '')
   let slackThread = $state(task.slack_thread ?? '')
+  let todoSession = $state(task.todo_session ?? '')
   let humanOnly = $state(!!task.human_only)
   let includeInReport = $state(task.include_in_report !== false)
 
@@ -203,6 +205,7 @@
     progress = task.progress
     cwd = task.cwd ?? ''
     slackThread = task.slack_thread ?? ''
+    todoSession = task.todo_session ?? ''
     humanOnly = !!task.human_only
     includeInReport = task.include_in_report !== false
     if (!editingDesc) {
@@ -291,6 +294,16 @@
     if (v === (task.slack_thread ?? '')) return
     try {
       await api.update(task.id, { slackThread: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function saveTodoSession() {
+    const v = todoSession.trim()
+    if (v === (task.todo_session ?? '')) return
+    try {
+      await api.update(task.id, { todoSession: v })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -681,6 +694,17 @@
     </div>
 
     <label class="block">
+      <span class="micro mb-1.5">Todo session</span>
+      <input
+        bind:value={todoSession}
+        onblur={saveTodoSession}
+        placeholder="Claude / Zed session id or name"
+        class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      />
+      <p class="mt-1 text-[11px] text-ink-3">Used for Claude --resume/--name, Zed MHTODO_SESSION, and claude.todo</p>
+    </label>
+
+    <label class="block">
       <span class="micro mb-1.5">Slack thread</span>
       <input
         bind:value={slackThread}
@@ -691,7 +715,16 @@
       {#if slackThread.trim()}
         <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
           Linked Slack thread:
-          <a href={slackThread.trim()} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{slackThread.trim()}</a>
+          <a
+            href={slackThread.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent hover:underline"
+            onclick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(slackThread.trim())
+            }}>{slackThread.trim()}</a
+          >
         </p>
       {/if}
     </label>

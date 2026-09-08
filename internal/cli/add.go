@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent, cwd, slackThread string
+	var desc, feedback, status, parent, cwd, slackThread, todoSession string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -39,6 +39,7 @@ func newAddCmd() *cobra.Command {
 				Cwd:         cwd,
 				HumanOnly:   humanOnly,
 				SlackThread: slackThread,
+				TodoSession: todoSession,
 			}
 			switch {
 			case cmd.Flags().Changed("include-in-report"):
@@ -72,6 +73,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
+	cmd.Flags().StringVar(&todoSession, "session", "", "todo session id/name (default: shortid-slugified-title)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default)")
 	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")

@@ -4,13 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"mhtodo/internal/core"
 )
 
 // Forward-only, versioned migrations. v1 ships as the initial migration (not
 // inline DDL) so the pattern is proven from day one.
 type migration struct {
 	version int
-	up      string
+	up      string            // optional SQL (may be empty when fn alone does the work)
+	fn      func(*sql.Tx) error // optional Go step after SQL, same transaction
 }
 
 var migrations = []migration{
@@ -23,6 +26,8 @@ var migrations = []migration{
 	{version: 7, up: schemaV7},
 	{version: 8, up: schemaV8},
 	{version: 9, up: schemaV9},
+	{version: 10, up: schemaV10},
+	{version: 11, fn: backfillEmptyTodoSessions},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -126,6 +131,60 @@ CREATE TABLE task_templates (
 );
 `
 
+// v10: per-task session identity for Claude --resume/--name, Zed MHTODO_SESSION, shell claude.todo.
+const schemaV10 = `
+ALTER TABLE tasks ADD COLUMN todo_session TEXT NOT NULL DEFAULT '';
+`
+
+// backfillEmptyTodoSessions seeds todo_session for rows still empty, and rewrites
+// auto-seeded legacy values that contained spaces ("{shortID} - {title}") to the
+// current space-free slug. Custom non-empty sessions are left alone.
+func backfillEmptyTodoSessions(tx *sql.Tx) error {
+	rows, err := tx.Query(`SELECT id, title, todo_session FROM tasks`)
+	if err != nil {
+		return fmt.Errorf("select todo_session rows: %w", err)
+	}
+	defer rows.Close()
+
+	type row struct{ id, title, session string }
+	var pending []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.title, &r.session); err != nil {
+			return err
+		}
+		pending = append(pending, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`UPDATE tasks SET todo_session = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, r := range pending {
+		short := core.ShortID(r.id)
+		next := core.DefaultTodoSession(short, r.title)
+		if next == "" {
+			continue
+		}
+		cur := strings.TrimSpace(r.session)
+		if cur != "" && cur != core.LegacyTodoSession(short, r.title) {
+			continue
+		}
+		if cur == next {
+			continue
+		}
+		if _, err := stmt.Exec(next, r.id); err != nil {
+			return fmt.Errorf("backfill todo_session for %s: %w", r.id, err)
+		}
+	}
+	return nil
+}
+
 const schemaV1 = `
 CREATE TABLE meta (
   key   TEXT PRIMARY KEY,
@@ -175,8 +234,15 @@ func applyMigrations(db *sql.DB) error {
 	defer tx.Rollback() // no-op after Commit
 
 	for _, m := range pending {
-		if _, err := tx.Exec(m.up); err != nil {
-			return fmt.Errorf("apply migration v%d: %w", m.version, err)
+		if strings.TrimSpace(m.up) != "" {
+			if _, err := tx.Exec(m.up); err != nil {
+				return fmt.Errorf("apply migration v%d: %w", m.version, err)
+			}
+		}
+		if m.fn != nil {
+			if err := m.fn(tx); err != nil {
+				return fmt.Errorf("apply migration v%d fn: %w", m.version, err)
+			}
 		}
 		if _, err := tx.Exec(`UPDATE meta SET value = ? WHERE key = 'schema_version'`,
 			fmt.Sprintf("%d", m.version)); err != nil {

@@ -26,6 +26,7 @@ export interface Task {
   human_only: boolean
   include_in_report: boolean
   slack_thread: string
+  todo_session: string
 }
 
 export interface Activity {
@@ -91,6 +92,7 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
+    todoSession?: string
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -102,7 +104,8 @@ export const api = {
       Cwd: input.cwd ?? '',
       HumanOnly: !!input.humanOnly,
       IncludeInReport: input.includeInReport,
-      SlackThread: input.slackThread ?? ''
+      SlackThread: input.slackThread ?? '',
+      TodoSession: input.todoSession ?? ''
     }) as Promise<Task>
   },
   update(id: string, patch: {
@@ -114,6 +117,7 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
+    todoSession?: string
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -123,7 +127,8 @@ export const api = {
       Cwd: patch.cwd ?? null,
       HumanOnly: patch.humanOnly ?? null,
       IncludeInReport: patch.includeInReport ?? null,
-      SlackThread: patch.slackThread ?? null
+      SlackThread: patch.slackThread ?? null,
+      TodoSession: patch.todoSession ?? null
     })
   },
   setStatus(id: string, status: Status) {
@@ -200,6 +205,9 @@ export const api = {
   },
   openHerdrTicket(taskId: string): Promise<void> {
     return App.OpenHerdrTicket(taskId)
+  },
+  openZedTicket(taskId: string): Promise<void> {
+    return App.OpenZedTicket(taskId)
   },
   slackReport(): Promise<string> {
     return App.SlackReport()

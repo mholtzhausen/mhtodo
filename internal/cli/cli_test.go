@@ -286,6 +286,39 @@ func TestAddNoIncludeInReport(t *testing.T) {
 	}
 }
 
+func TestTodoSession(t *testing.T) {
+	out, _, run := newCLI(t)
+
+	out.Reset()
+	if code := run("add", "Session seed", "--json"); code != 0 {
+		t.Fatalf("add exit %d", code)
+	}
+	var tsk core.Task
+	mustJSON(t, out.Bytes(), &tsk)
+	wantSeed := core.DefaultTodoSession(core.ShortID(tsk.ID), "Session seed")
+	if tsk.TodoSession != wantSeed {
+		t.Fatalf("seeded todo_session = %q, want %q", tsk.TodoSession, wantSeed)
+	}
+
+	out.Reset()
+	if code := run("edit", tsk.ID, "--session", "custom-session", "--json"); code != 0 {
+		t.Fatalf("edit exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.TodoSession != "custom-session" {
+		t.Fatalf("edited todo_session = %q", tsk.TodoSession)
+	}
+
+	out.Reset()
+	if code := run("add", "Explicit", "--session", "given", "--json"); code != 0 {
+		t.Fatalf("add --session exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.TodoSession != "given" {
+		t.Fatalf("explicit todo_session = %q", tsk.TodoSession)
+	}
+}
+
 func TestSlackThread(t *testing.T) {
 	out, _, run := newCLI(t)
 	link := "https://example.slack.com/archives/C123/p456"
@@ -682,12 +715,14 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 8",
+		"Integration contract version: 9",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
 		"board|created|updated|status|progress|title",
+		"todo_session",
+		"v9  Per-task todo_session",
 		"v7  Task-picker options show status",
 		"AskUserQuestion",
 		"v5  Sub-tasks are a mandatory step plan",
@@ -717,7 +752,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 8 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 9 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

@@ -1,7 +1,10 @@
 <script lang="ts">
   import { api, errMsg } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { openExternalUrl } from '../lib/openExternal'
   import HumanIcon from './HumanIcon.svelte'
+  import SlackIcon from './SlackIcon.svelte'
+  import ZedIcon from './ZedIcon.svelte'
 
   let {
     task,
@@ -15,6 +18,7 @@
       human_only?: boolean
       include_in_report?: boolean
       archived_at?: string | null
+      slack_thread?: string
     }
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
@@ -25,16 +29,25 @@
   let copying = $state(false)
   let copied = $state(false)
   let openingClaude = $state(false)
+  let openingSlack = $state(false)
+  let openingZed = $state(false)
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
   let archiving = $state(false)
   let claudeActive = $state(false)
+  let zedActive = $state(false)
   let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
 
   const showClaude = $derived(
     guiSettings ? claudeIconVisible(task, guiSettings) : false
   )
+  const showZed = $derived(
+    !!guiSettings?.zed.enabled &&
+      zedActive &&
+      !!(task.cwd ?? '').trim()
+  )
+  const slackURL = $derived((task.slack_thread ?? '').trim())
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
 
@@ -53,17 +66,21 @@
     void task.status
     copied = false
     claudeActive = false
+    zedActive = false
     guiSettings = null
     ;(async () => {
       try {
         const settings = await api.getSettings()
         guiSettings = settings
-        if (!claudeIconVisible(task, settings)) return
-        if (settings.claude.enabled) {
+        if (settings.claude.enabled && claudeIconVisible(task, settings)) {
           claudeActive = await api.checkBinary(settings.claude.binary)
+        }
+        if (settings.zed.enabled && (task.cwd ?? '').trim()) {
+          zedActive = await api.checkBinary(settings.zed.binary)
         }
       } catch {
         claudeActive = false
+        zedActive = false
       }
     })()
   })
@@ -112,6 +129,31 @@
       reportError(errMsg(err))
     } finally {
       openingClaude = false
+    }
+  }
+
+  async function openSlack(e: MouseEvent) {
+    stop(e)
+    if (openingSlack || !slackURL) return
+    openingSlack = true
+    try {
+      const ok = await openExternalUrl(slackURL)
+      if (!ok) reportError('Invalid Slack thread URL')
+    } finally {
+      openingSlack = false
+    }
+  }
+
+  async function openZed(e: MouseEvent) {
+    stop(e)
+    if (openingZed || !showZed) return
+    openingZed = true
+    try {
+      await api.openZedTicket(task.id)
+    } catch (err) {
+      reportError(errMsg(err))
+    } finally {
+      openingZed = false
     }
   }
 
@@ -197,6 +239,32 @@
       </svg>
     {/if}
   </button>
+
+  {#if slackURL}
+    <button
+      type="button"
+      onclick={openSlack}
+      disabled={openingSlack}
+      title="Open Slack thread"
+      aria-label="Open Slack thread"
+      class="{actionBtn} text-ink-3 hover:text-ink"
+    >
+      <SlackIcon class="h-3 w-3" />
+    </button>
+  {/if}
+
+  {#if showZed}
+    <button
+      type="button"
+      onclick={openZed}
+      disabled={openingZed}
+      title="Open in Zed"
+      aria-label="Open in Zed"
+      class="{actionBtn} text-ink-3 hover:text-ink"
+    >
+      <ZedIcon class="h-3 w-3" />
+    </button>
+  {/if}
 
   {#if showClaude}
     <button

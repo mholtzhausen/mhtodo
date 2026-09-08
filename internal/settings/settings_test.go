@@ -28,6 +28,8 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.Herdr.Binary = "/usr/bin/herdr"
 	want.Herdr.EnvStart = "HERDR=1"
 	want.Herdr.SpaceName = "my-space"
+	want.Zed.Enabled = false
+	want.Zed.Binary = "/usr/bin/zed"
 
 	if err := Save(want); err != nil {
 		t.Fatal(err)

@@ -53,8 +53,8 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
-mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
+mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--session S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--session S] [--slack-thread URL] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
@@ -67,6 +67,7 @@ mhtodo rm ID --yes                                        # CASCADES to sub-task
 mhtodo archive [ID] | mhtodo unarchive ID
 mhtodo path
 mhtodo slack report                                     # paste-ready board summary for Slack
+mhtodo integration bash|zsh [--remove]                  # install/remove claude.todo in shell rc
 mhtodo ai                                                 # this document
 mhtodo update [--check] [--force]                         # self-update from GitHub Releases
 ```
@@ -93,12 +94,28 @@ mhtodo update [--check] [--force]                         # self-update from Git
 | `done` | Complete and verified. |
 
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
-`parent_id`, `board_rank`, `cwd`, `human_only`, `slack_thread`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
+`parent_id`, `board_rank`, `cwd`, `human_only`, `slack_thread`, `todo_session`, `created_at`, `updated_at`, `completed_at`, `archived_at`.
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
 
 **`cwd`** is an optional absolute path to the project or working directory the task
 belongs to. Set it with `--cwd` on `add`/`edit` when the job is tied to a specific
 checkout. The GUI folder picker sets the same field.
+
+**`todo_session`** is the Claude / Zed / shell session identity for this ticket.
+On create, if `--session` is omitted, mhtodo seeds it to a **space-free** slug
+`{last-8-hex}-{slugified-title}` (letters/digits/hyphens only). Herdr tab labels
+remain the human-readable `{shortID} - {title}` form and are separate. GUI Claude
+launch and `claude.todo` try `claude --resume <todo_session>` first, then fall back
+to `claude --name <…>` when the session does not exist yet. Zed and Herdr tab env
+set `MHTODO_SESSION` to this value. **When Claude's session id changes** (typical
+after `/new` or `/clear`), update the ticket so resume stays current:
+
+```
+mhtodo edit <id> --session <new-session-id>
+```
+
+Herdr **tab labels** stay on the human shortID-title form and are **not** renamed when
+`todo_session` becomes a Claude UUID.
 
 **`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
 `show --markdown`, and `slack report` include the reminder:
@@ -109,6 +126,10 @@ Set with `--slack-thread` on `add`/`edit`; empty string clears it.
 adopt, start, or update human-only tasks. Default `mhtodo list` hides them; only
 include them when the user explicitly asks to see their personal queue
 (`mhtodo list --human-only`).
+
+**Shell helper:** `mhtodo integration bash` / `mhtodo integration zsh` installs a
+managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that resumes
+`$MHTODO_SESSION` (then `--name` on failure). Use `--remove` to uninstall.
 
 ### Markdown fields
 

@@ -80,6 +80,7 @@ export namespace core {
 	    HumanOnly: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread: string;
+	    TodoSession: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -97,6 +98,7 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.TodoSession = source["TodoSession"];
 	    }
 	}
 	export class ListFilter {
@@ -148,6 +150,7 @@ export namespace core {
 	    human_only: boolean;
 	    include_in_report: boolean;
 	    slack_thread: string;
+	    todo_session: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -171,6 +174,7 @@ export namespace core {
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
 	        this.slack_thread = source["slack_thread"];
+	        this.todo_session = source["todo_session"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -278,6 +282,7 @@ export namespace core {
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread?: string;
+	    TodoSession?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -293,6 +298,7 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.TodoSession = source["TodoSession"];
 	    }
 	}
 
@@ -341,6 +347,22 @@ export namespace settings {
 	        this.require_cwd = source["require_cwd"];
 	    }
 	}
+	export class IntegrationConfig {
+	    enabled: boolean;
+	    binary: string;
+	    env_start: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IntegrationConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.binary = source["binary"];
+	        this.env_start = source["env_start"];
+	    }
+	}
 	export class HerdrConfig {
 	    enabled: boolean;
 	    binary: string;
@@ -367,6 +389,7 @@ export namespace settings {
 	    start_hidden: boolean;
 	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
+	    zed: IntegrationConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new GUISettings(source);
@@ -381,6 +404,7 @@ export namespace settings {
 	        this.start_hidden = source["start_hidden"];
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
+	        this.zed = this.convertValues(source["zed"], IntegrationConfig);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -401,6 +425,7 @@ export namespace settings {
 		    return a;
 		}
 	}
+	
 
 }
 

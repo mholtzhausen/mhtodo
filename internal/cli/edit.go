@@ -9,7 +9,7 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback, cwd, slackThread string
+	var title, desc, feedback, cwd, slackThread, todoSession string
 	var progress int
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -47,6 +47,10 @@ func newEditCmd() *cobra.Command {
 			v := slackThread
 			in.SlackThread = &v
 		}
+		if cmd.Flags().Changed("session") {
+			v := todoSession
+			in.TodoSession = &v
+		}
 		switch {
 		case cmd.Flags().Changed("human-only"):
 			v := humanOnly
@@ -81,6 +85,7 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().IntVar(&progress, "progress", 0, "new progress 0-100")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "working directory path (empty clears)")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL (empty clears)")
+	cmd.Flags().StringVar(&todoSession, "session", "", "todo session id/name (empty clears)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
 	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report")

@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"mhtodo/internal/core"
 	"mhtodo/internal/settings"
 )
 
@@ -123,7 +124,9 @@ func (c Client) EnsureWorkspace() (bool, error) {
 
 // OpenTicketTab focuses the configured workspace and opens or focuses a ticket tab.
 // When a new tab is created and Claude integration is enabled, runs the ticket prompt.
-func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
+// todoSession is injected as MHTODO_SESSION and used for Claude -r / -n; Herdr tab
+// labels remain shortID-title and are not renamed when todoSession becomes a UUID.
+func (c Client) OpenTicketTab(taskID, shortID, title, cwd, todoSession string) error {
 	if !c.Herdr.Enabled || !c.HerdrFound() {
 		return fmt.Errorf("herdr integration is not available")
 	}
@@ -142,6 +145,11 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 		}
 	}
 
+	session := strings.TrimSpace(todoSession)
+	if session == "" {
+		session = core.DefaultTodoSession(shortID, title)
+	}
+
 	tabLabel := ticketTabLabel(taskID, shortID, title)
 	tab, found, err := c.findTabForTicket(ws.WorkspaceID, taskID, shortID, tabLabel)
 	if err != nil {
@@ -151,7 +159,7 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 		if err := c.focusWorkspaceTab(ws.WorkspaceID, tab.TabID); err != nil {
 			return err
 		}
-		if err := c.maybeStartClaude(ws.WorkspaceID, tab.TabID, shortID); err != nil {
+		if err := c.maybeStartClaude(ws.WorkspaceID, tab.TabID, shortID, title, session); err != nil {
 			return err
 		}
 		return c.presentHerdrUI()
@@ -160,7 +168,7 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 	if err := c.run("workspace", "focus", ws.WorkspaceID); err != nil {
 		return err
 	}
-	paneID, tabID, err := c.createTab(ws.WorkspaceID, tabLabel, cwd)
+	paneID, tabID, err := c.createTab(ws.WorkspaceID, tabLabel, cwd, session)
 	if err != nil {
 		return err
 	}
@@ -169,7 +177,7 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd string) error {
 		return err
 	}
 
-	if err := c.maybeStartClaudePane(paneID, shortID); err != nil {
+	if err := c.maybeStartClaudePane(paneID, shortID, title, session); err != nil {
 		return err
 	}
 	return c.presentHerdrUI()
@@ -324,7 +332,7 @@ func (c Client) findTabForTicket(workspaceID, taskID, shortID, label string) (he
 	return herdrTab{}, false, nil
 }
 
-func (c Client) createTab(workspaceID, label, cwd string) (paneID, tabID string, err error) {
+func (c Client) createTab(workspaceID, label, cwd, todoSession string) (paneID, tabID string, err error) {
 	args := []string{
 		"tab", "create",
 		"--workspace", workspaceID,
@@ -332,7 +340,7 @@ func (c Client) createTab(workspaceID, label, cwd string) (paneID, tabID string,
 		"--label", label,
 		"--focus",
 	}
-	for _, env := range claudeTabEnv(c.Claude) {
+	for _, env := range claudeTabEnv(c.Claude, todoSession) {
 		args = append(args, "--env", env)
 	}
 	raw, err := c.runOutput(args...)
@@ -353,20 +361,23 @@ func (c Client) createTab(workspaceID, label, cwd string) (paneID, tabID string,
 	return created.RootPane.PaneID, created.Tab.TabID, nil
 }
 
-func claudeTabEnv(claude settings.ClaudeConfig) []string {
+func claudeTabEnv(claude settings.ClaudeConfig, todoSession string) []string {
 	env, _ := ParseEnvStart(claude.EnvStart)
+	if s := strings.TrimSpace(todoSession); s != "" {
+		env = append(env, "MHTODO_SESSION="+s)
+	}
 	return env
 }
 
-func (c Client) maybeStartClaude(workspaceID, tabID, shortID string) error {
+func (c Client) maybeStartClaude(workspaceID, tabID, shortID, title, todoSession string) error {
 	paneID, err := c.findTabRootPane(workspaceID, tabID)
 	if err != nil {
 		return err
 	}
-	return c.maybeStartClaudePane(paneID, shortID)
+	return c.maybeStartClaudePane(paneID, shortID, title, todoSession)
 }
 
-func (c Client) maybeStartClaudePane(paneID, shortID string) error {
+func (c Client) maybeStartClaudePane(paneID, shortID, title, todoSession string) error {
 	if !c.Claude.Enabled || !c.ClaudeFound() || paneID == "" {
 		return nil
 	}
@@ -378,7 +389,7 @@ func (c Client) maybeStartClaudePane(paneID, shortID string) error {
 		return nil
 	}
 	time.Sleep(200 * time.Millisecond)
-	if err := c.runClaudeInPane(paneID, c.ticketPrompt(shortID)); err != nil {
+	if err := c.runClaudeInPane(paneID, c.ticketPrompt(shortID), shortID, title, todoSession); err != nil {
 		return fmt.Errorf("claude in herdr tab: %w", err)
 	}
 	return nil
@@ -461,11 +472,28 @@ func processIsClaude(proc herdrForegroundProcess, claudeBinary string) bool {
 	return false
 }
 
-func (c Client) runClaudeInPane(paneID, prompt string) error {
+func (c Client) runClaudeInPane(paneID, prompt, shortID, title, todoSession string) error {
 	_, prefixArgs := ParseEnvStart(c.Claude.EnvStart)
-	args := append([]string{"pane", "run", paneID}, prefixArgs...)
-	args = append(args, c.Claude.Binary, ShellDoubleQuote(prompt))
-	return c.run(args...)
+	bin := strings.TrimSpace(c.Claude.Binary)
+	if bin == "" {
+		bin = "claude"
+	}
+	quotedPrompt := ShellDoubleQuote(prompt)
+	session := strings.TrimSpace(todoSession)
+	displayName := session
+	if core.LooksLikeSessionUUID(session) || session == "" {
+		displayName = core.DefaultTodoSession(shortID, title)
+	}
+
+	base := append([]string{"pane", "run", paneID}, prefixArgs...)
+	if session != "" {
+		resumeArgs := append(append([]string{}, base...), bin, "--resume", session, quotedPrompt)
+		if err := c.run(resumeArgs...); err == nil {
+			return nil
+		}
+	}
+	nameArgs := append(append([]string{}, base...), bin, "--name", displayName, quotedPrompt)
+	return c.run(nameArgs...)
 }
 
 func (c Client) run(args ...string) error {

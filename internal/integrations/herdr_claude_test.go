@@ -15,6 +15,23 @@ func TestMaybeCloseTicketTabOnDoneDisabled(t *testing.T) {
 	c.MaybeCloseTicketTabOnDone("task-id", "abcd1234", "Title") // must not panic or call herdr
 }
 
+func TestClaudeTabEnvIncludesSession(t *testing.T) {
+	t.Parallel()
+	env := claudeTabEnv(settings.ClaudeConfig{
+		IntegrationConfig: settings.IntegrationConfig{EnvStart: "FOO=bar"},
+	}, "81abc903-title")
+	want := map[string]bool{"FOO=bar": true, "MHTODO_SESSION=81abc903-title": true}
+	for _, e := range env {
+		if !want[e] {
+			t.Fatalf("unexpected env %q in %#v", e, env)
+		}
+		delete(want, e)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing env keys %#v", want)
+	}
+}
+
 func TestProcessIsClaude(t *testing.T) {
 	t.Parallel()
 	claudeProc := herdrForegroundProcess{
@@ -29,3 +46,4 @@ func TestProcessIsClaude(t *testing.T) {
 		t.Fatal("bash should not match claude")
 	}
 }
+

@@ -2,6 +2,7 @@
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { openExternalUrl } from '../lib/openExternal'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
   import TemplatePicker from './TemplatePicker.svelte'
@@ -37,6 +38,7 @@
   let status = $state<Status>('pending')
   let cwd = $state('')
   let slackThread = $state('')
+  let todoSession = $state('')
   let humanOnly = $state(false)
   let includeInReport = $state(true)
 
@@ -168,7 +170,8 @@
         cwd: cwd.trim() || undefined,
         humanOnly,
         includeInReport,
-        slackThread: slackThread.trim() || undefined
+        slackThread: slackThread.trim() || undefined,
+        todoSession: todoSession.trim() || undefined
       })
       resetForm()
       onClose()
@@ -192,7 +195,8 @@
         cwd: cwd.trim() || undefined,
         humanOnly,
         includeInReport,
-        slackThread: slackThread.trim() || undefined
+        slackThread: slackThread.trim() || undefined,
+        todoSession: todoSession.trim() || undefined
       })
       await api.openHerdrTicket(task.id)
       resetForm()
@@ -210,6 +214,7 @@
     status = 'pending'
     cwd = ''
     slackThread = ''
+    todoSession = ''
     humanOnly = false
     includeInReport = true
     appliedPrefix = ''
@@ -366,6 +371,15 @@
         </div>
 
         <label class="block">
+          <span class="micro mb-1.5">Todo session</span>
+          <input
+            bind:value={todoSession}
+            placeholder="Optional — defaults to shortid-slugified-title"
+            class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          />
+        </label>
+
+        <label class="block">
           <span class="micro mb-1.5">Slack thread</span>
           <input
             bind:value={slackThread}
@@ -375,7 +389,16 @@
           {#if slackThread.trim()}
             <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
               Linked Slack thread:
-              <a href={slackThread.trim()} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{slackThread.trim()}</a>
+              <a
+                href={slackThread.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-accent hover:underline"
+                onclick={(e) => {
+                  e.preventDefault()
+                  void openExternalUrl(slackThread.trim())
+                }}>{slackThread.trim()}</a
+              >
             </p>
           {/if}
         </label>

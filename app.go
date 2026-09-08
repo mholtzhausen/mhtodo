@@ -464,7 +464,21 @@ func (a *App) OpenHerdrTicket(ref string) error {
 		return fmt.Errorf("task is not eligible for Herdr (must not be human-only)")
 	}
 	shortID := core.ShortID(t.ID)
-	return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd)
+	return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, t.TodoSession)
+}
+
+// OpenZedTicket opens Zed at the task cwd with MHTODO_SESSION set from todo_session.
+func (a *App) OpenZedTicket(ref string) error {
+	s, err := settings.Load(a.repo)
+	if err != nil {
+		return err
+	}
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return err
+	}
+	client := integrations.ZedClient{Zed: s.Zed}
+	return client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, t.TodoSession)
 }
 
 // emitChanged is the single refresh path for the frontend: every local

@@ -65,13 +65,14 @@ type HerdrConfig struct {
 
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd              string       `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly        bool         `json:"default_human_only" yaml:"default_human_only"`
-	DefaultIncludeInReport  bool         `json:"default_include_in_report" yaml:"default_include_in_report"`
-	ArchiveDoneSubtasks     bool         `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
-	StartHidden             bool         `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
-	Claude                  ClaudeConfig `json:"claude" yaml:"claude"`
-	Herdr                   HerdrConfig  `json:"herdr" yaml:"herdr"`
+	DefaultCwd              string             `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly        bool               `json:"default_human_only" yaml:"default_human_only"`
+	DefaultIncludeInReport  bool               `json:"default_include_in_report" yaml:"default_include_in_report"`
+	ArchiveDoneSubtasks     bool               `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden             bool               `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	Claude                  ClaudeConfig       `json:"claude" yaml:"claude"`
+	Herdr                   HerdrConfig        `json:"herdr" yaml:"herdr"`
+	Zed                     IntegrationConfig  `json:"zed" yaml:"zed"`
 }
 
 type claudeFile struct {
@@ -87,7 +88,7 @@ type claudeFile struct {
 type integrationFile struct {
 	Enabled  bool   `yaml:"enabled"`
 	Binary   string `yaml:"binary"`
-	EnvStart string `yaml:"env_start"`
+	EnvStart string `yaml:"env_start,omitempty"`
 	UserSet  bool   `yaml:"user_set,omitempty"`
 }
 
@@ -107,6 +108,7 @@ type configFile struct {
 	StartHidden            bool       `yaml:"start_hidden"`
 	Claude                 claudeFile `yaml:"claude"`
 	Herdr                  herdrFile  `yaml:"herdr"`
+	Zed                    integrationFile `yaml:"zed"`
 }
 
 // Default returns factory defaults for a fresh install.
@@ -120,6 +122,7 @@ func defaultConfigFile() configFile {
 		StartHidden: defaultLaunchHidden(),
 		Claude:      claudeFile{Binary: "claude", RequireCwd: &requireCwd},
 		Herdr:       herdrFile{Binary: "herdr"},
+		Zed:         integrationFile{Binary: "zed"},
 	}
 }
 
@@ -177,6 +180,7 @@ func Save(s GUISettings) error {
 	applyGUI(&cf, s)
 	cf.Claude.UserSet = true
 	cf.Herdr.UserSet = true
+	cf.Zed.UserSet = true
 	return writeConfigFile(path, cf)
 }
 
@@ -202,6 +206,16 @@ func autodetectIntegrations(cf *configFile) bool {
 			}
 		}
 	}
+	if !cf.Zed.UserSet {
+		if p, ok := resolveBinary("zed"); ok {
+			p = fullBinaryPath(p)
+			if cf.Zed.Binary != p || !cf.Zed.Enabled {
+				cf.Zed.Binary = p
+				cf.Zed.Enabled = true
+				changed = true
+			}
+		}
+	}
 	return changed
 }
 
@@ -214,6 +228,10 @@ func expandIntegrationBinaries(cf *configFile) bool {
 	}
 	if p := fullBinaryPath(cf.Herdr.Binary); p != cf.Herdr.Binary {
 		cf.Herdr.Binary = p
+		changed = true
+	}
+	if p := fullBinaryPath(cf.Zed.Binary); p != cf.Zed.Binary {
+		cf.Zed.Binary = p
 		changed = true
 	}
 	return changed
@@ -348,6 +366,9 @@ func normalizeConfigFile(cf *configFile) {
 	if cf.Herdr.Binary == "" {
 		cf.Herdr.Binary = "herdr"
 	}
+	if cf.Zed.Binary == "" {
+		cf.Zed.Binary = "zed"
+	}
 	stripStoredIntegrationDefaults(cf)
 	expandIntegrationBinaries(cf)
 }
@@ -390,6 +411,11 @@ func toGUI(cf configFile) GUISettings {
 			EnvStart:  cf.Herdr.EnvStart,
 			SpaceName: cf.Herdr.SpaceName,
 		},
+		Zed: IntegrationConfig{
+			Enabled:  cf.Zed.Enabled,
+			Binary:   cf.Zed.Binary,
+			EnvStart: cf.Zed.EnvStart,
+		},
 	}
 }
 
@@ -411,6 +437,9 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.Herdr.Binary = s.Herdr.Binary
 	cf.Herdr.EnvStart = s.Herdr.EnvStart
 	cf.Herdr.SpaceName = s.Herdr.SpaceName
+	cf.Zed.Enabled = s.Zed.Enabled
+	cf.Zed.Binary = s.Zed.Binary
+	cf.Zed.EnvStart = s.Zed.EnvStart
 	normalizeConfigFile(cf)
 }
 
@@ -427,6 +456,7 @@ func migrateFromMeta(ctx context.Context, repo *store.TaskRepo) (configFile, boo
 	applyGUI(&cf, legacy)
 	cf.Claude.UserSet = claudeIntegrationConfigured(legacy.Claude, "claude")
 	cf.Herdr.UserSet = herdrIntegrationConfigured(legacy.Herdr, "herdr")
+	cf.Zed.UserSet = integrationConfigured(legacy.Zed, "zed")
 	return cf, true
 }
 
