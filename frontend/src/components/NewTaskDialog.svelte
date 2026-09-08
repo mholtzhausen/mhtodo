@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
-  import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { claudeBackendReady, claudeIconVisible } from '../lib/claudeIntegration'
   import { openExternalUrl } from '../lib/openExternal'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
@@ -63,12 +63,7 @@
   )
 
   const canShowStartClaude = $derived(
-    !!guiSettings &&
-      showClaude &&
-      guiSettings.herdr.enabled &&
-      guiSettings.claude.enabled &&
-      herdrActive &&
-      claudeActive
+    !!guiSettings && showClaude && herdrActive && claudeActive
   )
 
   async function refreshIntegrationStatus() {
@@ -82,12 +77,9 @@
       if (!claudeIconVisible({ cwd, human_only: humanOnly, status: 'pending' }, settings)) {
         return
       }
-      if (settings.herdr.enabled) {
-        herdrActive = await api.checkBinary(settings.herdr.binary)
-      }
-      if (settings.claude.enabled) {
-        claudeActive = await api.checkBinary(settings.claude.binary)
-      }
+      const ready = await claudeBackendReady(settings, (p) => api.checkBinary(p))
+      claudeActive = ready.claude
+      herdrActive = ready.backend
     } catch {
       herdrActive = false
       claudeActive = false
@@ -440,7 +432,7 @@
             type="button"
             onclick={submitAndStart}
             disabled={!canStartWithClaude}
-            title="Create task and start Claude in Herdr"
+            title="Create task and start Claude"
             class="flex items-center gap-1.5 rounded border border-[#d97757]/40 bg-[#d97757]/10 px-3 py-1.5 text-sm font-medium text-[#e88a6a] shadow-sm transition-colors hover:bg-[#d97757]/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <svg

@@ -20,7 +20,7 @@ func (c Client) presentHerdrUI() error {
 	if !attach {
 		return nil
 	}
-	if err := launchInTerminal(c.herdrCommandLine("session", "attach", "default")); err != nil {
+	if _, err := launchInTerminal(c.herdrCommandLine("session", "attach", "default")); err != nil {
 		return fmt.Errorf("open terminal for herdr: %w", err)
 	}
 	time.Sleep(300 * time.Millisecond)

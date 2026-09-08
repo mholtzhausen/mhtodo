@@ -140,7 +140,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "human_only": false,
   "include_in_report": true,
   "slack_thread": "",
-  "todo_session": "a6b7c-ship-mhtodo-v0-1"
+  "todo_session": "a6b7c-ship-mhtodo-v0-1",
+  "terminal_pid": 0
 }
 ```
 
@@ -161,9 +162,23 @@ Activity entry:
 `parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
 (lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
 directory. `todo_session` is the Claude/Zed/shell session identity (auto-seeded to `{short8}-{slugified-title}`
-on create — no spaces; update with `--session` after Claude `/new` or `/clear`). `human_only` marks a task the
+on create — no spaces; update with `--session` after Claude `/new` or `/clear`). `terminal_pid` is the OS
+PID of an mhtodo-managed Claude terminal when Claude spawn mode is `terminal` (0 when unused). `human_only` marks a task the
 user handles themselves — agents must not adopt or update such tasks; default `list` hides them
 unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
+
+### Claude spawn (Settings → Integrations)
+
+Claude sessions open via a **spawn** mode in config (`~/.config/mhtodo/config.yml`):
+
+| Spawn | Behavior |
+|-------|----------|
+| `herdr` | Open/focus a Herdr workspace tab and run Claude in the pane (default when Herdr + Claude are on PATH) |
+| `terminal` | Open Claude in a terminal emulator; store `terminal_pid` on the task and focus that process on reopen |
+| `disabled` | Hide Claude actions |
+
+Terminal mode uses an optional preferred emulator binary (empty = auto-pick). When a task moves to done and
+“Close session when done” is enabled, Herdr closes the tab; Terminal kills the managed process.
 
 ### Agent usage examples
 

@@ -83,8 +83,9 @@ type herdrTabCreated struct {
 
 // Client runs herdr CLI commands using integration settings.
 type Client struct {
-	Herdr  settings.HerdrConfig
-	Claude settings.ClaudeConfig
+	Herdr    settings.HerdrConfig
+	Claude   settings.ClaudeConfig
+	Terminal settings.TerminalConfig
 }
 
 func (c Client) HerdrFound() bool {
@@ -181,15 +182,6 @@ func (c Client) OpenTicketTab(taskID, shortID, title, cwd, todoSession string) e
 		return err
 	}
 	return c.presentHerdrUI()
-}
-
-// MaybeCloseTicketTabOnDone closes the Herdr tab for a task when Claude
-// close_tab_on_done is enabled. Herdr/tab errors are ignored (best effort).
-func (c Client) MaybeCloseTicketTabOnDone(taskID, shortID, title string) {
-	if !c.Claude.CloseTabOnDone || !c.Herdr.Enabled || !c.HerdrFound() {
-		return
-	}
-	_ = c.CloseTicketTab(taskID, shortID, title)
 }
 
 // CloseTicketTab closes the Herdr tab matching a ticket when one exists.

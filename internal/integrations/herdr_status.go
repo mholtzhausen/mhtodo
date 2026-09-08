@@ -93,7 +93,7 @@ func (c Client) ensureHerdrSession() error {
 	if running {
 		return nil
 	}
-	if err := launchInTerminal(c.herdrCommandLine()); err != nil {
+	if _, err := launchInTerminal(c.herdrCommandLine()); err != nil {
 		return fmt.Errorf("start herdr: %w", err)
 	}
 	return c.waitForServer(12 * time.Second)

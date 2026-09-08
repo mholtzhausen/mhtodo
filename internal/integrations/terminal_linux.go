@@ -9,13 +9,19 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // launchInTerminal opens a new terminal emulator running commandLine via bash -lc.
-func launchInTerminal(commandLine string) error {
+func launchInTerminal(commandLine string) (int, error) {
+	return launchInTerminalPreferred("", commandLine)
+}
+
+// launchInTerminalPreferred prefers preferredBinary when set and found on PATH.
+func launchInTerminalPreferred(preferredBinary, commandLine string) (int, error) {
 	commandLine = strings.TrimSpace(commandLine)
 	if commandLine == "" {
-		return errors.New("empty command")
+		return 0, errors.New("empty command")
 	}
 	shellCmd := "exec " + commandLine
 
@@ -35,6 +41,21 @@ func launchInTerminal(commandLine string) error {
 		{"xterm", []string{"-e", "bash", "-lc", shellCmd}},
 	}
 
+	if pref := strings.TrimSpace(preferredBinary); pref != "" {
+		base := filepathBase(pref)
+		prefArgs := terminalArgsFor(base, shellCmd)
+		// Try preferred first (by path or basename).
+		ordered := make([]launcher, 0, len(launchers)+1)
+		ordered = append(ordered, launcher{name: pref, args: prefArgs})
+		for _, l := range launchers {
+			if l.name == base || l.name == pref {
+				continue
+			}
+			ordered = append(ordered, l)
+		}
+		launchers = ordered
+	}
+
 	var lastErr error
 	for _, l := range launchers {
 		path, err := exec.LookPath(l.name)
@@ -50,26 +71,51 @@ func launchInTerminal(commandLine string) error {
 			lastErr = err
 			continue
 		}
-		return nil
+		pid := 0
+		if cmd.Process != nil {
+			pid = cmd.Process.Pid
+		}
+		// Detach: do not wait; release process so we do not leave a zombie on exit.
+		go func() { _ = cmd.Wait() }()
+		return pid, nil
 	}
 	if lastErr != nil {
-		return lastErr
+		return 0, lastErr
 	}
-	return errors.New("no terminal emulator found on PATH")
+	return 0, errors.New("no terminal emulator found on PATH")
+}
+
+func terminalArgsFor(name, shellCmd string) []string {
+	switch name {
+	case "gnome-terminal", "kgx":
+		return []string{"--", "bash", "-lc", shellCmd}
+	case "konsole", "xfce4-terminal", "xterm":
+		return []string{"-e", "bash", "-lc", shellCmd}
+	case "alacritty":
+		return []string{"-e", "bash", "-lc", shellCmd}
+	case "wezterm":
+		return []string{"start", "--", "bash", "-lc", shellCmd}
+	case "xdg-terminal-exec", "kitty":
+		return []string{"bash", "-lc", shellCmd}
+	default:
+		// Generic: many emulators accept -e.
+		return []string{"-e", "bash", "-lc", shellCmd}
+	}
+}
+
+func filepathBase(path string) string {
+	path = strings.TrimSpace(path)
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 // activateHerdrWindow raises the terminal emulator hosting the Herdr TUI.
 func activateHerdrWindow() error {
 	if pid, ok := findHerdrTUIPID(); ok {
-		for walk := pid; walk > 1; {
-			if err := activateWindowForPID(walk); err == nil {
-				return nil
-			}
-			parent, err := processParentPID(walk)
-			if err != nil || parent <= 1 || parent == walk {
-				break
-			}
-			walk = parent
+		if err := activateWindowForPIDWalk(pid); err == nil {
+			return nil
 		}
 	}
 	if err := activateViaWMCtrl(); err == nil {
@@ -176,4 +222,27 @@ func processParentPID(pid int) (int, error) {
 		return strconv.Atoi(fields[1])
 	}
 	return 0, fmt.Errorf("PPid not found for pid %d", pid)
+}
+
+func processSignalZero(p *os.Process) bool {
+	if p == nil {
+		return false
+	}
+	err := p.Signal(syscall.Signal(0))
+	return err == nil
+}
+
+func killProcessBestEffort(pid int) error {
+	if pid <= 0 {
+		return nil
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	// Try process group first (negative PID), then the process itself.
+	if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil {
+		_ = p.Signal(syscall.SIGTERM)
+	}
+	return nil
 }

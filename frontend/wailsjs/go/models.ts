@@ -151,6 +151,7 @@ export namespace core {
 	    include_in_report: boolean;
 	    slack_thread: string;
 	    todo_session: string;
+	    terminal_pid: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -175,6 +176,7 @@ export namespace core {
 	        this.include_in_report = source["include_in_report"];
 	        this.slack_thread = source["slack_thread"];
 	        this.todo_session = source["todo_session"];
+	        this.terminal_pid = source["terminal_pid"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -329,6 +331,7 @@ export namespace settings {
 	    enabled: boolean;
 	    binary: string;
 	    env_start: string;
+	    spawn: string;
 	    ticket_prompt: string;
 	    close_tab_on_done: boolean;
 	    require_cwd: boolean;
@@ -342,6 +345,7 @@ export namespace settings {
 	        this.enabled = source["enabled"];
 	        this.binary = source["binary"];
 	        this.env_start = source["env_start"];
+	        this.spawn = source["spawn"];
 	        this.ticket_prompt = source["ticket_prompt"];
 	        this.close_tab_on_done = source["close_tab_on_done"];
 	        this.require_cwd = source["require_cwd"];
@@ -359,6 +363,20 @@ export namespace settings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.enabled = source["enabled"];
+	        this.binary = source["binary"];
+	        this.env_start = source["env_start"];
+	    }
+	}
+	export class TerminalConfig {
+	    binary: string;
+	    env_start: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TerminalConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.binary = source["binary"];
 	        this.env_start = source["env_start"];
 	    }
@@ -389,6 +407,7 @@ export namespace settings {
 	    start_hidden: boolean;
 	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
+	    terminal: TerminalConfig;
 	    zed: IntegrationConfig;
 	
 	    static createFrom(source: any = {}) {
@@ -404,6 +423,7 @@ export namespace settings {
 	        this.start_hidden = source["start_hidden"];
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
+	        this.terminal = this.convertValues(source["terminal"], TerminalConfig);
 	        this.zed = this.convertValues(source["zed"], IntegrationConfig);
 	    }
 	
@@ -425,6 +445,7 @@ export namespace settings {
 		    return a;
 		}
 	}
+	
 	
 
 }

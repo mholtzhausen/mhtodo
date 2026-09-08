@@ -26,7 +26,7 @@ func runSetStatus(cmd *cobra.Command, ref string, st core.Status) error {
 		return mapError(err)
 	}
 	if perr == nil {
-		maybeCloseHerdrTabOnDone(prev.Status, t)
+		maybeCloseHerdrTabOnDone(svc, prev.Status, t)
 	}
 	return o.printTask(t)
 }
@@ -78,7 +78,7 @@ func newDoneCmd() *cobra.Command {
 				NotifyDone(t.ID, t.Title)
 			}
 			if perr == nil {
-				maybeCloseHerdrTabOnDone(prev.Status, t)
+				maybeCloseHerdrTabOnDone(svc, prev.Status, t)
 			}
 			return o.printTask(t)
 		},

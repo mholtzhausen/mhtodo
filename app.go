@@ -394,7 +394,7 @@ func (a *App) herdrClient() (integrations.Client, error) {
 	if err != nil {
 		return integrations.Client{}, err
 	}
-	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude}, nil
+	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude, Terminal: s.Terminal}, nil
 }
 
 func (a *App) maybeCloseHerdrTabOnDone(t core.Task) {
@@ -402,7 +402,11 @@ func (a *App) maybeCloseHerdrTabOnDone(t core.Task) {
 	if err != nil {
 		return
 	}
-	client.MaybeCloseTicketTabOnDone(t.ID, core.ShortID(t.ID), t.Title)
+	client.MaybeCloseSessionOnDone(t.ID, core.ShortID(t.ID), t.Title, t.TerminalPID, func() {
+		if _, err := a.svc.SetTerminalPID(a.ctx, t.ID, 0); err == nil {
+			a.emitChanged(t.ID, "edit")
+		}
+	})
 }
 
 // EnsureHerdrReady ensures the configured Herdr workspace exists when Herdr
@@ -446,10 +450,10 @@ func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskSta
 	return integrations.HerdrTaskStatus{Ready: ready}, nil
 }
 
-// OpenHerdrTicket opens or focuses a Herdr tab for the task and optionally
-// starts Claude with the configured ticket prompt on a new tab.
+// OpenHerdrTicket opens or focuses a Claude session for the task (Herdr tab or
+// managed terminal), depending on Claude spawn mode.
 func (a *App) OpenHerdrTicket(ref string) error {
-	client, err := a.herdrClient()
+	s, err := settings.Load(a.repo)
 	if err != nil {
 		return err
 	}
@@ -457,14 +461,33 @@ func (a *App) OpenHerdrTicket(ref string) error {
 	if err != nil {
 		return err
 	}
-	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, client.Claude.RequireCwd) {
-		if client.Claude.RequireCwd {
-			return fmt.Errorf("task is not eligible for Herdr (needs cwd and must not be human-only)")
+	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, s.Claude.RequireCwd) {
+		if s.Claude.RequireCwd {
+			return fmt.Errorf("task is not eligible for Claude (needs cwd and must not be human-only)")
 		}
-		return fmt.Errorf("task is not eligible for Herdr (must not be human-only)")
+		return fmt.Errorf("task is not eligible for Claude (must not be human-only)")
 	}
 	shortID := core.ShortID(t.ID)
-	return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, t.TodoSession)
+	client := integrations.Client{Herdr: s.Herdr, Claude: s.Claude, Terminal: s.Terminal}
+	spawn := settings.NormalizeSpawn(s.Claude.Spawn)
+	switch spawn {
+	case settings.SpawnHerdr:
+		return client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, t.TodoSession)
+	case settings.SpawnTerminal:
+		pid, err := client.OpenTerminalSession(t.Cwd, shortID, t.Title, t.TodoSession, t.TerminalPID)
+		if err != nil {
+			return err
+		}
+		if pid != t.TerminalPID {
+			if _, err := a.svc.SetTerminalPID(a.ctx, t.ID, pid); err != nil {
+				return err
+			}
+			a.emitChanged(t.ID, "edit")
+		}
+		return nil
+	default:
+		return fmt.Errorf("Claude spawn is disabled")
+	}
 }
 
 // OpenZedTicket opens Zed at the task cwd with MHTODO_SESSION set from todo_session.

@@ -246,6 +246,26 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	return t, nil
 }
 
+// SetTerminalPID stores the OS PID of a mhtodo-managed Claude terminal for the task.
+// pid 0 clears the association. Does not bump updated_at (ephemeral process bookkeeping).
+func (s *Service) SetTerminalPID(ctx context.Context, ref string, pid int) (Task, error) {
+	if pid < 0 {
+		pid = 0
+	}
+	t, err := s.Get(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.TerminalPID == pid {
+		return t, nil
+	}
+	t.TerminalPID = pid
+	if err := s.repo.Update(ctx, t); err != nil {
+		return Task{}, err
+	}
+	return t, nil
+}
+
 // SetStatus moves a task to a new status and applies the transition effects:
 //
 //	any → done      progress = 100, completed_at = now

@@ -147,6 +147,9 @@ func (o opts) printTask(t core.Task) error {
 		if t.TodoSession != "" {
 			fmt.Fprintf(w, "Session    \t%s\n", t.TodoSession)
 		}
+		if t.TerminalPID > 0 {
+			fmt.Fprintf(w, "Terminal PID\t%d\n", t.TerminalPID)
+		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)
 		if t.ParentID != nil {

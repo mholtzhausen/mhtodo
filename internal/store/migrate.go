@@ -28,6 +28,7 @@ var migrations = []migration{
 	{version: 9, up: schemaV9},
 	{version: 10, up: schemaV10},
 	{version: 11, fn: backfillEmptyTodoSessions},
+	{version: 12, fn: addTerminalPIDColumn},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -135,6 +136,35 @@ CREATE TABLE task_templates (
 const schemaV10 = `
 ALTER TABLE tasks ADD COLUMN todo_session TEXT NOT NULL DEFAULT '';
 `
+
+// v12: OS PID of mhtodo-managed Claude terminal session (spawn=terminal).
+// Idempotent: skip when the column already exists (test re-opens after version rollbacks).
+func addTerminalPIDColumn(tx *sql.Tx) error {
+	rows, err := tx.Query(`PRAGMA table_info(tasks)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "terminal_pid" {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN terminal_pid INTEGER NOT NULL DEFAULT 0`); err != nil {
+		return fmt.Errorf("add terminal_pid: %w", err)
+	}
+	return nil
+}
 
 // backfillEmptyTodoSessions seeds todo_session for rows still empty, and rewrites
 // auto-seeded legacy values that contained spaces ("{shortID} - {title}") to the

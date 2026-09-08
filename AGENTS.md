@@ -47,7 +47,9 @@ running binary (from-source bootstrap remains `make service-install`).
 integration prompts.
 Per-task `todo_session` (migration v10–v11) seeds to a space-free `{short8}-{slug}` and drives
 Claude `--resume`/`--name`, Zed `MHTODO_SESSION`, and `claude.todo`. Empty or legacy spaced
-auto-seeds are backfilled on open. Settings include Claude, Herdr, and Zed integrations.
+auto-seeds are backfilled on open. Claude spawn mode in Settings is `herdr` | `terminal` | `disabled`
+(Herdr fields or terminal emulator fields show conditionally). Migration v12 adds `terminal_pid`
+for mhtodo-managed Claude terminals. Zed remains a separate integration.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to

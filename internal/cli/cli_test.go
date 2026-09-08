@@ -722,6 +722,7 @@ func TestAI(t *testing.T) {
 		"pending|wip|waiting|review|done",
 		"board|created|updated|status|progress|title",
 		"todo_session",
+		"terminal_pid",
 		"v9  Per-task todo_session",
 		"v7  Task-picker options show status",
 		"AskUserQuestion",

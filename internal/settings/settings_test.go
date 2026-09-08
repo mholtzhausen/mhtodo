@@ -21,6 +21,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.ArchiveDoneSubtasks = true
 	want.StartHidden = true
 	want.Claude.Enabled = true
+	want.Claude.Spawn = SpawnHerdr
 	want.Claude.Binary = "/usr/bin/claude"
 	want.Claude.EnvStart = "ANTHROPIC_API_KEY=..."
 	want.Claude.TicketPrompt = "read todo {{todo-hash}}"
@@ -28,6 +29,8 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.Herdr.Binary = "/usr/bin/herdr"
 	want.Herdr.EnvStart = "HERDR=1"
 	want.Herdr.SpaceName = "my-space"
+	want.Terminal.Binary = "/usr/bin/kitty"
+	want.Terminal.EnvStart = "TERM_PROG=1"
 	want.Zed.Enabled = false
 	want.Zed.Binary = "/usr/bin/zed"
 
@@ -72,6 +75,9 @@ func TestLoadMissingAutodetectsAndWritesConfig(t *testing.T) {
 	if !got.Claude.Enabled {
 		t.Error("expected claude enabled after autodetect")
 	}
+	if got.Claude.Spawn != SpawnTerminal {
+		t.Errorf("spawn = %q, want %q (claude without herdr)", got.Claude.Spawn, SpawnTerminal)
+	}
 	if got.Claude.Binary != claude {
 		t.Errorf("claude binary = %q, want %q", got.Claude.Binary, claude)
 	}
@@ -109,6 +115,7 @@ func TestAutodetectSkipsUserSetIntegrations(t *testing.T) {
 
 	s := Default()
 	s.Claude.Enabled = false
+	s.Claude.Spawn = SpawnDisabled
 	s.Claude.Binary = "disabled-by-user"
 	if err := Save(s); err != nil {
 		t.Fatal(err)
@@ -121,8 +128,60 @@ func TestAutodetectSkipsUserSetIntegrations(t *testing.T) {
 	if got.Claude.Enabled {
 		t.Error("user-set claude integration should not be auto-enabled")
 	}
+	if got.Claude.Spawn != SpawnDisabled {
+		t.Errorf("spawn = %q, want disabled", got.Claude.Spawn)
+	}
 	if got.Claude.Binary != "disabled-by-user" {
 		t.Errorf("binary = %q, want disabled-by-user", got.Claude.Binary)
+	}
+}
+
+func TestMigrateSpawnFromLegacyEnabledFlags(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	t.Setenv("MHTODO_CONFIG_PATH", path)
+	t.Setenv("PATH", t.TempDir()) // empty PATH — no autodetect
+
+	legacy := "claude:\n  enabled: true\n  binary: /usr/bin/claude\nherdr:\n  enabled: true\n  binary: /usr/bin/herdr\n"
+	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Claude.Spawn != SpawnHerdr {
+		t.Fatalf("spawn = %q, want herdr", got.Claude.Spawn)
+	}
+	if !got.Claude.Enabled || !got.Herdr.Enabled {
+		t.Fatalf("enabled flags: claude=%v herdr=%v", got.Claude.Enabled, got.Herdr.Enabled)
+	}
+
+	legacyTerm := "claude:\n  enabled: true\n  binary: /usr/bin/claude\n  user_set: true\nherdr:\n  enabled: false\n  binary: herdr\n  user_set: true\n"
+	if err := os.WriteFile(path, []byte(legacyTerm), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Claude.Spawn != SpawnTerminal {
+		t.Fatalf("spawn = %q, want terminal", got.Claude.Spawn)
+	}
+	if !got.Claude.Enabled || got.Herdr.Enabled {
+		t.Fatalf("enabled flags: claude=%v herdr=%v", got.Claude.Enabled, got.Herdr.Enabled)
+	}
+}
+
+func TestNormalizeSpawn(t *testing.T) {
+	t.Parallel()
+	if NormalizeSpawn("HERDR") != SpawnHerdr {
+		t.Fatal(NormalizeSpawn("HERDR"))
+	}
+	if NormalizeSpawn("terminal") != SpawnTerminal {
+		t.Fatal()
+	}
+	if NormalizeSpawn("") != SpawnDisabled {
+		t.Fatal()
 	}
 }
 

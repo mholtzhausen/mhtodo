@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
-  import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { claudeBackendReady, claudeIconVisible } from '../lib/claudeIntegration'
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import { openExternalUrl } from '../lib/openExternal'
   import StatusPicker from './StatusPicker.svelte'
@@ -100,12 +100,7 @@
   )
 
   const canOpenClaude = $derived(
-    !!guiSettings &&
-      showClaude &&
-      guiSettings.herdr.enabled &&
-      guiSettings.claude.enabled &&
-      herdrActive &&
-      claudeActive
+    !!guiSettings && showClaude && herdrActive && claudeActive
   )
 
   async function refreshHerdrStatus() {
@@ -117,12 +112,9 @@
       const settings = await api.getSettings()
       guiSettings = settings
       if (!claudeIconVisible({ ...task, cwd }, settings)) return
-      if (settings.herdr.enabled) {
-        herdrActive = await api.checkBinary(settings.herdr.binary)
-      }
-      if (settings.claude.enabled) {
-        claudeActive = await api.checkBinary(settings.claude.binary)
-      }
+      const ready = await claudeBackendReady(settings, (p) => api.checkBinary(p))
+      claudeActive = ready.claude
+      herdrActive = ready.backend
     } catch {
       herdrActive = false
       claudeActive = false
@@ -456,8 +448,8 @@
           type="button"
           onclick={openHerdrTicket}
           disabled={herdrOpening}
-          title={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
-          aria-label={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
+          title={claudeActive ? 'Open Claude session' : 'Open Claude'}
+          aria-label={claudeActive ? 'Open Claude session' : 'Open Claude'}
           class="rounded border border-line-soft bg-field/40 p-1 transition-colors hover:bg-white/5 disabled:opacity-40
             {claudeActive
             ? 'text-[#d97757] hover:text-[#e88a6a]'

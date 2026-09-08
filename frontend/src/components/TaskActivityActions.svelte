@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, errMsg } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
+  import { claudeSpawnEnabled } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
   import HumanIcon from './HumanIcon.svelte'
   import SlackIcon from './SlackIcon.svelte'
@@ -79,7 +80,7 @@
       try {
         const settings = await api.getSettings()
         guiSettings = settings
-        if (settings.claude.enabled && claudeIconVisible(task, settings)) {
+        if (claudeSpawnEnabled(settings) && claudeIconVisible(task, settings)) {
           claudeActive = await api.checkBinary(settings.claude.binary)
         }
         if (settings.zed.enabled && (task.cwd ?? '').trim()) {
@@ -286,8 +287,8 @@
       type="button"
       onclick={openClaude}
       disabled={openingClaude}
-      title={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
-      aria-label={claudeActive ? 'Open in Herdr with Claude' : 'Open in Herdr'}
+      title={claudeActive ? 'Open Claude session' : 'Open Claude'}
+      aria-label={claudeActive ? 'Open Claude session' : 'Open Claude'}
       class="{actionBtn}
         {claudeActive ? 'text-[#d97757] hover:text-[#e88a6a]' : 'text-ink-3 hover:text-accent-hi'}"
     >

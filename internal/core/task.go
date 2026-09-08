@@ -51,6 +51,7 @@ type Task struct {
 	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
 	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
 	TodoSession     string `json:"todo_session"`      // Claude/Zed/shell session identity (seeded to shortID - title)
+	TerminalPID     int    `json:"terminal_pid"`      // OS PID of mhtodo-managed Claude terminal (spawn=terminal); 0 = none
 }
 
 // SlackThreadNotice returns the agent-facing reminder when SlackThread is set.

@@ -27,6 +27,7 @@ export interface Task {
   include_in_report: boolean
   slack_thread: string
   todo_session: string
+  terminal_pid?: number
 }
 
 export interface Activity {
