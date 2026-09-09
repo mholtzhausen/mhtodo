@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.7.0
+## 2.7.0 (5960ff8)
 
 ### Features and Improvements
 - GUI themes (v0.6): SQLite `themes` table (migration v13) with categorized design tokens (colors, radii, spacing)
