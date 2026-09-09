@@ -4,7 +4,7 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|install|update|service`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|install|update|service|template`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
  `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
@@ -12,6 +12,8 @@
  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
  `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install.
  `mhtodo integration bash|zsh` installs a managed `claude.todo` shell helper for `$MHTODO_SESSION`.
+ `mhtodo template list|search|show|create|update|rm` manages task templates
+ (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.
 - **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
@@ -75,13 +77,12 @@ preset column is NULLable: `NULL` means "not part of this template" and the norm
 while an empty string or an explicit `false` is a real override. Authored in Settings → Task Templates
 (per-template sub-nav); applied from the template picker in the new-task dialog, the header split
 button, or the tray's *New Task from Template*; captured via *Save as template* from the new-task and
-task-detail headers. **GUI-only for now** — a deliberate, temporary break from the parity rule below.
-All rules live in `core.Service` (including `CreateFromTemplate`), so `mhtodo template …` and
-`add --template` are a thin later add. See [`.agent/plan/08-task-templates.md`](.agent/plan/08-task-templates.md).
+task-detail headers. CLI: `mhtodo template list|search|show|create|update|rm`
+(`search` supports `--mode fuzzy|regex` and `--cwd`) and `add --template REF`.
+See [`.agent/plan/08-task-templates.md`](.agent/plan/08-task-templates.md).
 
 **Out of scope (stretch):** cross-column insert index, sub-task reorder, list-view drag reorder,
-light theme, Windows/macOS support, tags/labels/projects, due dates/reminders,
-CLI surface for task templates.
+light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
 (when not in an input/textarea). Detail-pane description & feedback grow with content
@@ -101,8 +102,6 @@ search is debounced; Claude/Zed readiness is cached once per settings change (no
   automatically; plain `go build` must add `-tags "webkit2_41 production"` or the binary fails at runtime.
 - **Parity is structural:** CLI and GUI both call the same `internal/core.Service`; neither may contain
  business rules or SQL of its own. New capability = core method + CLI command + bound GUI method.
- (One tracked exception: task templates ship GUI-only in v0.5; the core methods exist, the CLI commands
- do not yet.)
 - **DB concurrency:** WAL mode + busy_timeout; single-statement transactions only (CLI and GUI run concurrently).
 - **Agent contract stability:** CLI JSON field names, flags, and exit codes are API — change deliberately and document in README.
 

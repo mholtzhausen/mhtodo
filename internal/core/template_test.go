@@ -284,3 +284,73 @@ func TestTemplateInputPointersAreCloned(t *testing.T) {
 		t.Fatalf("cwd = %q, want the value captured at create time", *tpl.Cwd)
 	}
 }
+
+func TestSearchTemplatesFuzzyRegexAndCwd(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	must := func(name string, in core.TemplateInput) {
+		t.Helper()
+		in.Name = name
+		if _, err := svc.CreateTemplate(ctx, in); err != nil {
+			t.Fatalf("CreateTemplate(%s): %v", name, err)
+		}
+	}
+	must("Event Logger", core.TemplateInput{Cwd: ptr("/home/me/events"), Description: ptr("parse feed")})
+	must("Deploy Prod", core.TemplateInput{Cwd: ptr("/home/me/deploy"), TitlePrefix: ptr("SHIP: ")})
+	must("No Cwd", core.TemplateInput{Description: ptr("misc")})
+
+	if _, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{}); !errors.Is(err, core.ErrTemplateSearchEmpty) {
+		t.Fatalf("empty filter = %v, want ErrTemplateSearchEmpty", err)
+	}
+
+	fuzzy, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{Query: "evnt log"})
+	if err != nil {
+		t.Fatalf("fuzzy: %v", err)
+	}
+	if len(fuzzy) != 1 || fuzzy[0].Name != "Event Logger" {
+		t.Fatalf("fuzzy = %+v, want Event Logger", fuzzy)
+	}
+
+	re, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{
+		Query: `^deploy`,
+		Mode:  core.TemplateSearchRegex,
+	})
+	if err != nil {
+		t.Fatalf("regex: %v", err)
+	}
+	if len(re) != 1 || re[0].Name != "Deploy Prod" {
+		t.Fatalf("regex = %+v, want Deploy Prod", re)
+	}
+
+	byCwd, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{Cwd: "/home/me/events/"})
+	if err != nil {
+		t.Fatalf("cwd: %v", err)
+	}
+	if len(byCwd) != 1 || byCwd[0].Name != "Event Logger" {
+		t.Fatalf("cwd = %+v, want Event Logger", byCwd)
+	}
+
+	both, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{
+		Query: "ship",
+		Mode:  core.TemplateSearchFuzzy,
+		Cwd:   "/home/me/deploy",
+	})
+	if err != nil || len(both) != 1 || both[0].Name != "Deploy Prod" {
+		t.Fatalf("query+cwd = %+v, %v", both, err)
+	}
+
+	none, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{Cwd: "/home/me/events", Query: "deploy"})
+	if err != nil || len(none) != 0 {
+		t.Fatalf("mismatch = %+v, %v", none, err)
+	}
+
+	var badMode *core.InvalidTemplateSearchModeError
+	if _, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{Query: "x", Mode: "glob"}); !errors.As(err, &badMode) {
+		t.Fatalf("bad mode = %v", err)
+	}
+	var badPat *core.InvalidTemplateSearchPatternError
+	if _, err := svc.SearchTemplates(ctx, core.TemplateSearchFilter{Query: "[", Mode: core.TemplateSearchRegex}); !errors.As(err, &badPat) {
+		t.Fatalf("bad pattern = %v", err)
+	}
+}

@@ -54,7 +54,7 @@ Authoritative for binary version `{{MHTODO_VERSION}}`. Re-read this section on
 every upgrade; commands and flags change between versions.
 
 ```
-mhtodo add TITLE [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--session S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
+mhtodo add TITLE [--template REF] [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--session S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
 mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--session S] [--slack-thread URL] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
@@ -64,6 +64,12 @@ mhtodo reorder ID [--before ID]
 mhtodo activity add ID [--activity S] [--comment S]       # at least one
 mhtodo activity list [--task ID ...] [--limit N]
 mhtodo activity rm ID --yes
+mhtodo template list
+mhtodo template search [QUERY] [--mode fuzzy|regex] [--cwd PATH]   # query and/or --cwd required
+mhtodo template show REF
+mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--human-only|--no-human-only] [--include-in-report|--no-include-in-report]
+mhtodo template update REF [--name S] [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--human-only|--no-human-only] [--include-in-report|--no-include-in-report] [--clear-…]
+mhtodo template rm REF --yes
 mhtodo rm ID --yes                                        # CASCADES to sub-tasks
 mhtodo archive [ID] | mhtodo unarchive ID
 mhtodo path
@@ -85,6 +91,13 @@ mhtodo service install|stop|start|restart|uninstall       # user systemd unit fo
 - `mhtodo list` excludes `done`, archived, and **human-only** tasks by default.
   Pass `--human-only` to include human-only rows (for the human's own review, not
   for agent task pickers).
+- **Task templates** are named presets (`title_prefix`, `description`, `status`, `cwd`,
+  `slack_thread`, `human_only`, `include_in_report`). Omitted fields stay unset
+  (creation falls back to normal defaults). `template update` is a patch; `--clear-*`
+  unsets a preset. `template search` defaults to `--mode fuzzy`; `--mode regex` is
+  case-insensitive. `--cwd` is an exact path match after cleaning.
+  `add --template REF` applies a template (title prefix + presets); any other
+  flags you pass override those presets.
 
 **Statuses:** `{{STATUS_ENUM}}`
 
@@ -283,6 +296,36 @@ Skip root registration entirely for conversational turns, one-line lookups, and
 work already covered by the session's open task.
 
 Immediately after adopting or registering, draft the step plan (§3.5).
+
+### 3.3a Task templates — probe by project cwd
+
+Before creating a project-shaped root task (or when the user asks for a template),
+check whether one already exists for this checkout:
+
+```bash
+mhtodo template search --cwd "$PWD" --json
+```
+
+- **One match** → create with it (`mhtodo add "…" --template "<name>" --json`), or
+  apply its presets yourself. Prefer the template's values over guessing.
+- **Several matches** → present them to the user (name + cwd + title prefix) and
+  let them pick — do not silently choose.
+- **None** → you may create a template when the presets are reusable for this
+  project (typical: `--cwd "$PWD"` plus a title prefix / description), after a
+  brief ask if the user did not already request one:
+
+```bash
+mhtodo template create "<short project label>" --cwd "$PWD" \
+  [--title-prefix "[<basename>] "] [--desc "<default goal>"] --json
+```
+
+Then register the ticket with `mhtodo add "…" --template "<name>" --json` (or
+ask first per §3.3). Explicit `add` flags override template presets.
+
+Use `mhtodo template search "<keywords>"` (default fuzzy) or
+`--mode regex` when looking up by name rather than path. `template list` /
+`template show REF` for browsing. Templates are presets for *new* tasks — they
+do not adopt or start work; §3.3 still governs ticket creation.
 
 ### 3.4 Activities — audit trail (not the live signal)
 

@@ -73,8 +73,31 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "reorder_status_mismatch", msg: err.Error()}
 		case errors.Is(err, core.ErrEmptyActivity):
 			return &errExit{code: ExitUsage, name: "empty_activity", msg: err.Error()}
+		case errors.Is(err, core.ErrTemplateNotFound):
+			return &errExit{code: ExitNotFound, name: "template_not_found", msg: err.Error()}
+		case errors.Is(err, core.ErrEmptyTemplateName):
+			return &errExit{code: ExitUsage, name: "empty_template_name", msg: err.Error()}
+		case errors.Is(err, core.ErrTemplateSearchEmpty):
+			return &errExit{code: ExitUsage, name: "usage", msg: err.Error()}
 		default:
-			return &errExit{code: ExitStorage, name: "storage", msg: err.Error()}
+			var (
+				dup  *core.DuplicateTemplateNameError
+				long *core.TemplateNameTooLongError
+				mode *core.InvalidTemplateSearchModeError
+				pat  *core.InvalidTemplateSearchPatternError
+			)
+			switch {
+			case errors.As(err, &dup):
+				return &errExit{code: ExitUsage, name: "duplicate_template_name", msg: err.Error()}
+			case errors.As(err, &long):
+				return &errExit{code: ExitUsage, name: "template_name_too_long", msg: err.Error()}
+			case errors.As(err, &mode):
+				return &errExit{code: ExitUsage, name: "invalid_search_mode", msg: err.Error()}
+			case errors.As(err, &pat):
+				return &errExit{code: ExitUsage, name: "invalid_search_pattern", msg: err.Error()}
+			default:
+				return &errExit{code: ExitStorage, name: "storage", msg: err.Error()}
+			}
 		}
 	}
 }
@@ -241,7 +264,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
-		newActivityCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
+		newActivityCmd(), newTemplateCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(), newIntegrationCmd(),
 	} {
 		root.AddCommand(c)

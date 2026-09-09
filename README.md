@@ -98,7 +98,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--session` optional Claude/Zed session (default `{short8}-{slugified-title}`, no spaces); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--session` optional Claude/Zed session (default `{short8}-{slugified-title}`, no spaces); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--session ""` / `--slack-thread ""` clear those fields |
@@ -118,6 +118,12 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `install` | `mhtodo install [--prefix DIR] [--service \| --no-service] [--integration bash\|zsh\|none]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service and `claude.todo` shell helper; flags skip prompts (non-TTY skips optionals unless flagged) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `service` | `mhtodo service install\|stop\|start\|restart\|uninstall` | manage the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `install` writes `ExecStart=<this binary> gui` and enables it; `uninstall` removes the unit (binary stays). From-source bootstrap remains `make service-install` |
+| `template list` | `mhtodo template list` | all templates, name order |
+| `template search` | `mhtodo template search [QUERY] [--mode fuzzy\|regex] [--cwd PATH]` | fuzzy (default) or regex over name/title_prefix/description/cwd; `--cwd` exact path match; query and/or `--cwd` required |
+| `template show` | `mhtodo template show REF` | one template by id or name |
+| `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
+| `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
+| `template rm` | `mhtodo template rm REF [--yes]` | non-TTY requires `--yes`; prints deleted id |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
 ### Canonical JSON object
@@ -237,7 +243,9 @@ status transitions → activity → delete) using only this CLI.
   icon in the new-task dialog, the right half of the header's **New task** split button, or the
   tray's *New Task from Template* — the picker filters with `/`, navigates with arrows, and shows
   chips for the fields each template presets. Save the current new-task form or an existing task as
-  a template from the save icon in either header. Templates are GUI-only today (no CLI commands).
+  a template from the save icon in either header. CLI: `mhtodo template
+  list|search|show|create|update|rm` and `add --template REF` (`search --cwd "$PWD"`
+  is the agent-friendly probe; `--mode fuzzy|regex` for text).
 - **Sub-tasks toggle:** header control (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
   When on, opening Claude or Zed for a task hides mhtodo to the tray so the activated
@@ -282,13 +290,12 @@ status transitions → activity → delete) using only this CLI.
 | `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
-| `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | — | task templates (v0.5): **GUI-only for now**; rules live in `core.Service`, update is full replace (nil clears a preset) |
+| `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | `template list\|search\|show\|create\|update\|rm`; `add --template` | task templates (v0.5); CLI `search` uses core `SearchTemplates` (fuzzy/regex + cwd); update is full replace in core (CLI patches then replace); `add --template` applies then lets changed flags override |
 
 After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
 watcher emits the same event for CLI-side writes. Template mutations emit `templates:changed`
 instead, so they do not trigger a task reload. New capability = core method + CLI command + bound
-method — never business logic in either frontend. Task templates are the one tracked exception: the
-core methods (including `CreateFromTemplate`) exist, but the CLI commands are deliberately deferred.
+method — never business logic in either frontend.
 
 ## Development notes
 

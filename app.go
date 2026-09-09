@@ -289,8 +289,8 @@ func (a *App) DeleteActivity(id string) (core.Activity, error) {
 
 // --- task templates (v0.5) ---------------------------------------------------
 //
-// Templates have no CLI surface yet; all rules live in core.Service so
-// `mhtodo template ...` is a thin later add (see .agent/plan/10-task-templates.md).
+// Bound GUI surface for Settings + template picker. CLI: mhtodo template
+// list|search|show|create|update|rm and add --template.
 
 // ListTemplates returns every template, name-ordered.
 func (a *App) ListTemplates() ([]core.Template, error) {

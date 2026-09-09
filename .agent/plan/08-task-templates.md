@@ -7,12 +7,14 @@ Named sets of task presets, authored in Settings and applied when creating a tas
 - **Storage: SQLite**, migration **v9**, table `task_templates`. Not `config.yml`, even
   though templates are settings-shaped — they are user data with IDs, uniqueness and
   ordering, and they belong next to tasks.
-- **No CLI commands in this slice.** All rules live in `core.Service`, so
-  `mhtodo template list|show|add|edit|rm` and `mhtodo add --template NAME` are a thin
-  later add. This is a deliberate, temporary deviation from the AGENTS.md parity rule;
-  `Service.CreateFromTemplate` already exists so the CLI has nothing to reimplement.
+- **CLI complete.** `mhtodo template list|search|show|create|update|rm` and
+  `mhtodo add --template REF` (explicit flags override presets). All rules live
+  in `core.Service` (`CreateFromTemplate`, `SearchTemplates`, …).
 - **Fields:** `title_prefix`, `description`, `status`, `cwd`, `slack_thread`,
   `human_only`, `include_in_report`.
+- **Search:** `Service.SearchTemplates` — `--mode fuzzy` (default subsequence
+  score) or `regex` (case-insensitive) over name / title_prefix / description /
+  cwd; `--cwd` exact match after `filepath.Clean`.
 
 ## Core semantics: unset vs empty
 

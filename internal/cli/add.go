@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent, cwd, slackThread, todoSession string
+	var desc, feedback, status, parent, cwd, slackThread, todoSession, template string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -31,23 +31,56 @@ func newAddCmd() *cobra.Command {
 
 			in := core.CreateInput{
 				Title:       args[0],
-				Description: desc,
 				Feedback:    feedback,
-				Status:      core.Status(status), // "" → pending; invalid → exit 1
 				Progress:    progress,
 				ParentID:    parent,
-				Cwd:         cwd,
-				HumanOnly:   humanOnly,
-				SlackThread: slackThread,
 				TodoSession: todoSession,
 			}
-			switch {
-			case cmd.Flags().Changed("include-in-report"):
-				v := includeInReport
-				in.IncludeInReport = &v
-			case cmd.Flags().Changed("no-include-in-report"):
-				v := false
-				in.IncludeInReport = &v
+
+			if template != "" {
+				tpl, err := svc.GetTemplate(context.Background(), template)
+				if err != nil {
+					return mapError(err)
+				}
+				// Template presets first; any flag the caller passed explicitly wins.
+				in = tpl.Apply(in)
+				if cmd.Flags().Changed("desc") {
+					in.Description = desc
+				}
+				if cmd.Flags().Changed("status") {
+					in.Status = core.Status(status)
+				}
+				if cmd.Flags().Changed("cwd") {
+					in.Cwd = cwd
+				}
+				if cmd.Flags().Changed("slack-thread") {
+					in.SlackThread = slackThread
+				}
+				if cmd.Flags().Changed("human-only") {
+					in.HumanOnly = humanOnly
+				}
+				switch {
+				case cmd.Flags().Changed("include-in-report"):
+					v := includeInReport
+					in.IncludeInReport = &v
+				case cmd.Flags().Changed("no-include-in-report"):
+					v := false
+					in.IncludeInReport = &v
+				}
+			} else {
+				in.Description = desc
+				in.Status = core.Status(status) // "" → pending; invalid → exit 1
+				in.Cwd = cwd
+				in.HumanOnly = humanOnly
+				in.SlackThread = slackThread
+				switch {
+				case cmd.Flags().Changed("include-in-report"):
+					v := includeInReport
+					in.IncludeInReport = &v
+				case cmd.Flags().Changed("no-include-in-report"):
+					v := false
+					in.IncludeInReport = &v
+				}
 			}
 
 			t, err := svc.Create(context.Background(), in)
@@ -74,6 +107,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
 	cmd.Flags().StringVar(&todoSession, "session", "", "todo session id/name (default: shortid-slugified-title)")
+	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default)")
 	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")

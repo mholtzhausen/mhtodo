@@ -14,10 +14,14 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 11
+const IntegrationVersion = 12
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v11 User scan order is ticket → status → progress → sub-tasks; activities are
+const integrationChangelog = `v12 Full task-template CLI: mhtodo template list|search|show|create|update|rm
+    and add --template REF (CLI flags override presets). Search supports
+    --mode fuzzy|regex and --cwd (exact path). Agents should probe with
+    --cwd "$PWD" before creating a project template or asking which match to use.
+v11 User scan order is ticket → status → progress → sub-tasks; activities are
     an audit trail, not the live signal. Ask before creating any root task (no
     auto-register). Reopen review→wip and add sub-tasks when more work lands.
     Sub-tasks for 2+ steps (parent-only only for trivial one-shots). Behaviour D

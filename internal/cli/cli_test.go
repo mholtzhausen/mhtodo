@@ -714,7 +714,7 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 11",
+		"Integration contract version: 12",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
@@ -722,6 +722,8 @@ func TestAI(t *testing.T) {
 		"board|created|updated|status|progress|title",
 		"todo_session",
 		"terminal_pid",
+		"mhtodo template search",
+		"v12 Full task-template CLI",
 		"v11 User scan order",
 		"v10 todo_session is a Claude session UUID",
 		"v9  Per-task todo_session",
@@ -757,7 +759,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 11 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 12 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}
@@ -1247,5 +1249,183 @@ func TestSlackReport(t *testing.T) {
 	mustJSON(t, out.Bytes(), &report)
 	if !strings.Contains(report, "Completed ✓") {
 		t.Errorf("json report wrong: %q", report)
+	}
+}
+
+func TestTemplateCRUDAndSearch(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("template", "create", "Event Logger", "--cwd", "/tmp/events", "--title-prefix", "BUG: ", "--status", "wip", "--json"); code != 0 {
+		t.Fatalf("create: exit %d (%s)", code, errb.String())
+	}
+	var created core.Template
+	mustJSON(t, out.Bytes(), &created)
+	if created.Name != "Event Logger" || created.Cwd == nil || *created.Cwd != "/tmp/events" ||
+		created.TitlePrefix == nil || *created.TitlePrefix != "BUG: " ||
+		created.Status == nil || *created.Status != core.StatusWIP {
+		t.Fatalf("created wrong: %+v", created)
+	}
+
+	out.Reset()
+	if code := run("template", "create", "Deploy", "--cwd", "/tmp/deploy", "--desc", "ship it"); code != 0 {
+		t.Fatalf("create2: exit %d", code)
+	}
+
+	out.Reset()
+	if code := run("template", "list", "--json"); code != 0 {
+		t.Fatalf("list: exit %d", code)
+	}
+	var list []core.Template
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 2 {
+		t.Fatalf("list len=%d, want 2", len(list))
+	}
+
+	out.Reset()
+	if code := run("template", "search", "evnt", "--json"); code != 0 {
+		t.Fatalf("fuzzy search: exit %d (%s)", code, errb.String())
+	}
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 1 || list[0].Name != "Event Logger" {
+		t.Fatalf("fuzzy = %+v", list)
+	}
+
+	out.Reset()
+	if code := run("template", "search", "--mode", "regex", `^Deploy$`, "--json"); code != 0 {
+		t.Fatalf("regex search: exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 1 || list[0].Name != "Deploy" {
+		t.Fatalf("regex = %+v", list)
+	}
+
+	out.Reset()
+	if code := run("template", "search", "--cwd", "/tmp/events", "--json"); code != 0 {
+		t.Fatalf("cwd search: exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 1 || list[0].Name != "Event Logger" {
+		t.Fatalf("cwd = %+v", list)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("template", "update", "Event Logger", "--cwd", "/tmp/events2", "--clear-status", "--json"); code != 0 {
+		t.Fatalf("update: exit %d (%s)", code, errb.String())
+	}
+	var updated core.Template
+	mustJSON(t, out.Bytes(), &updated)
+	if updated.Cwd == nil || *updated.Cwd != "/tmp/events2" || updated.Status != nil {
+		t.Fatalf("updated wrong: %+v", updated)
+	}
+	if updated.TitlePrefix == nil || *updated.TitlePrefix != "BUG: " {
+		t.Fatalf("update should keep unset flags: %+v", updated)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("template", "search"); code != 1 {
+		t.Fatalf("empty search exit %d, want 1", code)
+	}
+	if !strings.Contains(errb.String(), "query and/or --cwd") {
+		t.Errorf("stderr: %s", errb.String())
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("template", "create", "Event Logger", "--json"); code != 1 {
+		t.Fatalf("dup create exit %d, want 1", code)
+	}
+	var env map[string]string
+	mustJSON(t, errb.Bytes(), &env)
+	if env["error"] != "duplicate_template_name" {
+		t.Errorf("dup error envelope: %v", env)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("template", "update", "missing", "--name", "x", "--json"); code != 2 {
+		t.Fatalf("missing update exit %d, want 2 (%s)", code, errb.String())
+	}
+
+	out.Reset()
+	if code := run("template", "show", "Deploy", "--json"); code != 0 {
+		t.Fatalf("show: exit %d", code)
+	}
+	var shown core.Template
+	mustJSON(t, out.Bytes(), &shown)
+	if shown.Name != "Deploy" {
+		t.Fatalf("show wrong: %+v", shown)
+	}
+
+	out.Reset()
+	errb.Reset()
+	prevStdin := cli.Stdin
+	cli.Stdin = strings.NewReader("") // never a TTY
+	t.Cleanup(func() { cli.Stdin = prevStdin })
+	if code := run("template", "rm", "Deploy"); code != 1 {
+		t.Fatalf("rm without --yes exit %d, want 1 (%s)", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "--yes") {
+		t.Errorf("stderr: %s", errb.String())
+	}
+
+	out.Reset()
+	if code := run("template", "rm", "Deploy", "--yes", "--json"); code != 0 {
+		t.Fatalf("rm --yes: exit %d", code)
+	}
+	var deleted map[string]string
+	mustJSON(t, out.Bytes(), &deleted)
+	if deleted["name"] != "Deploy" || deleted["id"] == "" {
+		t.Fatalf("rm json: %v", deleted)
+	}
+
+	out.Reset()
+	if code := run("template", "list", "--json"); code != 0 {
+		t.Fatalf("list after rm: exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 1 || list[0].Name != "Event Logger" {
+		t.Fatalf("after rm list=%+v", list)
+	}
+}
+
+func TestAddFromTemplate(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("template", "create", "EL",
+		"--title-prefix", "[EL] ",
+		"--status", "wip",
+		"--cwd", "/tmp/events",
+		"--desc", "from template",
+		"--human-only"); code != 0 {
+		t.Fatalf("create tpl: exit %d (%s)", code, errb.String())
+	}
+
+	out.Reset()
+	if code := run("add", "parse feed", "--template", "EL", "--json"); code != 0 {
+		t.Fatalf("add --template: exit %d (%s)", code, errb.String())
+	}
+	var task core.Task
+	mustJSON(t, out.Bytes(), &task)
+	if task.Title != "[EL] parse feed" || task.Status != core.StatusWIP ||
+		task.Cwd != "/tmp/events" || task.Description != "from template" || !task.HumanOnly {
+		t.Fatalf("templated task wrong: %+v", task)
+	}
+
+	out.Reset()
+	if code := run("add", "override", "--template", "EL", "--desc", "cli wins", "--status", "pending", "--cwd", "/other", "--json"); code != 0 {
+		t.Fatalf("add override: exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &task)
+	if task.Title != "[EL] override" || task.Description != "cli wins" ||
+		task.Status != core.StatusPending || task.Cwd != "/other" {
+		t.Fatalf("override wrong: %+v", task)
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("add", "x", "--template", "missing", "--json"); code != 2 {
+		t.Fatalf("missing template exit %d, want 2 (%s)", code, errb.String())
 	}
 }

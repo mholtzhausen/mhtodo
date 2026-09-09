@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -212,6 +215,163 @@ func (s *Service) CreateFromTemplate(ctx context.Context, ref string, in CreateI
 		return Task{}, err
 	}
 	return s.Create(ctx, tpl.Apply(in))
+}
+
+// TemplateSearchMode selects how TemplateSearchFilter.Query is matched.
+type TemplateSearchMode string
+
+const (
+	TemplateSearchFuzzy TemplateSearchMode = "fuzzy"
+	TemplateSearchRegex TemplateSearchMode = "regex"
+)
+
+// TemplateSearchFilter filters ListTemplates results in memory. At least one of
+// Query or Cwd must be set. Text search covers name, title_prefix, description,
+// and cwd. Cwd is an exact path match after filepath.Clean (templates with a
+// nil/empty cwd never match a --cwd filter).
+type TemplateSearchFilter struct {
+	Query string
+	Mode  TemplateSearchMode // default fuzzy when Query is set
+	Cwd   string
+}
+
+// InvalidTemplateSearchModeError is returned for unknown --mode values.
+type InvalidTemplateSearchModeError struct{ Mode string }
+
+func (e *InvalidTemplateSearchModeError) Error() string {
+	return fmt.Sprintf("invalid template search mode %q (want fuzzy|regex)", e.Mode)
+}
+
+// InvalidTemplateSearchPatternError wraps a bad regex pattern.
+type InvalidTemplateSearchPatternError struct{ Err error }
+
+func (e *InvalidTemplateSearchPatternError) Error() string {
+	return fmt.Sprintf("invalid template search pattern: %v", e.Err)
+}
+
+func (e *InvalidTemplateSearchPatternError) Unwrap() error { return e.Err }
+
+// ErrTemplateSearchEmpty is returned when search has neither a query nor a cwd.
+var ErrTemplateSearchEmpty = errors.New("template search requires a query and/or --cwd")
+
+// SearchTemplates returns templates matching f, ordered by relevance (fuzzy
+// score desc, then name) or by name for regex / cwd-only searches.
+func (s *Service) SearchTemplates(ctx context.Context, f TemplateSearchFilter) ([]Template, error) {
+	query := strings.TrimSpace(f.Query)
+	cwd := strings.TrimSpace(f.Cwd)
+	if query == "" && cwd == "" {
+		return nil, ErrTemplateSearchEmpty
+	}
+
+	mode := f.Mode
+	if mode == "" {
+		mode = TemplateSearchFuzzy
+	}
+	switch mode {
+	case TemplateSearchFuzzy, TemplateSearchRegex:
+	default:
+		return nil, &InvalidTemplateSearchModeError{Mode: string(mode)}
+	}
+
+	var re *regexp.Regexp
+	if query != "" && mode == TemplateSearchRegex {
+		compiled, err := regexp.Compile("(?i)" + query)
+		if err != nil {
+			return nil, &InvalidTemplateSearchPatternError{Err: err}
+		}
+		re = compiled
+	}
+
+	all, err := s.repo.ListTemplates(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	type scored struct {
+		t     Template
+		score int
+	}
+	matched := make([]scored, 0, len(all))
+	wantCwd := ""
+	if cwd != "" {
+		wantCwd = filepath.Clean(cwd)
+	}
+
+	for _, t := range all {
+		if wantCwd != "" {
+			if t.Cwd == nil || strings.TrimSpace(*t.Cwd) == "" {
+				continue
+			}
+			if filepath.Clean(*t.Cwd) != wantCwd {
+				continue
+			}
+		}
+		if query == "" {
+			matched = append(matched, scored{t: t})
+			continue
+		}
+		switch mode {
+		case TemplateSearchFuzzy:
+			best := -1
+			for _, hay := range templateSearchHaystacks(t) {
+				if sc := fuzzyScore(query, hay); sc > best {
+					best = sc
+				}
+			}
+			if best >= 0 {
+				matched = append(matched, scored{t: t, score: best})
+			}
+		case TemplateSearchRegex:
+			for _, hay := range templateSearchHaystacks(t) {
+				if re.MatchString(hay) {
+					matched = append(matched, scored{t: t})
+					break
+				}
+			}
+		}
+	}
+
+	sort.SliceStable(matched, func(i, j int) bool {
+		if matched[i].score != matched[j].score {
+			return matched[i].score > matched[j].score
+		}
+		return strings.ToLower(matched[i].t.Name) < strings.ToLower(matched[j].t.Name)
+	})
+
+	out := make([]Template, len(matched))
+	for i, m := range matched {
+		out[i] = m.t
+	}
+	return out, nil
+}
+
+func templateSearchHaystacks(t Template) []string {
+	h := []string{t.Name}
+	if t.TitlePrefix != nil {
+		h = append(h, *t.TitlePrefix)
+	}
+	if t.Description != nil {
+		h = append(h, *t.Description)
+	}
+	if t.Cwd != nil {
+		h = append(h, *t.Cwd)
+	}
+	return h
+}
+
+// AsInput copies the template's presets into a TemplateInput suitable for a
+// full-replace UpdateTemplate after CLI/GUI patching.
+func (t Template) AsInput() TemplateInput {
+	return TemplateInput{
+		Name:            t.Name,
+		TitlePrefix:     clonePtr(t.TitlePrefix),
+		Description:     clonePtr(t.Description),
+		Status:          clonePtr(t.Status),
+		Cwd:             clonePtr(t.Cwd),
+		SlackThread:     clonePtr(t.SlackThread),
+		HumanOnly:       clonePtr(t.HumanOnly),
+		IncludeInReport: clonePtr(t.IncludeInReport),
+	}
 }
 
 // templateFrom builds a Template from validated input. Pointers are copied so
