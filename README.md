@@ -207,12 +207,13 @@ status transitions → activity → delete) using only this CLI.
 ## GUI
 
 - **Board view (default):** five kanban columns — pending / wip / waiting / review / done — with live
-  counts; root cards show title, progress, relative time; human-only cards show a person icon top-right.
-  A tiny top-right checkbox marks the card done immediately. Columns collapse via a header caret into a
-  slim vertical strip (rotated title + count); collapsed state persists across restarts. Sub-tasks nest
-  under the parent card when shown (never own column cards), in creation order (oldest first). Drag a
-  **root** card to change status (including onto a collapsed lane). Per-column **+** opens new-task
-  preset to that status. Filter chips: **All** / **Agents** (hide human-only) / **Human** (human-only only).
+  counts; root cards show title, progress, relative time; human-only / Slack-report flags live in the
+  card footer actions (not duplicated in the title row). A tiny top-right checkbox marks the card done
+  immediately. Columns collapse via a header caret into a slim vertical strip (rotated title + count);
+  collapsed state persists across restarts. Sub-tasks nest under the parent card when shown (never own
+  column cards), in creation order (oldest first). Drag a **root** card to change status (including onto
+  a collapsed lane). Per-column **+** opens new-task preset to that status. Filter chips: **All** /
+  **Agents** (hide human-only) / **Human** (human-only only).
 - **List view:** status + progress stacked in one column; human-only rows show a person icon before
   the status chip; title takes remaining width; updated shows elapsed + absolute time. Sub-tasks indent
   under parents when shown (creation order). Same human filter as the board. Toggle Board / List / Activity with `b` /

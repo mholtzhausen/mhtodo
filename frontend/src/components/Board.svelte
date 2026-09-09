@@ -4,7 +4,6 @@
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
-  import HumanIcon from './HumanIcon.svelte'
 
   let {
     tasks,
@@ -588,30 +587,7 @@
                   ondragstart={(e) => e.preventDefault()}
                   class="w-full cursor-grab p-2.5 pr-6 text-left focus:outline-none"
                 >
-                  <div class="mb-2 flex items-start gap-1.5">
-                    <p class="min-w-0 flex-1 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
-                    {#if t.human_only || t.include_in_report === false}
-                      <span class="flex flex-none items-center gap-0.5 pt-0.5 text-ink-3" aria-hidden="true">
-                        {#if t.human_only}
-                          <span title="Human only"><HumanIcon class="h-3 w-3" /></span>
-                        {/if}
-                        {#if t.include_in_report === false}
-                          <span title="Excluded from Slack report">
-                            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                              <path d="M8 6h13" stroke-linecap="round" />
-                              <path d="M8 12h9" stroke-linecap="round" />
-                              <path d="M8 18h13" stroke-linecap="round" />
-                              <path d="M3 6h.01" stroke-linecap="round" />
-                              <path d="M3 12h.01" stroke-linecap="round" />
-                              <path d="M3 18h.01" stroke-linecap="round" />
-                              <path d="m15 10 5 5" stroke-linecap="round" />
-                              <path d="m20 10-5 5" stroke-linecap="round" />
-                            </svg>
-                          </span>
-                        {/if}
-                      </span>
-                    {/if}
-                  </div>
+                  <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">
                     <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                       <div
