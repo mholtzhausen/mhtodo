@@ -18,6 +18,7 @@
   import ClearableField from './ClearableField.svelte'
   import SettingsTemplates from './SettingsTemplates.svelte'
   import SettingsThemes from './SettingsThemes.svelte'
+  import { scheduleFocusFirstField } from '../lib/focusFirstField'
 
   let {
     open,
@@ -74,6 +75,9 @@
   const activeTheme = $derived(themes.find((t) => t.id === activeThemeId) ?? null)
 
   let persistTimer: ReturnType<typeof setTimeout> | undefined
+  /** Content pane — focus first field here once settings finish loading. */
+  let bodyEl = $state<HTMLElement | null>(null)
+  let focusedOpen = false
 
   const dirty = $derived(
     (ready && !loading && snapshot(settings) !== lastSaved) ||
@@ -279,6 +283,7 @@
       activePage = 'general'
       templateStatus = 'idle'
       themeStatus = 'idle'
+      focusedOpen = false
       return
     }
     loading = true
@@ -302,6 +307,14 @@
       clearTimeout(persistTimer)
       void persist(true)
     }
+  })
+
+  // After settings load into the General pane, land focus on the first text field
+  // (default cwd) — not the nav or close chrome.
+  $effect(() => {
+    if (!open || !ready || loading || focusedOpen) return
+    focusedOpen = true
+    scheduleFocusFirstField(bodyEl)
   })
 
   $effect(() => {
@@ -505,7 +518,7 @@
           {/each}
         </nav>
 
-        <div class="min-h-0 flex-1 overflow-y-auto p-5">
+        <div class="min-h-0 flex-1 overflow-y-auto p-5" bind:this={bodyEl}>
           {#if loading}
             <p class="text-sm text-ink-3">Loading…</p>
           {:else if activePage === 'general'}
@@ -516,6 +529,7 @@
                 <span class="micro mb-1.5">Default working directory for new tasks</span>
                 <div class="flex gap-2">
                   <input
+                    data-focus-primary
                     bind:value={settings.default_cwd}
                     placeholder="Optional project path…"
                     class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"

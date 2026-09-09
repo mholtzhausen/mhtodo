@@ -3,6 +3,7 @@
 import {core} from '../models';
 import {integrations} from '../models';
 import {settings} from '../models';
+import {main} from '../models';
 
 export function ActivateTheme(arg1:string):Promise<core.Theme>;
 
@@ -44,6 +45,8 @@ export function GetAlwaysOnTop():Promise<boolean>;
 
 export function GetGUISettings():Promise<settings.GUISettings>;
 
+export function GetInstallStatus(arg1:boolean):Promise<main.InstallStatus>;
+
 export function GetTask(arg1:string):Promise<core.Task>;
 
 export function GetTemplate(arg1:string):Promise<core.Template>;
@@ -71,6 +74,8 @@ export function Quit():Promise<void>;
 export function ReorderBoardTask(arg1:string,arg2:string):Promise<core.Task>;
 
 export function ResetTheme(arg1:string):Promise<core.Theme>;
+
+export function RunInstallActions(arg1:main.InstallActionsInput):Promise<main.InstallActionsResult>;
 
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 

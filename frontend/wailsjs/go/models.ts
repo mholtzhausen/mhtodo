@@ -385,6 +385,79 @@ export namespace integrations {
 
 }
 
+export namespace main {
+	
+	export class InstallActionsInput {
+	    UpdateApp: boolean;
+	    InstallService: boolean;
+	    IntegrationZsh: boolean;
+	    IntegrationBash: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallActionsInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.UpdateApp = source["UpdateApp"];
+	        this.InstallService = source["InstallService"];
+	        this.IntegrationZsh = source["IntegrationZsh"];
+	        this.IntegrationBash = source["IntegrationBash"];
+	    }
+	}
+	export class InstallActionsResult {
+	    message: string;
+	    updated: boolean;
+	    service: boolean;
+	    integration: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallActionsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.message = source["message"];
+	        this.updated = source["updated"];
+	        this.service = source["service"];
+	        this.integration = source["integration"];
+	    }
+	}
+	export class InstallStatus {
+	    show: boolean;
+	    current_version: string;
+	    latest_version: string;
+	    up_to_date: boolean;
+	    has_service: boolean;
+	    ephemeral: boolean;
+	    install_path: string;
+	    prefix: string;
+	    message: string;
+	    cached_at: string;
+	    fresh: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.show = source["show"];
+	        this.current_version = source["current_version"];
+	        this.latest_version = source["latest_version"];
+	        this.up_to_date = source["up_to_date"];
+	        this.has_service = source["has_service"];
+	        this.ephemeral = source["ephemeral"];
+	        this.install_path = source["install_path"];
+	        this.prefix = source["prefix"];
+	        this.message = source["message"];
+	        this.cached_at = source["cached_at"];
+	        this.fresh = source["fresh"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
 	export class ClaudeConfig {

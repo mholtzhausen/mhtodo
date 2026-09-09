@@ -8,6 +8,7 @@
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
+  import { focusOnOpen } from '../lib/focusFirstField'
 
   type DetailMode = 'pinned' | 'floating' | 'modal'
 
@@ -371,6 +372,7 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <aside
+  use:focusOnOpen={mode === 'modal'}
   class={shellClass}
   style:width={resizable ? `${width}px` : undefined}
   style:max-width={resizable ? '100%' : undefined}
@@ -611,6 +613,7 @@
     <label class="block">
       <span class="micro mb-1.5">Title</span>
       <input
+        data-focus-primary
         bind:value={title}
         onblur={saveTitle}
         onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}

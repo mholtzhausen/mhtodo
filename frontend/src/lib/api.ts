@@ -276,7 +276,63 @@ export const api = {
   },
   resetTheme(ref: string): Promise<Theme> {
     return App.ResetTheme(ref) as Promise<Theme>
+  },
+
+  // --- install / update (header Install control) ---
+  getInstallStatus(force = false): Promise<InstallStatus> {
+    return App.GetInstallStatus(force).then((raw: any) => ({
+      show: !!(raw?.show ?? raw?.Show),
+      current_version: String(raw?.current_version ?? raw?.CurrentVersion ?? ''),
+      latest_version: String(raw?.latest_version ?? raw?.LatestVersion ?? ''),
+      up_to_date: !!(raw?.up_to_date ?? raw?.UpToDate),
+      has_service: !!(raw?.has_service ?? raw?.HasService),
+      ephemeral: !!(raw?.ephemeral ?? raw?.Ephemeral),
+      install_path: String(raw?.install_path ?? raw?.InstallPath ?? ''),
+      prefix: String(raw?.prefix ?? raw?.Prefix ?? ''),
+      message: String(raw?.message ?? raw?.Message ?? ''),
+      cached_at: String(raw?.cached_at ?? raw?.CachedAt ?? ''),
+      fresh: !!(raw?.fresh ?? raw?.Fresh)
+    }))
+  },
+  runInstallActions(opts: {
+    updateApp: boolean
+    installService: boolean
+    integrationZsh: boolean
+    integrationBash: boolean
+  }): Promise<InstallActionsResult> {
+    return App.RunInstallActions({
+      UpdateApp: opts.updateApp,
+      InstallService: opts.installService,
+      IntegrationZsh: opts.integrationZsh,
+      IntegrationBash: opts.integrationBash
+    }).then((raw: any) => ({
+      message: String(raw?.message ?? raw?.Message ?? ''),
+      updated: !!(raw?.updated ?? raw?.Updated),
+      service: !!(raw?.service ?? raw?.Service),
+      integration: !!(raw?.integration ?? raw?.Integration)
+    }))
   }
+}
+
+export interface InstallStatus {
+  show: boolean
+  current_version: string
+  latest_version: string
+  up_to_date: boolean
+  has_service: boolean
+  ephemeral: boolean
+  install_path: string
+  prefix: string
+  message: string
+  cached_at: string
+  fresh: boolean
+}
+
+export interface InstallActionsResult {
+  message: string
+  updated: boolean
+  service: boolean
+  integration: boolean
 }
 
 export type { GUISettings } from './settings'

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
+  import { focusOnOpen } from '../lib/focusFirstField'
 
   // Small destructive-action confirmation (delete task). Same visual language
   // as NewTaskDialog; rendered above the detail drawer (z-40) and below toasts.
@@ -36,6 +37,7 @@
     onclick={onCancel}
   >
     <div
+      use:focusOnOpen
       in:fly={{ y: 8, duration: 80 }}
       role="alertdialog"
       aria-modal="true"
@@ -58,7 +60,7 @@
         </button>
         <button
           type="button"
-          autofocus
+          data-focus-primary
           onclick={onConfirm}
           class="rounded-control bg-danger px-4 py-1.5 text-sm font-medium text-[#38090f] shadow-sm transition-colors hover:bg-danger/85"
         >

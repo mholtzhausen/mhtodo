@@ -104,6 +104,10 @@ uses `minmax(200px, 1fr)` columns with horizontal scroll instead of crushing fiv
 Pinned detail auto-renders as floating when the main pane would be under ~640px (preference
 unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/`tasks:changed` debounce;
 search is debounced; Claude/Zed readiness is cached once per settings change (not per card).
+Header Install icon (left of Settings) is enabled when a release update is available; hold
+Ctrl while hovering to force-enable. Latest version is cached 60 minutes (hover refreshes when
+stale; dialog has a manual refresh). Confirmation offers install/upgrade (+ as service) and
+optional `mhtodo integration zsh|bash`.
 
 ## Hard constraints
 

@@ -2,6 +2,7 @@
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
   import { claudeBackendReady, claudeIconVisible } from '../lib/claudeIntegration'
+  import { focusOnOpen } from '../lib/focusFirstField'
   import { openExternalUrl } from '../lib/openExternal'
   import { checkBinaryCached, getIntegrationSettings } from '../lib/integrationStatus'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
@@ -233,6 +234,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
   >
     <form
+      use:focusOnOpen
       in:fly={{ y: 8, duration: 80 }}
       onclick={(e) => e.stopPropagation()}
       onsubmit={submit}
@@ -320,7 +322,7 @@
         <label class="block">
           <span class="micro mb-1.5">Title <em class="not-italic text-danger">*</em></span>
           <input
-            autofocus
+            data-focus-primary
             bind:this={titleEl}
             bind:value={title}
             onkeydown={(e) => e.key === 'Enter' && title.trim() && (e.currentTarget as HTMLInputElement).form?.requestSubmit()}

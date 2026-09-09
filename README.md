@@ -263,6 +263,10 @@ status transitions → activity → delete) using only this CLI.
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
   When on, opening Claude or Zed for a task hides mhtodo to the tray so the activated
   terminal/IDE is not covered.
+- **Install / update:** download icon left of Settings. Enabled when a newer release is
+  available; hold **Ctrl** while hovering to force-enable. Hover refreshes the GitHub
+  version check when the 60-minute cache is stale; the dialog shows current/target versions
+  with a manual refresh control (`install` vs `upgrade`, optional service + shell integration).
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
@@ -303,6 +307,8 @@ status transitions → activity → delete) using only this CLI.
 | `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
+| `GetInstallStatus(force)` | `update --check` (+ detect) | 60m cache; `force` bypasses; `show` when update available; GUI Ctrl+hover force |
+| `RunInstallActions(in)` | `update` / `service install` / `integration zsh\|bash` | GUI confirmation; execs this binary’s CLI |
 | `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | `template list\|search\|show\|create\|update\|rm`; `add --template` | task templates (v0.5); CLI `search` uses core `SearchTemplates` (fuzzy/regex + cwd); update is full replace in core (CLI patches then replace); `add --template` applies then lets changed flags override |
 | `ListThemes` / `GetTheme` / `GetActiveTheme` / `CreateTheme` / `UpdateTheme` / `DeleteTheme` / `ActivateTheme` / `DuplicateTheme` / `ResetTheme` | `theme list\|search\|show\|create\|update\|rm\|activate\|duplicate\|reset` | GUI themes (v0.6); tokens JSON map; active id in `meta.active_theme_id`; built-ins Slate/Paper/Ember |
 

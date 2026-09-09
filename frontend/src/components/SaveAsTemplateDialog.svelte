@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
+  import { focusOnOpen } from '../lib/focusFirstField'
   import {
     TEMPLATE_FIELDS,
     emptyValues,
@@ -71,10 +72,6 @@
     selected = new Set(
       initialSelection.length ? initialSelection : defaultSelection()
     )
-  })
-
-  $effect(() => {
-    if (open && nameEl) nameEl.focus()
   })
 
   /** Ticks the fields that carry a non-default value, so the common case is one click. */
@@ -154,6 +151,7 @@
     class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4"
   >
     <form
+      use:focusOnOpen
       in:fly={{ y: 8, duration: 80 }}
       onsubmit={submit}
       class="flex max-h-[92vh] w-full max-w-md flex-col rounded-panel border border-line bg-col shadow-md"
@@ -174,6 +172,7 @@
         <label class="block">
           <span class="micro mb-1.5">Template name <em class="not-italic text-danger">*</em></span>
           <input
+            data-focus-primary
             bind:this={nameEl}
             bind:value={name}
             maxlength="80"

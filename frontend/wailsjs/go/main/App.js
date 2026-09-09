@@ -82,6 +82,10 @@ export function GetGUISettings() {
   return window['go']['main']['App']['GetGUISettings']();
 }
 
+export function GetInstallStatus(arg1) {
+  return window['go']['main']['App']['GetInstallStatus'](arg1);
+}
+
 export function GetTask(arg1) {
   return window['go']['main']['App']['GetTask'](arg1);
 }
@@ -136,6 +140,10 @@ export function ReorderBoardTask(arg1, arg2) {
 
 export function ResetTheme(arg1) {
   return window['go']['main']['App']['ResetTheme'](arg1);
+}
+
+export function RunInstallActions(arg1) {
+  return window['go']['main']['App']['RunInstallActions'](arg1);
 }
 
 export function SetAlwaysOnTop(arg1) {

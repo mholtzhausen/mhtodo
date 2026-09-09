@@ -9,7 +9,8 @@
   import NewTaskDialog from './components/NewTaskDialog.svelte'
   import SettingsDialog from './components/SettingsDialog.svelte'
   import ConfirmDialog from './components/ConfirmDialog.svelte'
-  import { api, errMsg, type Activity, type GUISettings, type Status, type Task } from './lib/api'
+  import InstallDialog from './components/InstallDialog.svelte'
+  import { api, errMsg, type Activity, type GUISettings, type InstallStatus, type Status, type Task } from './lib/api'
   import { defaultSettings } from './lib/settings'
   import { applyThemeTokens } from './lib/themes'
   import { boardAdjacentTaskId, listAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
@@ -122,6 +123,13 @@
   /** Open the create dialog with the template picker already showing. */
   let dialogTemplatePicker = $state(false)
   let settingsOpen = $state(false)
+  let installOpen = $state(false)
+  let installBusy = $state(false)
+  let installRefreshing = $state(false)
+  let installStatus = $state<InstallStatus | null>(null)
+  /** Ctrl held — with hover, unlocks Install even when already up to date. */
+  let installCtrl = $state(false)
+  let installHover = $state(false)
   let guiSettings = $state<GUISettings>(defaultSettings())
   let confirmTask = $state<any | null>(null)
   let confirmMsg = $state('')
@@ -161,6 +169,67 @@
   )
   const dialogDefaultSlackThread = $derived(dialogParent?.slack_thread ?? '')
   const dialogDefaultTodoSession = $derived(dialogParent?.todo_session ?? '')
+
+  const installUpdateAvailable = $derived(!!installStatus && !installStatus.up_to_date)
+  /** Enabled when a newer release exists, or Ctrl is held while hovering (force). */
+  const installEnabled = $derived(installUpdateAvailable || (installCtrl && installHover))
+
+  function onInstallKeydown(e: KeyboardEvent) {
+    if (e.key === 'Control') installCtrl = true
+  }
+  function onInstallKeyup(e: KeyboardEvent) {
+    if (e.key === 'Control') installCtrl = false
+  }
+  function onInstallBlur() {
+    installCtrl = false
+  }
+
+  const INSTALL_CACHE_TTL_MS = 60 * 60 * 1000
+
+  function installCacheFresh(s: InstallStatus | null | undefined): boolean {
+    if (!s?.cached_at) return false
+    const t = Date.parse(s.cached_at)
+    if (Number.isNaN(t)) return false
+    return Date.now() - t < INSTALL_CACHE_TTL_MS
+  }
+
+  async function refreshInstallStatus(force = false) {
+    if (!inWails) {
+      installStatus = null
+      return
+    }
+    // Hover path: skip when the 60-minute cache is still fresh.
+    if (!force && installCacheFresh(installStatus)) return
+    if (installRefreshing) return
+    installRefreshing = true
+    try {
+      installStatus = await api.getInstallStatus(force)
+    } catch {
+      // Keep prior status on failure so the modal does not blank out.
+    } finally {
+      installRefreshing = false
+    }
+  }
+
+  async function runInstallActions(opts: {
+    updateApp: boolean
+    installService: boolean
+    integrationZsh: boolean
+    integrationBash: boolean
+  }) {
+    if (installBusy) return
+    installBusy = true
+    try {
+      const res = await api.runInstallActions(opts)
+      installOpen = false
+      showToast(res.message || 'Install finished', 'info')
+      await refreshInstallStatus(true)
+    } catch (e) {
+      showToast(errMsg(e))
+    } finally {
+      installBusy = false
+    }
+  }
 
   function showToast(msg: string, kind: 'error' | 'info' = 'error', ms = TOAST_MS) {
     const id = ++toastSeq
@@ -466,6 +535,7 @@
       if (document.querySelector('[data-ticket-filter][data-open="true"]')) return
       e.preventDefault()
       if (confirmTask) confirmTask = null
+      else if (installOpen && !installBusy) installOpen = false
       else if (settingsOpen) settingsOpen = false
       else if (dialogOpen) {
         dialogOpen = false
@@ -586,6 +656,7 @@
     } catch {
       /* ignore */
     }
+    void refreshInstallStatus()
     try {
       const active = await api.getActiveTheme()
       applyThemeTokens(active.tokens)
@@ -609,6 +680,9 @@
       openNewTask({ template: true })
     )
     window.addEventListener('keydown', onKeydown)
+    window.addEventListener('keydown', onInstallKeydown)
+    window.addEventListener('keyup', onInstallKeyup)
+    window.addEventListener('blur', onInstallBlur)
     window.addEventListener('resize', onWindowResize)
     await load()
   })
@@ -624,6 +698,9 @@
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()
     window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('keydown', onInstallKeydown)
+    window.removeEventListener('keyup', onInstallKeyup)
+    window.removeEventListener('blur', onInstallBlur)
     window.removeEventListener('resize', onWindowResize)
     if (resizingDetail) {
       document.body.style.cursor = ''
@@ -668,6 +745,49 @@
     <div class="hidden flex-1 sm:block"></div>
 
     <div class="ml-auto flex items-center gap-2 sm:ml-0">
+    <button
+      type="button"
+      aria-disabled={!installEnabled}
+      onpointerenter={(e) => {
+        installHover = true
+        installCtrl = e.ctrlKey
+        void refreshInstallStatus(false)
+      }}
+      onpointerleave={() => {
+        installHover = false
+      }}
+      onpointermove={(e) => {
+        installCtrl = e.ctrlKey
+      }}
+      onclick={() => {
+        if (!installEnabled) return
+        installOpen = true
+      }}
+      title={installUpdateAvailable
+        ? `Update available (v${installStatus?.latest_version || '?'})`
+        : installEnabled
+          ? 'Force install / update (Ctrl)'
+          : 'Up to date — hold Ctrl while hovering to force update'}
+      class="grid h-8 w-8 place-items-center rounded-control border transition-colors
+        {installEnabled
+          ? 'border-accent/40 bg-accent/10 text-accent-hi hover:bg-accent/20'
+          : 'border-line-soft text-ink-3/35'}"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" x2="12" y1="15" y2="3" />
+      </svg>
+    </button>
     <button
       type="button"
       onclick={() => (settingsOpen = true)}
@@ -977,6 +1097,18 @@
     }}
     onError={showToast}
     onNotify={(m) => showToast(m, 'info')}
+  />
+
+  <InstallDialog
+    open={installOpen}
+    status={installStatus}
+    busy={installBusy}
+    refreshing={installRefreshing}
+    onCancel={() => {
+      if (!installBusy) installOpen = false
+    }}
+    onConfirm={(opts) => void runInstallActions(opts)}
+    onRefresh={() => void refreshInstallStatus(true)}
   />
 
   <SettingsDialog
