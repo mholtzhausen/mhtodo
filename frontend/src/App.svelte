@@ -11,6 +11,7 @@
   import ConfirmDialog from './components/ConfirmDialog.svelte'
   import { api, errMsg, type Activity, type GUISettings, type Status, type Task } from './lib/api'
   import { defaultSettings } from './lib/settings'
+  import { applyThemeTokens } from './lib/themes'
   import { boardAdjacentTaskId, listAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
   import {
@@ -399,6 +400,7 @@
   }
 
   let unbindChanged: (() => void) | undefined
+  let unbindThemesChanged: (() => void) | undefined
   let unbindTrayNewTask: (() => void) | undefined
   let unbindTrayNewTaskTemplate: (() => void) | undefined
 
@@ -567,9 +569,23 @@
     } catch {
       /* ignore */
     }
+    try {
+      const active = await api.getActiveTheme()
+      applyThemeTokens(active.tokens)
+    } catch {
+      applyThemeTokens(null)
+    }
     unbindChanged = EventsOn('tasks:changed', (...data: unknown[]) => {
       const payload = data[0] as { id?: string; op?: string } | undefined
       onTasksChanged(payload)
+    })
+    unbindThemesChanged = EventsOn('themes:changed', async () => {
+      try {
+        const active = await api.getActiveTheme()
+        applyThemeTokens(active.tokens)
+      } catch {
+        /* ignore */
+      }
     })
     unbindTrayNewTask = EventsOn('tray:new-task', () => openNewTask())
     unbindTrayNewTaskTemplate = EventsOn('tray:new-task-template', () =>
@@ -587,6 +603,7 @@
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
     if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
     unbindChanged?.()
+    unbindThemesChanged?.()
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()
     window.removeEventListener('keydown', onKeydown)
@@ -602,9 +619,9 @@
   <header
     class="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft bg-chrome px-3 py-2 sm:h-[52px] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-0"
   >
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-gap-md">
       <span
-        class="grid h-[22px] w-[22px] flex-none place-items-center rounded-[5px] bg-accent text-[12px] font-bold text-accent-ink"
+        class="grid h-[22px] w-[22px] flex-none place-items-center rounded-control bg-accent text-[12px] font-bold text-accent-ink"
       >
         M
       </span>
@@ -638,7 +655,7 @@
       type="button"
       onclick={() => (settingsOpen = true)}
       title="Settings"
-      class="grid h-8 w-8 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+      class="grid h-8 w-8 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
     >
       <svg
         class="h-4 w-4"
@@ -662,7 +679,7 @@
       onclick={toggleAlwaysOnTop}
       title={alwaysOnTop ? 'Always on top (on)' : 'Always on top (off)'}
       aria-pressed={alwaysOnTop}
-      class="grid h-8 w-8 place-items-center rounded border transition-colors
+      class="grid h-8 w-8 place-items-center rounded-control border transition-colors
         {alwaysOnTop
           ? 'border-accent/50 bg-accent/15 text-accent-hi'
           : 'border-line-soft text-ink-3 hover:text-ink'}"
@@ -686,7 +703,7 @@
 
     <!-- Split button: the main half creates a blank task, the template half
          opens the same dialog with the picker already up. -->
-    <div class="btn-primary flex items-stretch overflow-hidden rounded bg-accent shadow-sm">
+    <div class="btn-primary flex items-stretch overflow-hidden rounded-control bg-accent shadow-sm">
       <button
         onclick={() => openNewTask()}
         class="flex items-center gap-2 px-2.5 py-1.5 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hi sm:px-3"
@@ -964,7 +981,7 @@
       role="alert"
       in:fly={{ y: 6, duration: 80 }}
       out:fly={{ y: 6, duration: 80 }}
-      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded border px-4 py-2 text-sm shadow-md
+      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded-control border px-4 py-2 text-sm shadow-md
         {toast.kind === 'error'
           ? 'border-danger/50 bg-card-hi text-danger'
           : 'border-line bg-card-hi text-ink'}"

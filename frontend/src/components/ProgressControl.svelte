@@ -18,7 +18,7 @@
   }
 </script>
 
-<div class="flex items-center gap-2.5">
+<div class="flex items-center gap-gap-md">
   <input
     type="range"
     min="0"

@@ -51,7 +51,7 @@
   )
 </script>
 
-<div class="flex items-start gap-2.5">
+<div class="flex items-start gap-gap-md">
   <button
     type="button"
     role="checkbox"
@@ -60,7 +60,7 @@
     onclick={cycle}
     onkeydown={onKeydown}
     title="Click to cycle: default → on → off"
-    class="mt-[2px] grid h-4 w-4 flex-none place-items-center rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-accent/25 {boxClass}"
+    class="mt-[2px] grid h-4 w-4 flex-none place-items-center rounded-control border transition-colors focus:outline-none focus:ring-2 focus:ring-accent/25 {boxClass}"
   >
     {#if state === 'on'}
       <svg

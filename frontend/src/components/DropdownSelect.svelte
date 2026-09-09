@@ -110,7 +110,7 @@
     onclick={() => !disabled && (open = !open)}
     onkeydown={onTriggerKeydown}
     style:min-width={minWidth}
-    class="flex h-8 items-center justify-between gap-2 rounded border border-line-soft bg-field px-2.5 text-left text-xs font-medium shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors
+    class="flex h-8 items-center justify-between gap-2 rounded-control border border-line-soft bg-field px-2.5 text-left text-xs font-medium shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors
       hover:bg-card-hi disabled:cursor-not-allowed disabled:opacity-50
       {open ? 'border-accent ring-2 ring-accent/25' : ''}
       {selected?.activeClass ?? 'text-ink'}"
@@ -135,7 +135,7 @@
       id={listId}
       role="listbox"
       aria-label={ariaLabel}
-      class="absolute left-0 top-[calc(100%+4px)] z-50 max-h-64 min-w-full overflow-y-auto rounded border border-line bg-col py-1 shadow-md"
+      class="absolute left-0 top-[calc(100%+4px)] z-50 max-h-64 min-w-full overflow-y-auto rounded-control border border-line bg-col py-1 shadow-md"
     >
       {#each options as opt, idx (opt.value)}
         <li role="presentation">

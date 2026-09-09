@@ -16,7 +16,7 @@
   } = $props()
 
   const fieldClass =
-    'w-full rounded border border-line-soft bg-field py-1.5 pl-3 text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25' +
+    'w-full rounded-control border border-line-soft bg-field py-1.5 pl-3 text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25' +
     (value.trim() ? ' pr-8' : ' pr-3') +
     (mono ? ' font-mono text-xs leading-relaxed resize-y' : ' text-sm')
 </script>
@@ -28,7 +28,7 @@
       title="Clear"
       aria-label="Clear field"
       onclick={() => onChange('')}
-      class="absolute right-1.5 top-1.5 z-10 rounded p-0.5 text-ink-3 transition-colors hover:bg-white/10 hover:text-ink"
+      class="absolute right-1.5 top-1.5 z-10 rounded-control p-0.5 text-ink-3 transition-colors hover:bg-white/10 hover:text-ink"
     >
       <svg
         class="h-3.5 w-3.5"

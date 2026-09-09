@@ -79,12 +79,29 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "empty_template_name", msg: err.Error()}
 		case errors.Is(err, core.ErrTemplateSearchEmpty):
 			return &errExit{code: ExitUsage, name: "usage", msg: err.Error()}
+		case errors.Is(err, core.ErrThemeNotFound):
+			return &errExit{code: ExitNotFound, name: "theme_not_found", msg: err.Error()}
+		case errors.Is(err, core.ErrEmptyThemeName):
+			return &errExit{code: ExitUsage, name: "empty_theme_name", msg: err.Error()}
+		case errors.Is(err, core.ErrBuiltinTheme):
+			return &errExit{code: ExitUsage, name: "builtin_theme", msg: err.Error()}
+		case errors.Is(err, core.ErrNotBuiltinTheme):
+			return &errExit{code: ExitUsage, name: "not_builtin_theme", msg: err.Error()}
+		case errors.Is(err, core.ErrThemeSearchEmpty):
+			return &errExit{code: ExitUsage, name: "usage", msg: err.Error()}
 		default:
 			var (
-				dup  *core.DuplicateTemplateNameError
-				long *core.TemplateNameTooLongError
-				mode *core.InvalidTemplateSearchModeError
-				pat  *core.InvalidTemplateSearchPatternError
+				dup   *core.DuplicateTemplateNameError
+				long  *core.TemplateNameTooLongError
+				mode  *core.InvalidTemplateSearchModeError
+				pat   *core.InvalidTemplateSearchPatternError
+				tdup  *core.DuplicateThemeNameError
+				tlong *core.ThemeNameTooLongError
+				tmode *core.InvalidThemeSearchModeError
+				tpat  *core.InvalidThemeSearchPatternError
+				unk   *core.UnknownThemeTokenError
+				tval  *core.InvalidThemeTokenValueError
+				ttok  *core.InvalidThemeTokensError
 			)
 			switch {
 			case errors.As(err, &dup):
@@ -95,6 +112,20 @@ func mapError(err error) error {
 				return &errExit{code: ExitUsage, name: "invalid_search_mode", msg: err.Error()}
 			case errors.As(err, &pat):
 				return &errExit{code: ExitUsage, name: "invalid_search_pattern", msg: err.Error()}
+			case errors.As(err, &tdup):
+				return &errExit{code: ExitUsage, name: "duplicate_theme_name", msg: err.Error()}
+			case errors.As(err, &tlong):
+				return &errExit{code: ExitUsage, name: "theme_name_too_long", msg: err.Error()}
+			case errors.As(err, &tmode):
+				return &errExit{code: ExitUsage, name: "invalid_search_mode", msg: err.Error()}
+			case errors.As(err, &tpat):
+				return &errExit{code: ExitUsage, name: "invalid_search_pattern", msg: err.Error()}
+			case errors.As(err, &unk):
+				return &errExit{code: ExitUsage, name: "unknown_theme_token", msg: err.Error()}
+			case errors.As(err, &tval):
+				return &errExit{code: ExitUsage, name: "invalid_theme_token", msg: err.Error()}
+			case errors.As(err, &ttok):
+				return &errExit{code: ExitUsage, name: "invalid_theme_tokens", msg: err.Error()}
 			default:
 				return &errExit{code: ExitStorage, name: "storage", msg: err.Error()}
 			}
@@ -264,7 +295,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
-		newActivityCmd(), newTemplateCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
+		newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(), newIntegrationCmd(),
 	} {
 		root.AddCommand(c)

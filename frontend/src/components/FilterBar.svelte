@@ -104,7 +104,7 @@
   />
 
   <label
-    class="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 sm:max-w-xs"
+    class="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-control border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 sm:max-w-xs"
   >
     <svg
       class="h-3.5 w-3.5 flex-none text-ink-3"
@@ -134,7 +134,7 @@
     title={showSubtasks ? 'Hide sub-tasks' : 'Show sub-tasks'}
     aria-label={showSubtasks ? 'Hide sub-tasks' : 'Show sub-tasks'}
     aria-pressed={showSubtasks}
-    class="grid h-8 w-8 shrink-0 place-items-center rounded border transition-colors
+    class="grid h-8 w-8 shrink-0 place-items-center rounded-control border transition-colors
       {showSubtasks
         ? 'border-accent/50 bg-accent/15 text-accent-hi'
         : 'border-line-soft text-ink-3 hover:bg-card-hi hover:text-ink'}"
@@ -168,7 +168,7 @@
       type="button"
       title="Toggle sort direction ({ascending ? 'ascending' : 'descending'})"
       onclick={onToggleAsc}
-      class="grid h-8 w-8 shrink-0 place-items-center rounded border border-line-soft bg-field text-sm text-ink transition-colors hover:bg-card-hi"
+      class="grid h-8 w-8 shrink-0 place-items-center rounded-control border border-line-soft bg-field text-sm text-ink transition-colors hover:bg-card-hi"
     >
       {ascending ? '↑' : '↓'}
     </button>
@@ -185,7 +185,7 @@
       onclick={onCopySlackReport}
       title="Copy Slack board report"
       aria-label="Copy Slack board report"
-      class="grid h-8 w-8 shrink-0 place-items-center rounded border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+      class="grid h-8 w-8 shrink-0 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
     >
       <svg
         class="h-4 w-4"

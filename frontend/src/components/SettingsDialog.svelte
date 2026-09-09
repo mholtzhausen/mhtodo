@@ -14,8 +14,10 @@
     type TerminalConfig
   } from '../lib/settings'
   import { emptyValues, type TaskTemplate } from '../lib/templates'
+  import { SLATE_FACTORY_TOKENS, type Theme } from '../lib/themes'
   import ClearableField from './ClearableField.svelte'
   import SettingsTemplates from './SettingsTemplates.svelte'
+  import SettingsThemes from './SettingsThemes.svelte'
 
   let {
     open,
@@ -40,13 +42,14 @@
   let terminalFound = $state(false)
   let zedFound = $state(false)
 
-  type SettingsPage = 'general' | 'integrations' | 'templates'
+  type SettingsPage = 'general' | 'integrations' | 'templates' | 'themes'
   let activePage = $state<SettingsPage>('general')
 
   const pages: { id: SettingsPage; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'integrations', label: 'Integrations' },
-    { id: 'templates', label: 'Task Templates' }
+    { id: 'templates', label: 'Task Templates' },
+    { id: 'themes', label: 'Themes' }
   ]
 
   // --- task templates ---
@@ -61,13 +64,24 @@
 
   const activeTemplate = $derived(templates.find((t) => t.id === activeTemplateId) ?? null)
 
+  // --- themes ---
+  let themes = $state<Theme[]>([])
+  let activeThemeId = $state('')
+  let themeStatus = $state<'idle' | 'saving' | 'dirty'>('idle')
+  let creatingTheme = $state(false)
+  let themeEditor = $state<{ flush: () => Promise<void> } | null>(null)
+
+  const activeTheme = $derived(themes.find((t) => t.id === activeThemeId) ?? null)
+
   let persistTimer: ReturnType<typeof setTimeout> | undefined
 
   const dirty = $derived(
-    (ready && !loading && snapshot(settings) !== lastSaved) || templateStatus === 'dirty'
+    (ready && !loading && snapshot(settings) !== lastSaved) ||
+      templateStatus === 'dirty' ||
+      themeStatus === 'dirty'
   )
   const saveStatus = $derived(
-    persisting || templateStatus === 'saving'
+    persisting || templateStatus === 'saving' || themeStatus === 'saving'
       ? 'Saving…'
       : dirty
         ? 'Unsaved'
@@ -124,6 +138,72 @@
     if (activeTemplateId === id) activeTemplateId = templates[0]?.id ?? ''
   }
 
+  async function loadThemes(selectId?: string) {
+    try {
+      themes = await api.listThemes()
+      if (selectId) activeThemeId = selectId
+      else if (!themes.some((t) => t.id === activeThemeId)) {
+        const active = themes.find((t) => t.active)
+        activeThemeId = active?.id ?? themes[0]?.id ?? ''
+      }
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
+  async function createTheme() {
+    if (creatingTheme) return
+    creatingTheme = true
+    try {
+      const base = 'New theme'
+      let name = base
+      let n = 2
+      while (themes.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+        name = `${base} ${n++}`
+      }
+      const created = await api.createTheme(name, { ...SLATE_FACTORY_TOKENS })
+      themes = [...themes, created].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+      activeThemeId = created.id
+      activePage = 'themes'
+    } catch (err) {
+      onError?.(errMsg(err))
+    } finally {
+      creatingTheme = false
+    }
+  }
+
+  function onThemeSaved(saved: Theme) {
+    themes = themes
+      .map((t) =>
+        t.id === saved.id ? { ...saved, active: saved.active || t.active } : t
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  }
+
+  function onThemeDeleted(id: string) {
+    themes = themes.filter((t) => t.id !== id)
+    themeStatus = 'idle'
+    if (activeThemeId === id) activeThemeId = themes[0]?.id ?? ''
+  }
+
+  function onThemeDuplicated(created: Theme) {
+    themes = [...themes, created].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    )
+    activeThemeId = created.id
+    activePage = 'themes'
+  }
+
+  function onThemeActivated(activated: Theme) {
+    themes = themes.map((t) => ({
+      ...t,
+      active: t.id === activated.id,
+      ...(t.id === activated.id ? activated : {})
+    }))
+  }
+
   function snapshot(s: GUISettings) {
     return JSON.stringify(s)
   }
@@ -158,9 +238,13 @@
   }
 
   async function handleClose() {
-    // Templates save through their own path, so both pending writes must land
+    // Templates/themes save through their own path, so pending writes must land
     // before the dialog goes away.
-    await Promise.all([flushPersist(), templateEditor?.flush() ?? Promise.resolve()])
+    await Promise.all([
+      flushPersist(),
+      templateEditor?.flush() ?? Promise.resolve(),
+      themeEditor?.flush() ?? Promise.resolve()
+    ])
     onClose()
   }
 
@@ -194,11 +278,13 @@
       ready = false
       activePage = 'general'
       templateStatus = 'idle'
+      themeStatus = 'idle'
       return
     }
     loading = true
     ready = false
     void loadTemplates()
+    void loadThemes()
     api
       .getSettings()
       .then((s) => {
@@ -318,9 +404,9 @@
     <div
       in:fly={{ y: 8, duration: 80 }}
       onclick={(e) => e.stopPropagation()}
-      class="flex h-[min(80vh,800px)] w-full max-w-3xl flex-col rounded-lg border border-line bg-col shadow-md"
+      class="flex h-[min(80vh,800px)] w-full max-w-3xl flex-col rounded-panel border border-line bg-col shadow-md"
     >
-      <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
+      <div class="flex flex-none items-center gap-gap-md border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">Settings</h2>
         {#if saveStatus}
           <span
@@ -332,7 +418,7 @@
           type="button"
           onclick={handleClose}
           title="Close (esc)"
-          class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
         >
           ✕
         </button>
@@ -348,7 +434,7 @@
             <button
               type="button"
               onclick={() => (activePage = page.id)}
-              class="whitespace-nowrap rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
+              class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
                 {activePage === page.id
                 ? 'bg-accent/15 text-ink'
                 : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
@@ -369,7 +455,7 @@
                       activeTemplateId = tpl.id
                     }}
                     title={tpl.name}
-                    class="truncate rounded px-3 py-1.5 text-left text-[12px] transition-colors
+                    class="truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
                       {activePage === 'templates' && activeTemplateId === tpl.id
                       ? 'bg-accent/10 text-ink'
                       : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
@@ -381,9 +467,38 @@
                   type="button"
                   onclick={createTemplate}
                   disabled={creatingTemplate}
-                  class="rounded px-3 py-1.5 text-left text-[12px] text-ink-3 transition-colors hover:bg-white/5 hover:text-accent disabled:opacity-50"
+                  class="rounded-control px-3 py-1.5 text-left text-[12px] text-ink-3 transition-colors hover:bg-white/5 hover:text-accent disabled:opacity-50"
                 >
                   + New template
+                </button>
+              </div>
+            {/if}
+
+            {#if page.id === 'themes'}
+              <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
+                {#each themes as th (th.id)}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      activePage = 'themes'
+                      activeThemeId = th.id
+                    }}
+                    title={th.name}
+                    class="truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
+                      {activePage === 'themes' && activeThemeId === th.id
+                      ? 'bg-accent/10 text-ink'
+                      : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+                  >
+                    {th.active ? '● ' : ''}{th.name}
+                  </button>
+                {/each}
+                <button
+                  type="button"
+                  onclick={createTheme}
+                  disabled={creatingTheme}
+                  class="rounded-control px-3 py-1.5 text-left text-[12px] text-ink-3 transition-colors hover:bg-white/5 hover:text-accent disabled:opacity-50"
+                >
+                  + New theme
                 </button>
               </div>
             {/if}
@@ -396,20 +511,20 @@
           {:else if activePage === 'general'}
             <section>
               <h3 class="mb-4 text-sm font-semibold text-ink">General</h3>
-              <div class="flex flex-col gap-3.5">
+              <div class="flex flex-col gap-gap-lg">
               <div class="block">
                 <span class="micro mb-1.5">Default working directory for new tasks</span>
                 <div class="flex gap-2">
                   <input
                     bind:value={settings.default_cwd}
                     placeholder="Optional project path…"
-                    class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                    class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                   />
                   <button
                     type="button"
                     onclick={pickDefaultCwd}
                     title="Pick folder"
-                    class="flex-none rounded border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+                    class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
                   >
                     <svg
                       class="h-4 w-4"
@@ -429,22 +544,22 @@
                 </div>
               </div>
 
-              <label class="flex cursor-pointer items-center gap-2.5">
+              <label class="flex cursor-pointer items-center gap-gap-md">
                 <input
                   type="checkbox"
                   bind:checked={settings.default_human_only}
-                  class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                  class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                 />
                 <span class="text-sm text-ink-2"
                   >Human only by default <span class="text-ink-3">(agents skip new tasks)</span></span
                 >
               </label>
 
-              <label class="flex cursor-pointer items-center gap-2.5">
+              <label class="flex cursor-pointer items-center gap-gap-md">
                 <input
                   type="checkbox"
                   bind:checked={settings.default_include_in_report}
-                  class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                  class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                 />
                 <span class="text-sm text-ink-2"
                   >Include in Slack report by default
@@ -452,11 +567,11 @@
                 >
               </label>
 
-              <label class="flex cursor-pointer items-start gap-2.5">
+              <label class="flex cursor-pointer items-start gap-gap-md">
                 <input
                   type="checkbox"
                   bind:checked={settings.archive_done_subtasks}
-                  class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                  class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                 />
                 <span class="flex flex-col gap-0.5">
                   <span class="text-sm text-ink-2">Archive done subtasks</span>
@@ -466,11 +581,11 @@
                 </span>
               </label>
 
-              <label class="flex cursor-pointer items-start gap-2.5">
+              <label class="flex cursor-pointer items-start gap-gap-md">
                 <input
                   type="checkbox"
                   bind:checked={settings.start_hidden}
-                  class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                  class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                 />
                 <span class="flex flex-col gap-0.5">
                   <span class="text-sm text-ink-2">Start hidden in system tray</span>
@@ -485,12 +600,12 @@
             <section>
               <h3 class="mb-4 text-sm font-semibold text-ink">Integrations</h3>
               <div class="flex flex-col gap-4">
-              <div class="rounded border border-line-soft bg-field/30 p-3.5">
+              <div class="rounded-control border border-line-soft bg-field/30 p-3.5">
                 <div class="text-sm font-medium text-ink">Claude</div>
-                <div class="mt-3 flex flex-col gap-2.5">
+                <div class="mt-3 flex flex-col gap-gap-md">
                   <div>
                     <span class="micro mb-1.5 block">Spawn</span>
-                    <div class="flex flex-wrap gap-1 rounded border border-line-soft bg-field p-0.5" role="group" aria-label="Claude spawn mode">
+                    <div class="flex flex-wrap gap-1 rounded-control border border-line-soft bg-field p-0.5" role="group" aria-label="Claude spawn mode">
                       {#each [
                         { id: 'herdr' as ClaudeSpawn, label: 'Herdr' },
                         { id: 'terminal' as ClaudeSpawn, label: 'Terminal' },
@@ -499,7 +614,7 @@
                         <button
                           type="button"
                           onclick={() => setClaudeSpawn(opt.id)}
-                          class="rounded px-3 py-1.5 text-xs font-medium transition-colors
+                          class="rounded-control px-3 py-1.5 text-xs font-medium transition-colors
                             {normalizeSpawn(settings.claude.spawn) === opt.id
                               ? 'bg-accent text-white'
                               : 'text-ink-2 hover:bg-white/5 hover:text-ink'}"
@@ -521,7 +636,7 @@
                               binary: (e.currentTarget as HTMLInputElement).value
                             })}
                           placeholder="/usr/bin/claude"
-                          class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                          class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                         />
                         <span
                           title={claudeFound ? 'Binary found' : 'Binary not found'}
@@ -558,7 +673,7 @@
                         onChange={(ticket_prompt) => patchIntegration('claude', { ticket_prompt })}
                       />
                     </label>
-                    <label class="flex cursor-pointer items-start gap-2.5">
+                    <label class="flex cursor-pointer items-start gap-gap-md">
                       <input
                         type="checkbox"
                         checked={settings.claude.require_cwd}
@@ -566,14 +681,14 @@
                           patchIntegration('claude', {
                             require_cwd: (e.currentTarget as HTMLInputElement).checked
                           })}
-                        class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                        class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                       />
                       <span class="flex flex-col gap-0.5">
                         <span class="text-sm text-ink-2">Require working directory</span>
                         <span class="text-xs italic text-ink-3/75">Hide Claude button when task has no cwd</span>
                       </span>
                     </label>
-                    <label class="flex cursor-pointer items-start gap-2.5">
+                    <label class="flex cursor-pointer items-start gap-gap-md">
                       <input
                         type="checkbox"
                         checked={settings.claude.close_tab_on_done}
@@ -581,7 +696,7 @@
                           patchIntegration('claude', {
                             close_tab_on_done: (e.currentTarget as HTMLInputElement).checked
                           })}
-                        class="mt-0.5 h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                        class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                       />
                       <span class="flex flex-col gap-0.5">
                         <span class="text-sm text-ink-2">Close session when done</span>
@@ -596,7 +711,7 @@
                     {#if normalizeSpawn(settings.claude.spawn) === 'herdr'}
                       <div class="mt-1 border-t border-line-soft pt-3">
                         <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">Herdr</div>
-                        <div class="flex flex-col gap-2.5">
+                        <div class="flex flex-col gap-gap-md">
                           <label class="block">
                             <span class="micro mb-1">Binary</span>
                             <div class="flex items-center gap-2">
@@ -607,7 +722,7 @@
                                     binary: (e.currentTarget as HTMLInputElement).value
                                   })}
                                 placeholder="/usr/local/bin/herdr"
-                                class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                                class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                               />
                               <span
                                 title={herdrFound ? 'Binary found' : 'Binary not found'}
@@ -642,7 +757,7 @@
                         <p class="mb-2 text-xs italic text-ink-3/75">
                           Claude opens in a system terminal window. Leave binary empty to auto-pick an emulator.
                         </p>
-                        <div class="flex flex-col gap-2.5">
+                        <div class="flex flex-col gap-gap-md">
                           <label class="block">
                             <span class="micro mb-1">Preferred emulator</span>
                             <div class="flex items-center gap-2">
@@ -653,7 +768,7 @@
                                     binary: (e.currentTarget as HTMLInputElement).value
                                   })}
                                 placeholder="gnome-terminal, kitty, … (empty = auto)"
-                                class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                                class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                               />
                               <span
                                 title={
@@ -691,8 +806,8 @@
                 </div>
               </div>
 
-              <div class="rounded border border-line-soft bg-field/30 p-3.5">
-                <label class="flex cursor-pointer items-center gap-2.5">
+              <div class="rounded-control border border-line-soft bg-field/30 p-3.5">
+                <label class="flex cursor-pointer items-center gap-gap-md">
                   <input
                     type="checkbox"
                     checked={settings.zed.enabled}
@@ -700,11 +815,11 @@
                       patchIntegration('zed', {
                         enabled: (e.currentTarget as HTMLInputElement).checked
                       })}
-                    class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                    class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                   />
                   <span class="text-sm font-medium text-ink">Zed</span>
                 </label>
-                <div class="mt-3 flex flex-col gap-2.5 pl-6">
+                <div class="mt-3 flex flex-col gap-gap-md pl-6">
                   <label class="block">
                     <span class="micro mb-1">Binary</span>
                     <div class="flex items-center gap-2">
@@ -715,7 +830,7 @@
                             binary: (e.currentTarget as HTMLInputElement).value
                           })}
                         placeholder="/usr/bin/zed"
-                        class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                        class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                       />
                       <span
                         title={zedFound ? 'Binary found' : 'Binary not found'}
@@ -767,9 +882,40 @@
                   type="button"
                   onclick={createTemplate}
                   disabled={creatingTemplate}
-                  class="btn-primary rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:opacity-50"
+                  class="btn-primary rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:opacity-50"
                 >
                   + New template
+                </button>
+              </section>
+            {/if}
+          {:else if activePage === 'themes'}
+            {#if activeTheme}
+              {#key activeTheme.id}
+                <SettingsThemes
+                  bind:this={themeEditor}
+                  theme={activeTheme}
+                  onSaved={onThemeSaved}
+                  onDeleted={onThemeDeleted}
+                  onDuplicated={onThemeDuplicated}
+                  onActivated={onThemeActivated}
+                  onStatus={(s) => (themeStatus = s)}
+                  onError={(m) => onError?.(m)}
+                />
+              {/key}
+            {:else}
+              <section>
+                <h3 class="mb-2 text-sm font-semibold text-ink">Themes</h3>
+                <p class="mb-4 text-sm leading-relaxed text-ink-3">
+                  Customize colors, radii, and spacing. Slate, Paper, and Ember ship built-in;
+                  Duplicate any theme to start a custom one.
+                </p>
+                <button
+                  type="button"
+                  onclick={createTheme}
+                  disabled={creatingTheme}
+                  class="btn-primary rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:opacity-50"
+                >
+                  + New theme
                 </button>
               </section>
             {/if}

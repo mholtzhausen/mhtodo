@@ -1429,3 +1429,122 @@ func TestAddFromTemplate(t *testing.T) {
 		t.Fatalf("missing template exit %d, want 2 (%s)", code, errb.String())
 	}
 }
+
+func TestThemeCRUDActivateDuplicateReset(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("theme", "list", "--json"); code != 0 {
+		t.Fatalf("list: exit %d (%s)", code, errb.String())
+	}
+	var list []core.Theme
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 3 {
+		t.Fatalf("seeded themes = %d, want 3", len(list))
+	}
+	activeCount := 0
+	for _, th := range list {
+		if th.Active {
+			activeCount++
+			if th.ID != core.BuiltinSlateID {
+				t.Fatalf("default active = %s, want Slate", th.ID)
+			}
+		}
+	}
+	if activeCount != 1 {
+		t.Fatalf("active count = %d", activeCount)
+	}
+
+	out.Reset()
+	if code := run("theme", "activate", "Paper", "--json"); code != 0 {
+		t.Fatalf("activate: exit %d (%s)", code, errb.String())
+	}
+	var paper core.Theme
+	mustJSON(t, out.Bytes(), &paper)
+	if !paper.Active || paper.ID != core.BuiltinPaperID {
+		t.Fatalf("activated wrong: %+v", paper)
+	}
+
+	out.Reset()
+	if code := run("theme", "create", "Night", "--from", "Ember", "--json"); code != 0 {
+		t.Fatalf("create: exit %d (%s)", code, errb.String())
+	}
+	var night core.Theme
+	mustJSON(t, out.Bytes(), &night)
+	if night.Name != "Night" || night.BuiltinKey != nil {
+		t.Fatalf("created wrong: %+v", night)
+	}
+	emberFactory, _ := core.FactoryTokens(core.BuiltinEmber)
+	if night.Tokens["color.canvas"] != emberFactory["color.canvas"] {
+		t.Fatalf("from Ember tokens wrong: %q", night.Tokens["color.canvas"])
+	}
+
+	out.Reset()
+	if code := run("theme", "update", "Night", "--set", "color.accent=#abcdef", "--json"); code != 0 {
+		t.Fatalf("update: exit %d (%s)", code, errb.String())
+	}
+	mustJSON(t, out.Bytes(), &night)
+	if night.Tokens["color.accent"] != "#abcdef" {
+		t.Fatalf("accent = %q", night.Tokens["color.accent"])
+	}
+
+	out.Reset()
+	if code := run("theme", "search", "nght", "--json"); code != 0 {
+		t.Fatalf("search: exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &list)
+	if len(list) != 1 || list[0].Name != "Night" {
+		t.Fatalf("search = %+v", list)
+	}
+
+	out.Reset()
+	if code := run("theme", "duplicate", "Slate", "--json"); code != 0 {
+		t.Fatalf("duplicate: exit %d (%s)", code, errb.String())
+	}
+	var copyTh core.Theme
+	mustJSON(t, out.Bytes(), &copyTh)
+	if copyTh.Name != "Slate copy" || copyTh.BuiltinKey != nil {
+		t.Fatalf("duplicate wrong: %+v", copyTh)
+	}
+
+	out.Reset()
+	if code := run("theme", "update", "Paper", "--set", "color.canvas=#111111", "--json"); code != 0 {
+		t.Fatalf("mutate paper: exit %d", code)
+	}
+	out.Reset()
+	if code := run("theme", "reset", "Paper", "--json"); code != 0 {
+		t.Fatalf("reset: exit %d (%s)", code, errb.String())
+	}
+	mustJSON(t, out.Bytes(), &paper)
+	paperFactory, _ := core.FactoryTokens(core.BuiltinPaper)
+	if paper.Tokens["color.canvas"] != paperFactory["color.canvas"] {
+		t.Fatalf("reset canvas = %q", paper.Tokens["color.canvas"])
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("theme", "rm", "Slate", "--yes", "--json"); code != 1 {
+		t.Fatalf("rm builtin exit %d, want 1 (%s)", code, errb.String())
+	}
+
+	prevStdin := cli.Stdin
+	cli.Stdin = strings.NewReader("") // never a TTY
+	t.Cleanup(func() { cli.Stdin = prevStdin })
+
+	out.Reset()
+	errb.Reset()
+	if code := run("theme", "rm", "Night"); code != 1 {
+		t.Fatalf("rm without --yes exit %d, want 1 (%s)", code, errb.String())
+	}
+
+	out.Reset()
+	if code := run("theme", "rm", "Night", "--yes", "--json"); code != 0 {
+		t.Fatalf("rm: exit %d (%s)", code, errb.String())
+	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("theme", "show", "missing", "--json"); code != 2 {
+		t.Fatalf("missing show exit %d, want 2", code)
+	}
+}
+

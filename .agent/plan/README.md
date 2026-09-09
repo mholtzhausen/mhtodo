@@ -29,6 +29,8 @@ list layout — full CLI ↔ GUI parity over `internal/core.Service`.
 | `05-detail-pin-and-list.md` | Pin layout + list columns + format helpers |
 | `06-review-status.md` | Enum, board/filter/keys, CHECK rebuild |
 | `07-docs-version.md` | README agent contract, AGENTS.md scope, VERSION bump |
+| `08-task-templates.md` | Task templates (v0.5) |
+| `09-themes.md` | GUI themes (v0.6) |
 
 ## Milestone order
 

@@ -388,7 +388,7 @@
 
 {#snippet ghostCard(t: any, col: (typeof COLUMNS)[number])}
   <div
-    class="ghost-card pointer-events-none rounded-md border border-dashed border-accent/70 border-l-2 bg-accent/10 shadow-[0_0_16px_rgba(123,140,255,0.25)] ring-2 ring-accent/40 {col.edge}"
+    class="ghost-card pointer-events-none rounded-card border border-dashed border-accent/70 border-l-2 bg-accent/10 shadow-[0_0_16px_rgba(123,140,255,0.25)] ring-2 ring-accent/40 {col.edge}"
     aria-hidden="true"
   >
     <div class="p-2.5 text-left">
@@ -438,7 +438,7 @@
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
-        class="flex min-h-0 flex-col rounded-md border shadow-sm
+        class="flex min-h-0 flex-col rounded-card border shadow-sm
           {dropTarget === col.status
             ? 'border-accent/60 bg-accent/5'
             : 'border-line-soft bg-col'}"
@@ -455,7 +455,7 @@
             class="flex h-full min-h-0 w-full flex-col items-center gap-1.5 px-0.5 py-2 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
           >
             <span
-              class="flex h-5 w-5 flex-none items-center justify-center rounded transition-colors"
+              class="flex h-5 w-5 flex-none items-center justify-center rounded-control transition-colors"
               aria-hidden="true"
             >
               <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -482,7 +482,7 @@
             aria-label={`Collapse ${col.label} column`}
             aria-expanded="true"
             onclick={() => toggleCollapsed(col.status)}
-            class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
+            class="rounded-control p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
           >
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m15 18-6-6 6-6" />
@@ -491,7 +491,7 @@
           <span class="h-2 w-2 flex-none rounded-full {col.dot}"></span>
           <h2 class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-2">{col.label}</h2>
           <span
-            class="rounded-[3px] border border-line-soft bg-white/5 px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-3"
+            class="rounded-chip border border-line-soft bg-white/5 px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-3"
           >
             {colCount}
           </span>
@@ -503,7 +503,7 @@
                 : 'Archive done root tasks only (reversible from List → Archived)'}
               disabled={archivableDoneCount === 0 || archiving}
               onclick={archiveAll}
-              class="rounded p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"
+              class="rounded-control p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"
             >
               <svg
                 class="h-3.5 w-3.5 {archiving ? 'text-accent' : 'text-ink-3'}"
@@ -524,7 +524,7 @@
           <button
             title={`New ${col.label.toLowerCase()} task`}
             onclick={() => onQuickAdd(col.status)}
-            class="rounded p-1 text-sm leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
+            class="rounded-control p-1 text-sm leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
           >
             +
           </button>
@@ -538,7 +538,7 @@
           ondrop={(e) => onLaneDrop(e, col.status)}
         >
           {#if roots.length === 0 && !showGhostAt(col.status, null)}
-            <p class="rounded border border-dashed border-line px-2 py-4 text-center text-[11px] text-ink-3">
+            <p class="rounded-control border border-dashed border-line px-2 py-4 text-center text-[11px] text-ink-3">
               no tasks
             </p>
           {:else}
@@ -554,7 +554,7 @@
                 draggable="true"
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="relative rounded-md border border-l-2 border-line-soft shadow-sm select-none cursor-grab
+                class="relative rounded-card border border-l-2 border-line-soft shadow-sm select-none cursor-grab
                   {col.edge}
                   {selectedId === t.id
                     ? 'bg-accent/10'
@@ -572,7 +572,7 @@
                   onclick={(e) => void markDone(t.id, e)}
                   onmousedown={(e) => e.stopPropagation()}
                   ondragstart={(e) => e.preventDefault()}
-                  class="absolute right-1.5 top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border transition-colors
+                  class="absolute right-1.5 top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-chip border transition-colors
                     {t.status === 'done'
                       ? 'cursor-default border-st-done bg-st-done text-white'
                       : 'cursor-pointer border-ink-3/50 bg-card/80 text-transparent hover:border-st-done hover:bg-st-done/20 hover:text-st-done'}"
@@ -605,7 +605,7 @@
                       <li>
                         <button
                           onclick={() => onSelect(c.id)}
-                          class="flex w-full items-center gap-2 rounded border border-transparent px-1.5 py-1 text-left hover:border-line-soft hover:bg-white/5
+                          class="flex w-full items-center gap-2 rounded-control border border-transparent px-1.5 py-1 text-left hover:border-line-soft hover:bg-white/5
                             {selectedId === c.id ? 'bg-accent/10' : ''}"
                         >
                           <span

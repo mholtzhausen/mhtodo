@@ -4,13 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"mhtodo/internal/core"
 )
 
 // Meta keys for app preferences (alongside schema_version). Values are opaque
 // strings; callers define the encoding (e.g. "true"/"false").
 const (
-	MetaAlwaysOnTop = "always_on_top"
-	MetaWindowPos   = "window_pos" // "x,y" — last shown position
+	MetaAlwaysOnTop   = "always_on_top"
+	MetaWindowPos     = "window_pos" // "x,y" — last shown position
+	MetaActiveThemeID = core.MetaActiveThemeID
 )
 
 // GetMeta returns the value for key. ok is false when the key is absent.

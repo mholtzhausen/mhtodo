@@ -337,6 +337,87 @@ func (a *App) DeleteTemplate(id string) (core.Template, error) {
 	return t, err
 }
 
+// --- themes (v0.6) -----------------------------------------------------------
+//
+// Bound GUI surface for Settings → Themes. CLI: mhtodo theme
+// list|search|show|create|update|rm|activate|duplicate|reset.
+
+// ListThemes returns every theme, name-ordered, with Active set.
+func (a *App) ListThemes() ([]core.Theme, error) {
+	list, err := a.svc.ListThemes(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		list = []core.Theme{}
+	}
+	return list, nil
+}
+
+// GetTheme resolves a theme by ID or name.
+func (a *App) GetTheme(ref string) (core.Theme, error) {
+	return a.svc.GetTheme(a.ctx, ref)
+}
+
+// GetActiveTheme returns the currently active theme (Slate by default).
+func (a *App) GetActiveTheme() (core.Theme, error) {
+	return a.svc.GetActiveTheme(a.ctx)
+}
+
+// CreateTheme stores a new user theme.
+func (a *App) CreateTheme(in core.ThemeInput) (core.Theme, error) {
+	t, err := a.svc.CreateTheme(a.ctx, in)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "create")
+	}
+	return t, err
+}
+
+// UpdateTheme replaces name + tokens on a theme.
+func (a *App) UpdateTheme(id string, in core.ThemeInput) (core.Theme, error) {
+	t, err := a.svc.UpdateTheme(a.ctx, id, in)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "update")
+	}
+	return t, err
+}
+
+// DeleteTheme removes a user theme (built-ins refused).
+func (a *App) DeleteTheme(id string) (core.Theme, error) {
+	t, err := a.svc.DeleteTheme(a.ctx, id)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "delete")
+	}
+	return t, err
+}
+
+// ActivateTheme sets the active GUI theme.
+func (a *App) ActivateTheme(ref string) (core.Theme, error) {
+	t, err := a.svc.ActivateTheme(a.ctx, ref)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "activate")
+	}
+	return t, err
+}
+
+// DuplicateTheme copies a theme into a new user theme.
+func (a *App) DuplicateTheme(ref, name string) (core.Theme, error) {
+	t, err := a.svc.DuplicateTheme(a.ctx, ref, name)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "duplicate")
+	}
+	return t, err
+}
+
+// ResetTheme restores factory tokens for a built-in theme.
+func (a *App) ResetTheme(ref string) (core.Theme, error) {
+	t, err := a.svc.ResetTheme(a.ctx, ref)
+	if err == nil {
+		a.emitThemesChanged(t.ID, "reset")
+	}
+	return t, err
+}
+
 // DBPath maps to CLI `path`; shown in the GUI footer.
 func (a *App) DBPath() string { return store.DBPath() }
 
@@ -584,6 +665,15 @@ func (a *App) emitTemplatesChanged(id, op string) {
 		return
 	}
 	wruntime.EventsEmit(a.ctx, "templates:changed", map[string]string{"id": id, "op": op})
+}
+
+// emitThemesChanged notifies the frontend that a theme changed or the active
+// theme switched, so CSS variables re-apply and Settings reloads.
+func (a *App) emitThemesChanged(id, op string) {
+	if a.ctx == nil {
+		return
+	}
+	wruntime.EventsEmit(a.ctx, "themes:changed", map[string]string{"id": id, "op": op})
 }
 
 // refreshTooltip updates the tray count (open = not done), refreshed on every

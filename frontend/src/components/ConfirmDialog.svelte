@@ -41,7 +41,7 @@
       aria-modal="true"
       aria-label={title}
       onkeydown={onKeydown}
-      class="w-full max-w-sm rounded-lg border border-line bg-col shadow-md"
+      class="w-full max-w-sm rounded-panel border border-line bg-col shadow-md"
     >
       <div class="px-5 pt-4">
         <h2 class="text-base font-semibold text-ink">{title}</h2>
@@ -52,7 +52,7 @@
         <button
           type="button"
           onclick={onCancel}
-          class="rounded px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
         >
           Cancel
         </button>
@@ -60,7 +60,7 @@
           type="button"
           autofocus
           onclick={onConfirm}
-          class="rounded bg-danger px-4 py-1.5 text-sm font-medium text-[#38090f] shadow-sm transition-colors hover:bg-danger/85"
+          class="rounded-control bg-danger px-4 py-1.5 text-sm font-medium text-[#38090f] shadow-sm transition-colors hover:bg-danger/85"
         >
           {confirmLabel}
         </button>

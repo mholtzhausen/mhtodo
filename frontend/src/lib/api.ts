@@ -5,6 +5,7 @@ import * as App from '../../wailsjs/go/main/App'
 import type { core } from '../../wailsjs/go/models'
 import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from './settings'
 import { toGoTemplateInput, type TaskTemplate, type TemplateValues } from './templates'
+import { toGoThemeInput, type Theme } from './themes'
 
 export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
 
@@ -244,11 +245,43 @@ export const api = {
   },
   deleteTemplate(id: string): Promise<TaskTemplate> {
     return App.DeleteTemplate(id) as Promise<TaskTemplate>
+  },
+
+  // --- themes (v0.6) ---
+  listThemes(): Promise<Theme[]> {
+    return App.ListThemes().then((t) => t ?? []) as Promise<Theme[]>
+  },
+  getTheme(ref: string): Promise<Theme> {
+    return App.GetTheme(ref) as Promise<Theme>
+  },
+  getActiveTheme(): Promise<Theme> {
+    return App.GetActiveTheme() as Promise<Theme>
+  },
+  createTheme(name: string, tokens: Record<string, string>): Promise<Theme> {
+    const input = toGoThemeInput(name, tokens) as unknown as core.ThemeInput
+    return App.CreateTheme(input) as Promise<Theme>
+  },
+  updateTheme(id: string, name: string, tokens: Record<string, string>): Promise<Theme> {
+    const input = toGoThemeInput(name, tokens) as unknown as core.ThemeInput
+    return App.UpdateTheme(id, input) as Promise<Theme>
+  },
+  deleteTheme(id: string): Promise<Theme> {
+    return App.DeleteTheme(id) as Promise<Theme>
+  },
+  activateTheme(ref: string): Promise<Theme> {
+    return App.ActivateTheme(ref) as Promise<Theme>
+  },
+  duplicateTheme(ref: string, name = ''): Promise<Theme> {
+    return App.DuplicateTheme(ref, name) as Promise<Theme>
+  },
+  resetTheme(ref: string): Promise<Theme> {
+    return App.ResetTheme(ref) as Promise<Theme>
   }
 }
 
 export type { GUISettings } from './settings'
 export type { TaskTemplate, TemplateValues } from './templates'
+export type { Theme } from './themes'
 
 export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message

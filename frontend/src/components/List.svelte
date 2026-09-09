@@ -99,7 +99,7 @@
     {/if}
   </div>
 {:else}
-  <div class="flex h-full flex-col overflow-hidden rounded-md border border-line-soft bg-col shadow-sm">
+  <div class="flex h-full flex-col overflow-hidden rounded-card border border-line-soft bg-col shadow-sm">
     <div class="flex flex-none items-center gap-3 px-3 py-2 text-[11px] uppercase tracking-[0.07em] text-ink-3">
       <span class="w-4 flex-none"></span>
       <span class="w-28 flex-none font-medium">Status</span>
@@ -112,7 +112,7 @@
       {#each rows as { task: t, depth } (t.id)}
         {#if depth === 0}
           <div
-            class="flex w-full items-stretch gap-3 rounded px-3 py-2.5
+            class="flex w-full items-stretch gap-3 rounded-control px-3 py-2.5
               {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
           >
             <span class="w-4 flex-none" aria-hidden="true"></span>
@@ -170,7 +170,7 @@
           <button
             type="button"
             onclick={() => onSelect(t.id)}
-            class="flex w-[calc(100%-1.25rem)] items-center gap-3 rounded border-l-2 border-line px-3 py-2.5 text-left ml-5
+            class="flex w-[calc(100%-1.25rem)] items-center gap-3 rounded-control border-l-2 border-line px-3 py-2.5 text-left ml-5
               {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
           >
             <span class="w-4 flex-none" aria-hidden="true"></span>

@@ -230,7 +230,7 @@
       in:fly={{ y: 8, duration: 80 }}
       onclick={(e) => e.stopPropagation()}
       onsubmit={submit}
-      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-md"
+      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-panel border border-line bg-col shadow-md"
     >
       <div class="relative flex flex-none items-center gap-1 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">
@@ -245,7 +245,7 @@
           onclick={() => (saveAsOpen = true)}
           title="Save these fields as a template"
           aria-label="Save as template"
-          class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
         >
           <svg
             class="h-4 w-4"
@@ -273,7 +273,7 @@
             title="Apply a template"
             aria-label="Apply a template"
             aria-expanded={pickerOpen}
-            class="rounded p-1.5 leading-none transition-colors hover:bg-white/5 hover:text-ink
+            class="rounded-control p-1.5 leading-none transition-colors hover:bg-white/5 hover:text-ink
               {pickerOpen ? 'bg-white/5 text-accent' : 'text-ink-3'}"
           >
             <svg
@@ -304,13 +304,13 @@
           type="button"
           onclick={resetAndClose}
           title="Close (esc)"
-          class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
         >
           ✕
         </button>
       </div>
 
-      <div class="flex min-h-0 flex-col gap-3.5 overflow-y-auto p-5">
+      <div class="flex min-h-0 flex-col gap-gap-lg overflow-y-auto p-5">
         <label class="block">
           <span class="micro mb-1.5">Title <em class="not-italic text-danger">*</em></span>
           <input
@@ -319,7 +319,7 @@
             bind:value={title}
             onkeydown={(e) => e.key === 'Enter' && title.trim() && (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
             placeholder="What needs doing?"
-            class="w-full rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+            class="w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
         </label>
 
@@ -329,7 +329,7 @@
             bind:value={description}
             rows="3"
             placeholder="Optional notes…"
-            class="w-full resize-y rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+            class="w-full resize-y rounded-control border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           ></textarea>
         </label>
 
@@ -339,13 +339,13 @@
             <input
               bind:value={cwd}
               placeholder="Optional project path…"
-              class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+              class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
             />
             <button
               type="button"
               onclick={pickCwd}
               title="Pick folder"
-              class="flex-none rounded border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+              class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
             >
               <svg
                 class="h-4 w-4"
@@ -368,7 +368,7 @@
           <input
             bind:value={todoSession}
             placeholder="Optional — defaults to shortid-slugified-title"
-            class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+            class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
         </label>
 
@@ -377,7 +377,7 @@
           <input
             bind:value={slackThread}
             placeholder="https://… (optional Slack thread link)"
-            class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+            class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
           {#if slackThread.trim()}
             <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
@@ -396,20 +396,20 @@
           {/if}
         </label>
 
-        <label class="flex cursor-pointer items-center gap-2.5">
+        <label class="flex cursor-pointer items-center gap-gap-md">
           <input
             type="checkbox"
             bind:checked={humanOnly}
-            class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+            class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
           />
           <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
         </label>
 
-        <label class="flex cursor-pointer items-center gap-2.5">
+        <label class="flex cursor-pointer items-center gap-gap-md">
           <input
             type="checkbox"
             bind:checked={includeInReport}
-            class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+            class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
           />
           <span class="text-sm text-ink-2">Include in Slack report <span class="text-ink-3">(board summary copy)</span></span>
         </label>
@@ -424,7 +424,7 @@
         <button
           type="button"
           onclick={resetAndClose}
-          class="rounded px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
         >
           Cancel
         </button>
@@ -434,7 +434,7 @@
             onclick={submitAndStart}
             disabled={!canStartWithClaude}
             title="Create task and start Claude"
-            class="flex items-center gap-1.5 rounded border border-[#d97757]/40 bg-[#d97757]/10 px-3 py-1.5 text-sm font-medium text-[#e88a6a] shadow-sm transition-colors hover:bg-[#d97757]/20 disabled:cursor-not-allowed disabled:opacity-40"
+            class="flex items-center gap-1.5 rounded-control border border-[#d97757]/40 bg-[#d97757]/10 px-3 py-1.5 text-sm font-medium text-[#e88a6a] shadow-sm transition-colors hover:bg-[#d97757]/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <svg
               class="h-3.5 w-3.5 shrink-0"
@@ -453,7 +453,7 @@
         <button
           type="submit"
           disabled={!title.trim() || submitting}
-          class="btn-primary rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
+          class="btn-primary rounded-control bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
         >
           Create {parentId ? 'sub-task' : 'task'}
         </button>

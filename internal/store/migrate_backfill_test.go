@@ -65,8 +65,8 @@ func TestBackfillEmptyTodoSessions(t *testing.T) {
 	defer repo2.Close()
 
 	var version int
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 12 {
-		t.Fatalf("version=%d err=%v want 12", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 13 {
+		t.Fatalf("version=%d err=%v want 13", version, err)
 	}
 
 	kept, err := repo2.GetByID(ctx, id)

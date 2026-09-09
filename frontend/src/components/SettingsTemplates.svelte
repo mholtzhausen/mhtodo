@@ -145,7 +145,7 @@
   }
 
   const fieldClass =
-    'w-full rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
+    'w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
 </script>
 
 <section>
@@ -195,7 +195,7 @@
                 onclick={() => clearField(field.key)}
                 title="Remove this field from the template"
                 aria-label="Remove {field.label} from the template"
-                class="rounded p-0.5 text-ink-3 transition-colors hover:bg-white/10 hover:text-danger"
+                class="rounded-control p-0.5 text-ink-3 transition-colors hover:bg-white/10 hover:text-danger"
               >
                 <svg
                   class="h-3.5 w-3.5"
@@ -224,7 +224,7 @@
               type="button"
               onclick={() =>
                 enableField(field.key, field.kind === 'status' ? ('pending' as Status) : '')}
-              class="w-full rounded border border-dashed border-line-soft bg-field/30 px-3 py-2 text-left text-sm text-ink-3 transition-colors hover:border-accent/50 hover:text-ink-2"
+              class="w-full rounded-control border border-dashed border-line-soft bg-field/30 px-3 py-2 text-left text-sm text-ink-3 transition-colors hover:border-accent/50 hover:text-ink-2"
             >
               + Add {field.label.toLowerCase()} to this template
             </button>
@@ -249,13 +249,13 @@
                 placeholder={field.placeholder ?? ''}
                 oninput={(e) =>
                   (values = { ...values, cwd: (e.currentTarget as HTMLInputElement).value })}
-                class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
               />
               <button
                 type="button"
                 onclick={pickCwd}
                 title="Pick folder"
-                class="flex-none rounded border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+                class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
               >
                 <svg
                   class="h-4 w-4"
@@ -298,14 +298,14 @@
         <button
           type="button"
           onclick={remove}
-          class="rounded border border-danger/40 bg-danger/10 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20"
+          class="rounded-control border border-danger/40 bg-danger/10 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20"
         >
           Delete
         </button>
         <button
           type="button"
           onclick={() => (confirmDelete = false)}
-          class="rounded px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
         >
           Cancel
         </button>
@@ -313,7 +313,7 @@
         <button
           type="button"
           onclick={() => (confirmDelete = true)}
-          class="rounded border border-line-soft px-3 py-1.5 text-sm text-ink-3 transition-colors hover:border-danger/40 hover:text-danger"
+          class="rounded-control border border-line-soft px-3 py-1.5 text-sm text-ink-3 transition-colors hover:border-danger/40 hover:text-danger"
         >
           Delete template
         </button>

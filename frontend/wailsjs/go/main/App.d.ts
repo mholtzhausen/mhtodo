@@ -4,6 +4,8 @@ import {core} from '../models';
 import {integrations} from '../models';
 import {settings} from '../models';
 
+export function ActivateTheme(arg1:string):Promise<core.Theme>;
+
 export function AddActivity(arg1:string,arg2:core.ActivityInput):Promise<core.Activity>;
 
 export function Archive(arg1:string):Promise<core.Task>;
@@ -18,6 +20,8 @@ export function CreateTask(arg1:core.CreateInput):Promise<core.Task>;
 
 export function CreateTemplate(arg1:core.TemplateInput):Promise<core.Template>;
 
+export function CreateTheme(arg1:core.ThemeInput):Promise<core.Theme>;
+
 export function DBPath():Promise<string>;
 
 export function DeleteActivity(arg1:string):Promise<core.Activity>;
@@ -26,9 +30,15 @@ export function DeleteTask(arg1:string):Promise<core.Task>;
 
 export function DeleteTemplate(arg1:string):Promise<core.Template>;
 
+export function DeleteTheme(arg1:string):Promise<core.Theme>;
+
+export function DuplicateTheme(arg1:string,arg2:string):Promise<core.Theme>;
+
 export function EnsureHerdrReady():Promise<integrations.HerdrTaskStatus>;
 
 export function EnsureHerdrWorkspaceForTask(arg1:string):Promise<integrations.HerdrTaskStatus>;
+
+export function GetActiveTheme():Promise<core.Theme>;
 
 export function GetAlwaysOnTop():Promise<boolean>;
 
@@ -38,6 +48,8 @@ export function GetTask(arg1:string):Promise<core.Task>;
 
 export function GetTemplate(arg1:string):Promise<core.Template>;
 
+export function GetTheme(arg1:string):Promise<core.Theme>;
+
 export function HideWindow():Promise<void>;
 
 export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activity>>;
@@ -45,6 +57,8 @@ export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activi
 export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 
 export function ListTemplates():Promise<Array<core.Template>>;
+
+export function ListThemes():Promise<Array<core.Theme>>;
 
 export function OpenHerdrTicket(arg1:string):Promise<void>;
 
@@ -55,6 +69,8 @@ export function PickDirectory(arg1:string):Promise<string>;
 export function Quit():Promise<void>;
 
 export function ReorderBoardTask(arg1:string,arg2:string):Promise<core.Task>;
+
+export function ResetTheme(arg1:string):Promise<core.Theme>;
 
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
@@ -73,5 +89,7 @@ export function Unarchive(arg1:string):Promise<core.Task>;
 export function UpdateTask(arg1:string,arg2:core.UpdateInput):Promise<core.Task>;
 
 export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core.Template>;
+
+export function UpdateTheme(arg1:string,arg2:core.ThemeInput):Promise<core.Theme>;
 
 export function ZedTicketCommand(arg1:string):Promise<string>;

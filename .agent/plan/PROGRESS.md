@@ -1,5 +1,15 @@
 # mhtodo — progress (updated 26-09-09)
 
+## v0.6 — GUI themes (complete)
+
+- [x] Migration v13: `themes` table + seed Slate/Paper/Ember + `meta.active_theme_id`
+- [x] Core token registry + factory palettes; CRUD / activate / duplicate / reset / search
+- [x] CLI `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset`
+- [x] Bound GUI methods + `themes:changed`; runtime `applyThemeTokens`
+- [x] CSS `@theme` radius/space tokens; semantic `rounded-*` / `gap-gap-*` migration
+- [x] Settings → Themes (sub-nav, color/length pickers, Use / Duplicate / Reset / Delete)
+- [x] Docs (plan `09-themes.md`, README, AGENTS.md, CHANGELOG) + tests
+
 ## v0.5 — Task templates (complete)
 
 - [x] Migration v9: `task_templates` table (every preset column NULLable = "not set")
@@ -67,4 +77,5 @@
   `SearchTemplates` is fuzzy/regex + cwd. All logic sits in `core.Service`.
 - Template preset columns are NULLable so "not part of this template" stays distinct from an explicit empty string / false. Tasks keep the older NOT NULL + empty-default convention.
 - `wails generate module` exits early when a GUI instance holds the single-instance lock; the v0.5 template bindings in `frontend/wailsjs/` were added by hand.
+- Themes (v0.6): same hand-binding note when the GUI is running; factory palettes live in `core.FactoryTokens`.
 - `go fmt ./...` rewrites files that were never gofmt-clean (cli/edit.go, core/task.go, store/repo.go, …). Format only the files you touch.

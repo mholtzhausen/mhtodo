@@ -118,7 +118,7 @@
     data-template-picker
     in:fly={{ y: -4, duration: 80 }}
     onkeydown={onKeydown}
-    class="absolute right-0 top-full z-30 mt-1.5 w-80 overflow-hidden rounded-lg border border-line bg-col shadow-md"
+    class="absolute right-0 top-full z-30 mt-1.5 w-80 overflow-hidden rounded-panel border border-line bg-col shadow-md"
   >
     <div class="border-b border-line-soft p-2">
       <div class="relative">
@@ -142,7 +142,7 @@
           bind:value={query}
           placeholder="Filter templates…  /"
           aria-label="Filter templates"
-          class="w-full rounded border border-line-soft bg-field py-1.5 pl-8 pr-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          class="w-full rounded-control border border-line-soft bg-field py-1.5 pl-8 pr-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
         />
       </div>
     </div>
@@ -166,7 +166,7 @@
             aria-selected={i === cursor}
             onclick={() => onPick(tpl)}
             onmouseenter={() => (cursor = i)}
-            class="block w-full rounded px-2 py-2 text-left
+            class="block w-full rounded-control px-2 py-2 text-left
               {i === cursor ? 'bg-accent/15' : 'hover:bg-white/5'}"
           >
             <span class="block truncate text-sm font-medium text-ink">{tpl.name}</span>

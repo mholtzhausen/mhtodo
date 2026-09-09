@@ -38,6 +38,8 @@ notes for each piece. Keep the numbers stable so links don't rot as the plan gro
 | `README.md` | Goal of this plan + initial-planning discussion (start here) |
 | `PROGRESS.md` | Overall checkbox progress (this file's conventions live in AGENTS.md) |
 | `01-*.md`, … | Per-task detail files (one numbered file per task) |
+| `08-task-templates.md` | Task templates (v0.5) |
+| `09-themes.md` | GUI themes (v0.6) |
 
 ## Working with this folder
 

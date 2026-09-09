@@ -47,6 +47,17 @@ type TaskRepository interface {
 	ListTemplates(ctx context.Context) ([]Template, error)
 	UpdateTemplate(ctx context.Context, t Template) error
 	DeleteTemplate(ctx context.Context, id string) (Template, error)
+
+	// Themes (v0.6). Create/Update return DuplicateThemeNameError on name
+	// collision; getters return ErrThemeNotFound. Meta holds active_theme_id.
+	CreateTheme(ctx context.Context, t Theme) error
+	GetThemeByID(ctx context.Context, id string) (Theme, error)
+	GetThemeByName(ctx context.Context, name string) (Theme, error)
+	ListThemes(ctx context.Context) ([]Theme, error)
+	UpdateTheme(ctx context.Context, t Theme) error
+	DeleteTheme(ctx context.Context, id string) (Theme, error)
+	GetMeta(ctx context.Context, key string) (value string, ok bool, err error)
+	SetMeta(ctx context.Context, key, value string) error
 }
 
 // Service holds all business rules shared by CLI and GUI. Neither frontend
@@ -114,15 +125,15 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		}
 	}
 	t := Task{
-		ID:          idStr,
-		Title:       title,
-		Description: in.Description,
-		Feedback:    in.Feedback,
-		Status:      st,
-		Progress:    in.Progress,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		ParentID:    parentID,
+		ID:              idStr,
+		Title:           title,
+		Description:     in.Description,
+		Feedback:        in.Feedback,
+		Status:          st,
+		Progress:        in.Progress,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		ParentID:        parentID,
 		Cwd:             strings.TrimSpace(in.Cwd),
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,

@@ -124,6 +124,15 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
 | `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
 | `template rm` | `mhtodo template rm REF [--yes]` | non-TTY requires `--yes`; prints deleted id |
+| `theme list` | `mhtodo theme list` | all themes, name order (`*` = active) |
+| `theme search` | `mhtodo theme search QUERY [--mode fuzzy\|regex]` | fuzzy (default) or regex over name |
+| `theme show` | `mhtodo theme show REF` | one theme by id or name (full tokens) |
+| `theme create` | `mhtodo theme create NAME [--from REF] [--activate]` | tokens from Slate factory or `--from`; optional activate |
+| `theme update` | `mhtodo theme update REF [--name S] [--set KEY=VALUE]… [--tokens-json '{…}']` | merge token patches; at least one flag required |
+| `theme rm` | `mhtodo theme rm REF [--yes]` | user themes only (built-ins refused); non-TTY requires `--yes` |
+| `theme activate` | `mhtodo theme activate REF` | set the active GUI theme |
+| `theme duplicate` | `mhtodo theme duplicate REF [NAME]` | copy into a new user theme |
+| `theme reset` | `mhtodo theme reset REF` | restore factory tokens for a built-in |
 | `gui` | `mhtodo gui` | explicit GUI launch, identical to bare `mhtodo` |
 
 ### Canonical JSON object
@@ -246,6 +255,10 @@ status transitions → activity → delete) using only this CLI.
   a template from the save icon in either header. CLI: `mhtodo template
   list|search|show|create|update|rm` and `add --template REF` (`search --cwd "$PWD"`
   is the agent-friendly probe; `--mode fuzzy|regex` for text).
+- **Themes:** Settings → Themes authors design tokens (colors, radii, spacing). Built-ins **Slate**
+  (default active), **Paper** (light), and **Ember** (warm) are editable with Reset-to-factory;
+  Duplicate always available; built-ins cannot be deleted. The active theme applies live via CSS
+  variables. CLI: `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset`.
 - **Sub-tasks toggle:** header control (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
   When on, opening Claude or Zed for a task hides mhtodo to the tray so the activated
@@ -291,11 +304,12 @@ status transitions → activity → delete) using only this CLI.
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
 | `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | `template list\|search\|show\|create\|update\|rm`; `add --template` | task templates (v0.5); CLI `search` uses core `SearchTemplates` (fuzzy/regex + cwd); update is full replace in core (CLI patches then replace); `add --template` applies then lets changed flags override |
+| `ListThemes` / `GetTheme` / `GetActiveTheme` / `CreateTheme` / `UpdateTheme` / `DeleteTheme` / `ActivateTheme` / `DuplicateTheme` / `ResetTheme` | `theme list\|search\|show\|create\|update\|rm\|activate\|duplicate\|reset` | GUI themes (v0.6); tokens JSON map; active id in `meta.active_theme_id`; built-ins Slate/Paper/Ember |
 
 After every mutation the app emits `tasks:changed` (activity ops use `op: activity`); the external
 watcher emits the same event for CLI-side writes. Template mutations emit `templates:changed`
-instead, so they do not trigger a task reload. New capability = core method + CLI command + bound
-method — never business logic in either frontend.
+and theme mutations emit `themes:changed`, so they do not trigger a task reload. New capability =
+core method + CLI command + bound method — never business logic in either frontend.
 
 ## Development notes
 

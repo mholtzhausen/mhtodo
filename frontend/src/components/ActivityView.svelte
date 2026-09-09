@@ -163,7 +163,7 @@
       type="button"
       onclick={() => (filterOpen = !filterOpen)}
       aria-expanded={filterOpen}
-      class="rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] hover:bg-card-hi"
+      class="rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] hover:bg-card-hi"
     >
       Filter by ticket
       {#if selectedTaskIds.length > 0}
@@ -182,15 +182,15 @@
 
     {#if filterOpen}
       <div
-        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-80 overflow-y-auto rounded border border-line bg-card p-2 shadow-md"
+        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-80 overflow-y-auto rounded-control border border-line bg-card p-2 shadow-md"
       >
         {#each ticketOptions as t (t.id)}
-          <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-white/5">
+          <label class="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm hover:bg-white/5">
             <input
               type="checkbox"
               checked={selectedTaskIds.includes(t.id)}
               onchange={() => onToggleTask(t.id)}
-              class="rounded border-line"
+              class="rounded-control border-line"
             />
             <span class="min-w-0 flex-1 truncate text-ink">{t.title}</span>
             <span class="font-mono text-[10px] text-ink-3">{shortId(t.id)}</span>
@@ -202,7 +202,7 @@
     {/if}
   </div>
 
-  <div class="min-h-0 flex-1 overflow-y-auto rounded-md border border-line-soft bg-col shadow-sm">
+  <div class="min-h-0 flex-1 overflow-y-auto rounded-card border border-line-soft bg-col shadow-sm">
     {#if filtered.length === 0}
       <div class="flex h-40 flex-col items-center justify-center gap-1 text-center">
         <p class="text-sm text-ink-3">No activity yet.</p>
@@ -213,7 +213,7 @@
         {#each filtered as a (a.id)}
           {@const task = taskById[a.task_id]}
           {@const parent = task?.parent_id ? taskById[task.parent_id] : undefined}
-          <li class="rounded bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06]">
+          <li class="rounded-control bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06]">
             <div class="mb-1.5 flex gap-3">
               <div class="flex w-28 flex-none flex-col gap-0.5 pt-0.5">
                 <span class="text-xs text-ink-2">{relTime(a.created_at)}</span>
@@ -288,7 +288,7 @@
   {@const feedback = (t.feedback ?? '').trim()}
   <div
     bind:this={tipEl}
-    class="pointer-events-none fixed z-50 max-h-[min(240px,50vh)] overflow-hidden rounded-md border border-line bg-card shadow-md ring-1 ring-black/30"
+    class="pointer-events-none fixed z-50 max-h-[min(240px,50vh)] overflow-hidden rounded-card border border-line bg-card shadow-md ring-1 ring-black/30"
     style={tipStyle(tip)}
     role="tooltip"
   >

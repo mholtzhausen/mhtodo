@@ -4,7 +4,7 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|install|update|service|template`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
  `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
@@ -14,6 +14,7 @@
  `mhtodo integration bash|zsh` installs a managed `claude.todo` shell helper for `$MHTODO_SESSION`.
  `mhtodo template list|search|show|create|update|rm` manages task templates
  (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.
+ `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset` manages GUI themes.
 - **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
@@ -81,8 +82,16 @@ task-detail headers. CLI: `mhtodo template list|search|show|create|update|rm`
 (`search` supports `--mode fuzzy|regex` and `--cwd`) and `add --template REF`.
 See [`.agent/plan/08-task-templates.md`](.agent/plan/08-task-templates.md).
 
+**GUI themes (v0.6):** named sets of design tokens (colors, radii, spacing) in a `themes` table
+(migration v13). Built-ins **Slate** (default active), **Paper** (light), and **Ember** (warm) are
+editable with Reset-to-factory; Duplicate always available; built-ins cannot be deleted. Active
+theme id lives in DB `meta`. Settings → Themes mirrors the Task Templates sub-nav with color and
+length pickers. Runtime apply sets CSS variables on `documentElement`. CLI: `mhtodo theme
+list|search|show|create|update|rm|activate|duplicate|reset`. See
+[`.agent/plan/09-themes.md`](.agent/plan/09-themes.md).
+
 **Out of scope (stretch):** cross-column insert index, sub-task reorder, list-view drag reorder,
-light theme, Windows/macOS support, tags/labels/projects, due dates/reminders.
+Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
 (when not in an input/textarea). Detail-pane description & feedback grow with content

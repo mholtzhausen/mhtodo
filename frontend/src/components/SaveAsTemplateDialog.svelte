@@ -138,7 +138,7 @@
   }
 
   const fieldClass =
-    'w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
+    'w-full rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
 </script>
 
 <svelte:window onkeydowncapture={onWindowKeydownCapture} />
@@ -156,21 +156,21 @@
     <form
       in:fly={{ y: 8, duration: 80 }}
       onsubmit={submit}
-      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-md"
+      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-panel border border-line bg-col shadow-md"
     >
-      <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
+      <div class="flex flex-none items-center gap-gap-md border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">Save as template</h2>
         <button
           type="button"
           onclick={onClose}
           title="Close (esc)"
-          class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
         >
           ✕
         </button>
       </div>
 
-      <div class="flex min-h-0 flex-col gap-3.5 overflow-y-auto p-5">
+      <div class="flex min-h-0 flex-col gap-gap-lg overflow-y-auto p-5">
         <label class="block">
           <span class="micro mb-1.5">Template name <em class="not-italic text-danger">*</em></span>
           <input
@@ -192,16 +192,16 @@
           template keep their normal defaults for them.
         </p>
 
-        <div class="flex flex-col gap-2.5">
+        <div class="flex flex-col gap-gap-md">
           {#each TEMPLATE_FIELDS as field (field.key)}
             {@const on = selected.has(field.key)}
-            <div class="rounded border border-line-soft bg-field/30 p-2.5">
-              <label class="flex cursor-pointer items-center gap-2.5">
+            <div class="rounded-control border border-line-soft bg-field/30 p-2.5">
+              <label class="flex cursor-pointer items-center gap-gap-md">
                 <input
                   type="checkbox"
                   checked={on}
                   onchange={() => toggle(field.key)}
-                  class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                  class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                 />
                 <span class="text-sm {on ? 'text-ink' : 'text-ink-3'}">{field.label}</span>
               </label>
@@ -209,7 +209,7 @@
               {#if on}
                 <div class="mt-2 pl-[26px]">
                   {#if field.kind === 'bool'}
-                    <label class="flex cursor-pointer items-center gap-2.5">
+                    <label class="flex cursor-pointer items-center gap-gap-md">
                       <input
                         type="checkbox"
                         checked={values[field.key] as boolean}
@@ -218,7 +218,7 @@
                             ...values,
                             [field.key]: (e.currentTarget as HTMLInputElement).checked
                           })}
-                        class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+                        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
                       />
                       <span class="text-sm text-ink-2"
                         >{values[field.key] ? 'On' : 'Off'} for tasks from this template</span
@@ -267,14 +267,14 @@
         <button
           type="button"
           onclick={onClose}
-          class="rounded px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!name.trim() || saving}
-          class="btn-primary rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
+          class="btn-primary rounded-control bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
         >
           Save template
         </button>

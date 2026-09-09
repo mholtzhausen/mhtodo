@@ -50,8 +50,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != 12 {
-		t.Fatalf("schema_version = %d, want 12", version)
+	if version != 13 {
+		t.Fatalf("schema_version = %d, want 13", version)
 	}
 	repo.Close()
 
@@ -62,8 +62,8 @@ func TestOpenMigratesAndIsIdempotent(t *testing.T) {
 	}
 	defer repo2.Close()
 	version = 0
-	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 12 {
-		t.Fatalf("schema_version after reopen = %d (err=%v), want 12", version, err)
+	if err := repo2.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 13 {
+		t.Fatalf("schema_version after reopen = %d (err=%v), want 13", version, err)
 	}
 
 	// WAL must be active.
@@ -332,8 +332,8 @@ func TestV1ToV5Upgrade(t *testing.T) {
 	defer repo.Close()
 
 	var version int
-	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 12 {
-		t.Fatalf("schema_version = %d (err=%v), want 12", version, err)
+	if err := repo.db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != 13 {
+		t.Fatalf("schema_version = %d (err=%v), want 13", version, err)
 	}
 	var cols []string
 	rows, err := repo.db.Query(`PRAGMA table_info(tasks)`)

@@ -365,7 +365,7 @@
       ? 'relative flex h-full flex-none flex-col border-l border-line bg-canvas'
       : mode === 'floating'
         ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-md'
-        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-md'
+        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-panel border border-line bg-canvas shadow-md'
   )
 </script>
 
@@ -389,7 +389,7 @@
   {/if}
   <div class="flex flex-none items-center justify-end gap-2 border-b border-line-soft bg-chrome px-4 py-2.5">
     <div
-      class="mr-auto flex rounded border border-line-soft p-0.5"
+      class="mr-auto flex rounded-control border border-line-soft p-0.5"
       role="group"
       aria-label="Detail display mode"
     >
@@ -399,7 +399,7 @@
           onclick={() => onSetMode(opt.value)}
           title={opt.title}
           aria-pressed={mode === opt.value}
-          class="rounded px-2 py-0.5 text-xs font-medium transition-colors
+          class="rounded-control px-2 py-0.5 text-xs font-medium transition-colors
             {mode === opt.value ? 'bg-accent/20 text-accent-hi' : 'text-ink-3 hover:bg-white/5 hover:text-ink'}"
         >
           {opt.label}
@@ -408,7 +408,7 @@
     </div>
     <div class="flex items-center gap-1">
       <div
-        class="flex items-center gap-0.5 rounded border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
+        class="flex items-center gap-0.5 rounded-control border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
       >
         <button
           type="button"
@@ -444,7 +444,7 @@
                 ? 'Copied full UUID'
                 : 'Copy short ID'
           }
-          class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
+          class="rounded-control p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
         >
           {#if copiedKind}
             <svg
@@ -483,7 +483,7 @@
           disabled={herdrOpening}
           title={claudeActive ? 'Open Claude session' : 'Open Claude'}
           aria-label={claudeActive ? 'Open Claude session' : 'Open Claude'}
-          class="rounded border border-line-soft bg-field/40 p-1 transition-colors hover:bg-white/5 disabled:opacity-40
+          class="rounded-control border border-line-soft bg-field/40 p-1 transition-colors hover:bg-white/5 disabled:opacity-40
             {claudeActive
             ? 'text-[#d97757] hover:text-[#e88a6a]'
             : 'text-ink-3 hover:text-accent-hi'}"
@@ -526,7 +526,7 @@
       onclick={() => (saveAsOpen = true)}
       title="Save this task's fields as a template"
       aria-label="Save as template"
-      class="rounded p-1.5 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+      class="rounded-control p-1.5 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
     >
       <svg
         class="h-3.5 w-3.5"
@@ -548,7 +548,7 @@
       onclick={() => onDelete(task)}
       title="Delete task (del)"
       aria-label="Delete task"
-      class="rounded p-1.5 text-ink-3 transition-colors hover:bg-danger/15 hover:text-danger"
+      class="rounded-control p-1.5 text-ink-3 transition-colors hover:bg-danger/15 hover:text-danger"
     >
       <svg
         class="h-3.5 w-3.5"
@@ -570,7 +570,7 @@
     <button
       onclick={onClose}
       title="Close (esc)"
-      class="rounded p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+      class="rounded-control p-1.5 leading-none text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
     >
       ✕
     </button>
@@ -614,7 +614,7 @@
         bind:value={title}
         onblur={saveTitle}
         onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-        class="w-full rounded border border-line-soft bg-field px-3 py-2 text-sm font-medium text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm font-medium text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       />
     </label>
 
@@ -647,13 +647,13 @@
           }}
           rows="3"
           placeholder="Notes, links, context… (markdown)"
-          class="ta-autogrow w-full rounded border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          class="ta-autogrow w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
         ></textarea>
       {:else}
         <div
           role="button"
           tabindex="0"
-          class="md-scroll w-full cursor-text rounded border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
+          class="md-scroll w-full cursor-text rounded-control border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
           title="Click to edit"
           onclick={(e) => {
             if ((e.target as HTMLElement).closest('a')) return
@@ -678,7 +678,7 @@
           Agent/CLI-authored (<code class="font-mono text-ink-3/90">mhtodo edit --feedback</code>); read-only here.
         </p>
         <div
-          class="md-scroll rounded border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
+          class="md-scroll rounded-control border border-accent/25 bg-accent/10 px-3 py-2 text-sm leading-relaxed text-ink-2"
         >
           <Markdown source={task.feedback} />
         </div>
@@ -694,13 +694,13 @@
           bind:value={cwd}
           onblur={saveCwd}
           placeholder="Optional project path…"
-          class="min-w-0 flex-1 rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
         />
         <button
           type="button"
           onclick={pickCwd}
           title="Pick folder"
-          class="flex-none rounded border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+          class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
         >
           <svg
             class="h-4 w-4"
@@ -724,7 +724,7 @@
         bind:value={todoSession}
         onblur={saveTodoSession}
         placeholder="Claude / Zed session id or name"
-        class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       />
       <p class="mt-1 text-[11px] text-ink-3">Claude session UUID (--session-id/--resume); --name uses shortID-title slug. Also MHTODO_SESSION / claude.todo</p>
     </label>
@@ -735,7 +735,7 @@
         bind:value={slackThread}
         onblur={saveSlackThread}
         placeholder="https://… (optional Slack thread link)"
-        class="w-full rounded border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       />
       {#if slackThread.trim()}
         <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
@@ -754,22 +754,22 @@
       {/if}
     </label>
 
-    <label class="flex cursor-pointer items-center gap-2.5">
+    <label class="flex cursor-pointer items-center gap-gap-md">
       <input
         type="checkbox"
         bind:checked={humanOnly}
         onchange={toggleHumanOnly}
-        class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
       />
       <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
     </label>
 
-    <label class="flex cursor-pointer items-center gap-2.5">
+    <label class="flex cursor-pointer items-center gap-gap-md">
       <input
         type="checkbox"
         bind:checked={includeInReport}
         onchange={toggleIncludeInReport}
-        class="h-4 w-4 rounded border-line-soft bg-field text-accent focus:ring-accent/25"
+        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
       />
       <span class="text-sm text-ink-2">Include in Slack report <span class="text-ink-3">(board summary copy)</span></span>
     </label>
@@ -780,7 +780,7 @@
       <button
         type="button"
         onclick={() => onAddSubtask(task.id)}
-        class="self-start rounded border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+        class="self-start rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
       >
         + Add sub-task
       </button>
@@ -790,7 +790,7 @@
           <button
             type="button"
             onclick={() => onSelectParent?.(st.id)}
-            class="flex w-full items-center gap-2.5 rounded border border-line-soft bg-field/50 px-3 py-2 text-left transition-colors hover:bg-card-hi"
+            class="flex w-full items-center gap-gap-md rounded-control border border-line-soft bg-field/50 px-3 py-2 text-left transition-colors hover:bg-card-hi"
           >
             <span
               class="h-2 w-2 flex-none rounded-full {statusDot[st.status] ?? statusDot.pending}"
@@ -821,25 +821,25 @@
       <input
         bind:value={actText}
         placeholder="Activity summary…"
-        class="w-full rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       />
       <textarea
         bind:value={commentText}
         rows="2"
         placeholder="Optional comment… (markdown)"
-        class="w-full resize-y rounded border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full resize-y rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
       ></textarea>
       <button
         type="submit"
         disabled={posting || (!actText.trim() && !commentText.trim())}
-        class="rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
+        class="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
       >
         Post
       </button>
     </form>
     <ul class="space-y-2">
       {#each activities as a (a.id)}
-        <li class="rounded border border-line-soft bg-field/50 px-2.5 py-2">
+        <li class="rounded-control border border-line-soft bg-field/50 px-2.5 py-2">
           <p class="mb-0.5 text-[10px] text-ink-3">{relTime(a.created_at)}</p>
           {#if a.activity}<p class="text-xs text-ink">{a.activity}</p>{/if}
           {#if a.comment}
@@ -880,7 +880,7 @@
       <button
         onclick={unarchive}
         title="Restore to pending (progress resets to 0)"
-        class="w-full rounded border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
+        class="w-full rounded-control border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
       >
         Unarchive → pending
       </button>
@@ -901,7 +901,7 @@
               activeSection = section.id
               if (section.id === 'subtasks') void loadSubtasks()
             }}
-            class="whitespace-nowrap rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
+            class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
               {activeSection === section.id
               ? 'bg-accent/15 text-ink'
               : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"

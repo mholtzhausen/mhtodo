@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.7.0
+
+### Features and Improvements
+- GUI themes (v0.6): SQLite `themes` table (migration v13) with categorized design tokens (colors, radii, spacing)
+- Built-ins **Slate** (default), **Paper** (light), **Ember** (warm) — editable with Reset; Duplicate; built-ins cannot be deleted
+- Settings → Themes with color/length pickers and live CSS-variable apply
+- CLI: `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset` (`--json`)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 2.6.0 (db2bfd5)
 
 ### Features and Improvements

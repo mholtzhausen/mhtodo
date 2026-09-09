@@ -46,7 +46,7 @@
   <div
     role="radiogroup"
     aria-label="Status"
-    class="grid grid-cols-3 gap-1 rounded border border-line-soft bg-field p-1 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]
+    class="grid grid-cols-3 gap-1 rounded-control border border-line-soft bg-field p-1 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]
       @[320px]:grid-cols-5"
   >
     {#each OPTIONS as o (o.s)}
@@ -56,7 +56,7 @@
         aria-checked={value === o.s}
         title={o.label}
         onclick={() => onPick(o.s)}
-        class="flex items-center justify-center gap-1 rounded-[3px] border border-transparent px-0.5 py-[7px] text-[11px] font-medium text-ink-2 hover:bg-white/5 hover:text-ink
+        class="flex items-center justify-center gap-1 rounded-chip border border-transparent px-0.5 py-[7px] text-[11px] font-medium text-ink-2 hover:bg-white/5 hover:text-ink
           {value === o.s ? o.active : ''}"
       >
         <span class="h-[7px] w-[7px] flex-none rounded-full {o.dot}"></span>

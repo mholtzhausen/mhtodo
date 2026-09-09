@@ -12,7 +12,7 @@ import (
 // inline DDL) so the pattern is proven from day one.
 type migration struct {
 	version int
-	up      string            // optional SQL (may be empty when fn alone does the work)
+	up      string              // optional SQL (may be empty when fn alone does the work)
 	fn      func(*sql.Tx) error // optional Go step after SQL, same transaction
 }
 
@@ -29,6 +29,7 @@ var migrations = []migration{
 	{version: 10, up: schemaV10},
 	{version: 11, fn: backfillEmptyTodoSessions},
 	{version: 12, fn: addTerminalPIDColumn},
+	{version: 13, fn: seedThemesV13},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -162,6 +163,50 @@ func addTerminalPIDColumn(tx *sql.Tx) error {
 	}
 	if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN terminal_pid INTEGER NOT NULL DEFAULT 0`); err != nil {
 		return fmt.Errorf("add terminal_pid: %w", err)
+	}
+	return nil
+}
+
+// seedThemesV13 creates the themes table, inserts Slate/Paper/Ember, and sets
+// meta.active_theme_id to Slate. Idempotent if the table already exists.
+func seedThemesV13(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS themes (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  builtin_key TEXT,
+  tokens      TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+`); err != nil {
+		return fmt.Errorf("create themes: %w", err)
+	}
+
+	now := "2026-09-09T00:00:00Z"
+	for _, seed := range core.BuiltinThemeSeeds {
+		tokens, ok := core.FactoryTokens(seed.BuiltinKey)
+		if !ok {
+			return fmt.Errorf("missing factory tokens for %q", seed.BuiltinKey)
+		}
+		raw, err := core.MarshalThemeTokens(tokens)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO themes (id, name, builtin_key, tokens, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?)`,
+			seed.ID, seed.Name, seed.BuiltinKey, raw, now, now,
+		); err != nil {
+			return fmt.Errorf("seed theme %s: %w", seed.BuiltinKey, err)
+		}
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO meta (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO NOTHING`,
+		core.MetaActiveThemeID, core.BuiltinSlateID,
+	); err != nil {
+		return fmt.Errorf("set active_theme_id: %w", err)
 	}
 	return nil
 }

@@ -13,12 +13,9 @@
   font-display: swap;
 }
 
-/* mhtodo design system — "Slate" (approved from tmp/design/01-slate.html, 2026-08-20).
-   Mid-dark slate lifted well above near-black so surface steps, borders and
-   shadows read; 4px radius on controls, 6px on cards; one bright periwinkle
-   accent; status colors double as the board legend (dot / bar / left edge).
-   Tailwind v4 CSS-first config: the tokens below generate the utilities used
-   across components (bg-canvas, text-ink, border-line-soft, bg-st-wip/20 …). */
+/* mhtodo design system — tokens are overridable at runtime via themes (v0.6).
+   Defaults match the Slate factory palette. Tailwind v4 CSS-first config:
+   tokens below generate utilities (bg-canvas, text-ink, rounded-card, gap-gap-md …). */
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -57,6 +54,20 @@
 
   /* unfilled progress track */
   --color-track: rgba(255, 255, 255, 0.13);
+
+  /* radii (themeable) */
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --radius-panel: 8px;
+  --radius-chip: 3px;
+
+  /* spacing (themeable semantic steps) */
+  --spacing-gap-sm: 8px;
+  --spacing-gap-md: 10px;
+  --spacing-gap-lg: 14px;
+  --spacing-pad-sm: 8px;
+  --spacing-pad-md: 12px;
+  --spacing-pad-lg: 20px;
 }
 
 html,
@@ -82,11 +93,11 @@ kbd {
   display: inline-block;
   margin: 0 1px;
   padding: 2px 5px 1px;
-  border: 1px solid #414b5e;
+  border: 1px solid var(--color-line);
   border-bottom-width: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   background: rgba(255, 255, 255, 0.05);
-  color: #9aa2b5;
+  color: var(--color-ink-3);
   font: 10px/1 var(--font-mono);
   vertical-align: 1px;
 }
@@ -153,7 +164,7 @@ kbd {
   width: 26px;
   height: 26px;
   border: 1px solid var(--color-line-soft);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--color-card);
   color: var(--color-ink-2);
   font-size: 14px;
@@ -225,13 +236,13 @@ kbd {
   font-family: var(--font-mono);
   font-size: 0.9em;
   padding: 0.1em 0.35em;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-ink);
 }
 .md pre {
   padding: 0.65em 0.8em;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--color-line-soft);
   background: rgba(0, 0, 0, 0.25);
   overflow-x: auto;
@@ -282,7 +293,7 @@ kbd {
 .md img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 .md-empty {
   font-style: italic;
