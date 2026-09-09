@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.6.0 (db2bfd5)
+
+### Features and Improvements
+- Full task-template CLI: `mhtodo template list|search|show|create|update|rm` and `add --template REF` (explicit flags override presets)
+- Template search supports `--mode fuzzy|regex` and `--cwd` (exact path); agent contract **v12** adds a `$PWD` cwd-probe workflow before creating or picking templates
+- Board/list/detail sub-task UX: nested display improvements and related task-management polish
+
+### Bugfixes
+- Task card display updates; remove unused components
+
+### Deprecations
+- (none)
+
 ## 2.5.0 (26716d5)
 
 ### Features and Improvements
