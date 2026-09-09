@@ -1,6 +1,7 @@
 <script lang="ts">
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
+  import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import HumanIcon from './HumanIcon.svelte'
@@ -79,6 +80,68 @@
     done: 'bg-st-done'
   }
 
+  const COLLAPSED_COL_W = 28
+  const EXPANDED_COL_MIN = 200
+  const COL_GAP = 12
+  const COLLAPSE_STATUSES: Status[] = ['pending', 'wip', 'waiting', 'review', 'done']
+  const COLLAPSE_STORAGE_KEY = 'mhtodo.collapsedColumns'
+
+  function loadCollapsedColumns(): Partial<Record<Status, boolean>> {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_STORAGE_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return {}
+      const out: Partial<Record<Status, boolean>> = {}
+      for (const s of parsed) {
+        if (COLLAPSE_STATUSES.includes(s as Status)) out[s as Status] = true
+      }
+      return out
+    } catch {
+      return {}
+    }
+  }
+
+  function persistCollapsedColumns(state: Partial<Record<Status, boolean>>) {
+    try {
+      const ids = COLLAPSE_STATUSES.filter((s) => state[s])
+      localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(ids))
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
+  let collapsedColumns = $state<Partial<Record<Status, boolean>>>(loadCollapsedColumns())
+
+  function isCollapsed(status: Status): boolean {
+    return !!collapsedColumns[status]
+  }
+
+  function toggleCollapsed(status: Status) {
+    collapsedColumns = { ...collapsedColumns, [status]: !collapsedColumns[status] }
+    persistCollapsedColumns(collapsedColumns)
+  }
+
+  function onCollapsedActivate(status: Status) {
+    if (suppressCollapseClick || draggingId) return
+    toggleCollapsed(status)
+  }
+
+  const boardGridStyle = $derived.by(() => {
+    const cols = visibleColumns
+    if (cols.length === 0) return undefined
+    const singleExpanded = cols.length === 1 && !isCollapsed(cols[0].status)
+    if (singleExpanded) return undefined
+    const parts = cols.map((c) =>
+      isCollapsed(c.status) ? `${COLLAPSED_COL_W}px` : `minmax(${EXPANDED_COL_MIN}px, 1fr)`
+    )
+    let minW = Math.max(0, cols.length - 1) * COL_GAP
+    for (const c of cols) {
+      minW += isCollapsed(c.status) ? COLLAPSED_COL_W : EXPANDED_COL_MIN
+    }
+    return `grid-template-columns: ${parts.join(' ')}; min-width: ${minW}px`
+  })
+
   // Only roots occupy columns; children nest under their parent card.
   const byStatus = $derived.by(() => {
     const m: Record<string, any[]> = {}
@@ -97,6 +160,9 @@
       if (!t.parent_id) continue
       ;(m[t.parent_id] ??= []).push(t)
     }
+    for (const pid of Object.keys(m)) {
+      m[pid] = sortSubtasksByCreated(m[pid])
+    }
     return m
   })
 
@@ -106,8 +172,14 @@
   let dropTarget = $state<Status | ''>('')
   let dropInsert = $state<{ status: Status; beforeId: string | null } | null>(null)
   let suppressClick = false
+  let suppressCollapseClick = false
   let dragOverRaf = 0
   let pendingDrop: { col: Status; beforeId: string | null; crossColumn: boolean } | null = null
+
+  function armCollapseClickSuppress() {
+    suppressCollapseClick = true
+    setTimeout(() => (suppressCollapseClick = false), 50)
+  }
 
   // Hide native drag image — the in-column ghost shows placement instead.
   const emptyDragImage = typeof Image !== 'undefined' ? new Image() : null
@@ -177,6 +249,7 @@
 
   function onCardDragEnd() {
     suppressClick = true
+    armCollapseClickSuppress()
     setTimeout(() => (suppressClick = false), 0)
     clearDragState()
   }
@@ -218,6 +291,13 @@
     if (!draggingId) return
     e.preventDefault()
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    // Collapsed lanes have no card list — drop appends to the column.
+    if (isCollapsed(col) && dragLifted) {
+      pendingDrop = { col, beforeId: null, crossColumn: dragFrom !== col }
+      if (!dragOverRaf) {
+        dragOverRaf = requestAnimationFrame(flushPendingDrop)
+      }
+    }
   }
 
   async function reorderInLane(id: string, col: Status, beforeId: string | null) {
@@ -263,6 +343,18 @@
     if (suppressClick) return
     onSelect(t.id)
     el?.blur()
+  }
+
+  async function markDone(id: string, e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const t = tasks.find((x) => x.id === id)
+    if (!t || t.status === 'done') return
+    try {
+      await api.setStatus(id, 'done')
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
   }
 
   function showGhostAt(col: Status, beforeId: string | null): boolean {
@@ -330,21 +422,20 @@
     {/if}
   </div>
 {:else}
+  {@const singleExpanded =
+    visibleColumns.length === 1 && !isCollapsed(visibleColumns[0].status)}
+  <div class="h-full min-h-0 {singleExpanded ? '' : 'overflow-x-auto'}">
   <div
-    class="h-full min-h-0 {visibleColumns.length === 1
-      ? ''
-      : 'overflow-x-auto'}"
-  >
-  <div
-    class="grid h-full min-w-0 gap-3 {visibleColumns.length === 1
-      ? 'grid-cols-1 max-w-md'
-      : 'grid-cols-[repeat(5,minmax(200px,1fr))]'}"
-    style={visibleColumns.length === 1
-      ? undefined
-      : `min-width: ${visibleColumns.length * 200 + (visibleColumns.length - 1) * 12}px`}
+    class="grid h-full min-w-0 gap-3 {singleExpanded ? 'grid-cols-1 max-w-md' : ''}"
+    style={boardGridStyle}
   >
     {#each visibleColumns as col (col.status)}
       {@const roots = columnRoots(col.status)}
+      {@const collapsed = isCollapsed(col.status)}
+      {@const colCount =
+        dragLifted && dragFrom === col.status && draggingId
+          ? columnRoots(col.status).length
+          : byStatus[col.status].length}
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
@@ -353,15 +444,57 @@
             ? 'border-accent/60 bg-accent/5'
             : 'border-line-soft bg-col'}"
       >
-        <header class="flex flex-none items-center gap-2 px-3 py-2.5">
+        {#if collapsed}
+          <button
+            type="button"
+            title={`Expand ${col.label} (${colCount})`}
+            aria-label={`Expand ${col.label} column`}
+            aria-expanded="false"
+            onclick={() => onCollapsedActivate(col.status)}
+            ondragover={(e) => onColumnDragOver(e, col.status)}
+            ondrop={(e) => onColumnDrop(e, col.status)}
+            class="flex h-full min-h-0 w-full flex-col items-center gap-1.5 px-0.5 py-2 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink-2"
+          >
+            <span
+              class="flex h-5 w-5 flex-none items-center justify-center rounded transition-colors"
+              aria-hidden="true"
+            >
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </span>
+            <span class="h-1.5 w-1.5 flex-none rounded-full {col.dot}" aria-hidden="true"></span>
+            <span
+              class="flex-none overflow-hidden text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-2 [writing-mode:vertical-rl] rotate-180"
+            >
+              {col.label}
+            </span>
+            <span
+              class="flex-none rounded-[2px] border border-line-soft bg-white/5 px-0.5 py-px font-mono text-[9px] leading-none text-ink-3"
+            >
+              {colCount}
+            </span>
+          </button>
+        {:else}
+        <header class="flex flex-none items-center gap-1.5 px-2 py-2.5 sm:gap-2 sm:px-3">
+          <button
+            type="button"
+            title={`Collapse ${col.label}`}
+            aria-label={`Collapse ${col.label} column`}
+            aria-expanded="true"
+            onclick={() => toggleCollapsed(col.status)}
+            class="rounded p-1 text-ink-3 transition-colors hover:bg-white/5 hover:text-accent"
+          >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
           <span class="h-2 w-2 flex-none rounded-full {col.dot}"></span>
           <h2 class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-2">{col.label}</h2>
           <span
             class="rounded-[3px] border border-line-soft bg-white/5 px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-3"
           >
-            {dragLifted && dragFrom === col.status && draggingId
-              ? columnRoots(col.status).length
-              : byStatus[col.status].length}
+            {colCount}
           </span>
           <div class="flex-1"></div>
           {#if col.status === 'done'}
@@ -432,9 +565,28 @@
               >
                 <button
                   type="button"
+                  tabindex={t.status === 'done' ? -1 : 0}
+                  disabled={t.status === 'done'}
+                  title={t.status === 'done' ? 'Done' : 'Mark done'}
+                  aria-label={t.status === 'done' ? 'Done' : `Mark “${t.title}” done`}
+                  aria-pressed={t.status === 'done'}
+                  onclick={(e) => void markDone(t.id, e)}
+                  onmousedown={(e) => e.stopPropagation()}
+                  ondragstart={(e) => e.preventDefault()}
+                  class="absolute right-1.5 top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border transition-colors
+                    {t.status === 'done'
+                      ? 'cursor-default border-st-done bg-st-done text-white'
+                      : 'cursor-pointer border-ink-3/50 bg-card/80 text-transparent hover:border-st-done hover:bg-st-done/20 hover:text-st-done'}"
+                >
+                  <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 text-left focus:outline-none"
+                  class="w-full cursor-grab p-2.5 pr-6 text-left focus:outline-none"
                 >
                   <div class="mb-2 flex items-start gap-1.5">
                     <p class="min-w-0 flex-1 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
@@ -510,6 +662,7 @@
             {/if}
           {/if}
         </div>
+        {/if}
       </section>
     {/each}
   </div>

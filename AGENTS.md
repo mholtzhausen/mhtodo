@@ -64,6 +64,10 @@ for the managed process. Zed remains a separate integration.
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to
 reorder; cross-column drag changes status (appends to target column). CLI: `mhtodo reorder`.
+Nested sub-tasks on the board/list/detail are shown in creation order (oldest first), not board
+`updated_at` order. Board cards have a top-right mark-done control that sets status to `done`
+immediately. Board columns collapse to a slim vertical strip (rotated title + count); state is
+persisted in `localStorage` (`mhtodo.collapsedColumns`).
 
 **Task templates (v0.5):** named sets of task presets (`title_prefix`, `description`, `status`, `cwd`,
 `slack_thread`, `human_only`, `include_in_report`) in a `task_templates` table (migration v9). Every

@@ -162,7 +162,9 @@
       subtasks = await api.list({
         parentId: task.id,
         includeDone: true,
-        includeHumanOnly: true
+        includeHumanOnly: true,
+        sort: 'created',
+        ascending: true
       })
     } catch (e) {
       onError(errMsg(e))

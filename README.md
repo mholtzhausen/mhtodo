@@ -208,12 +208,14 @@ status transitions → activity → delete) using only this CLI.
 
 - **Board view (default):** five kanban columns — pending / wip / waiting / review / done — with live
   counts; root cards show title, progress, relative time; human-only cards show a person icon top-right.
-  Sub-tasks nest under the parent card when shown (never own column cards). Drag a **root** card to
-  change status. Per-column **+** opens new-task preset to that status. Filter chips: **All** /
-  **Agents** (hide human-only) / **Human** (human-only only).
+  A tiny top-right checkbox marks the card done immediately. Columns collapse via a header caret into a
+  slim vertical strip (rotated title + count); collapsed state persists across restarts. Sub-tasks nest
+  under the parent card when shown (never own column cards), in creation order (oldest first). Drag a
+  **root** card to change status (including onto a collapsed lane). Per-column **+** opens new-task
+  preset to that status. Filter chips: **All** / **Agents** (hide human-only) / **Human** (human-only only).
 - **List view:** status + progress stacked in one column; human-only rows show a person icon before
   the status chip; title takes remaining width; updated shows elapsed + absolute time. Sub-tasks indent
-  under parents when shown. Same human filter as the board. Toggle Board / List / Activity with `b` /
+  under parents when shown (creation order). Same human filter as the board. Toggle Board / List / Activity with `b` /
   `l` / `a`; choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).

@@ -13,6 +13,18 @@ function compareRoots(a: any, b: any): number {
   return String(b.updated_at).localeCompare(String(a.updated_at))
 }
 
+/** Nested sub-tasks: creation order (oldest first), matching how agents typically work them. */
+export function compareSubtasksByCreated(a: any, b: any): number {
+  const ca = String(a.created_at ?? '')
+  const cb = String(b.created_at ?? '')
+  if (ca !== cb) return ca.localeCompare(cb)
+  return String(a.id ?? '').localeCompare(String(b.id ?? ''))
+}
+
+export function sortSubtasksByCreated<T>(list: T[]): T[] {
+  return [...list].sort(compareSubtasksByCreated)
+}
+
 /** Root tasks and nested sub-tasks in board visual order (columns L→R, cards T→B). */
 export function boardTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
   const byStatus: Record<string, any[]> = {}
@@ -29,6 +41,9 @@ export function boardTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
 
   for (const s of BOARD_COLUMNS) {
     byStatus[s].sort(compareRoots)
+  }
+  for (const pid of Object.keys(childrenOf)) {
+    childrenOf[pid].sort(compareSubtasksByCreated)
   }
 
   const ids: string[] = []
@@ -60,7 +75,8 @@ export function boardAdjacentTaskId(
 /** List-view visual order: roots then nested children when showSubtasks. */
 export function listTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
   const roots = tasks.filter((t) => !t.parent_id)
-  const childrenOf = (pid: string) => tasks.filter((t) => t.parent_id === pid)
+  const childrenOf = (pid: string) =>
+    sortSubtasksByCreated(tasks.filter((t) => t.parent_id === pid))
   const out: string[] = []
   if (!showSubtasks) {
     for (const t of roots) out.push(t.id)

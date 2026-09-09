@@ -1,6 +1,7 @@
 <script lang="ts">
   import { relTime, absList, STATUS_LABELS } from '../lib/format'
   import type { Status } from '../lib/api'
+  import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
 
@@ -55,6 +56,9 @@
       const list = childrenByParent.get(t.parent_id)
       if (list) list.push(t)
       else childrenByParent.set(t.parent_id, [t])
+    }
+    for (const [pid, list] of childrenByParent) {
+      childrenByParent.set(pid, sortSubtasksByCreated(list))
     }
     const out: { task: any; depth: number }[] = []
     if (!showSubtasks) {
