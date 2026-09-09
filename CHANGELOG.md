@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.5.0 (26716d5)
+
+### Features and Improvements
+- Agent integration contract **v11**: live board signal is ticket → status → progress → sub-tasks (activities are audit); ask before creating root tasks; reopen `review` → `wip` with new sub-tasks when more work continues; mid-session ticket nudge (Behaviour D / `Stop`) plus stronger turn-start reminders
+- Desktop GUI responsiveness: board columns use fluid `minmax` sizing with horizontal scroll; footer shortcuts hide on narrow widths; pinned detail can float when the main pane is tight
+- Task load / detail updates coalesce and debounce; search debounce; Claude/Zed readiness cached once per settings change (not per card)
+
+### Bugfixes
+- (none in this release range)
+
+### Deprecations
+- (none)
+
 ## 2.4.0 (dbffb30)
 
 ### Features and Improvements

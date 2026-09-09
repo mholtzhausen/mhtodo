@@ -43,7 +43,10 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 [`.agent/plan/`](.agent/plan/README.md).
 
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
-interpolated at emit time). `mhtodo update` self-updates from GitHub Releases (see README).
+interpolated at emit time). The live board signal for agents is status → progress →
+sub-tasks (activities are audit); agents must ask before creating root tasks and
+reopen `review` → `wip` with new sub-tasks when more work continues.
+`mhtodo update` self-updates from GitHub Releases (see README).
 `mhtodo service …` installs/controls/removes `~/.config/systemd/user/mhtodo.service` for the
 running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service + shell

@@ -14,10 +14,16 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 10
+const IntegrationVersion = 11
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v10 todo_session is a Claude session UUID (auto-seeded UUIDv7). Launch uses
+const integrationChangelog = `v11 User scan order is ticket → status → progress → sub-tasks; activities are
+    an audit trail, not the live signal. Ask before creating any root task (no
+    auto-register). Reopen review→wip and add sub-tasks when more work lands.
+    Sub-tasks for 2+ steps (parent-only only for trivial one-shots). Behaviour D
+    Stop/mid-session ticket nudge; stronger A reminder to find/update the ticket.
+    REVERSES v5 "3+ steps" / "activities primary" / "nothing matches → register".
+v10 todo_session is a Claude session UUID (auto-seeded UUIDv7). Launch uses
     claude --session-id <uuid> --name <slug> || claude --resume <uuid> --name <slug>
     because --resume with a missing name opens Claude's search TUI (no error), and
     --session-id errors when the session already exists. Display slug remains

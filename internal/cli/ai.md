@@ -25,9 +25,10 @@ is open on the user's screen while agents work.
 
 - **User → agent.** They write tasks and comments in the GUI, then point an agent
   at one: *"do that one"*, *"what's next?"*.
-- **Agent → user.** The agent reports through status, progress, sub-tasks,
-  **activities** (live running commentary), and **feedback** (a short post-work
-  summary with notes and takeaways on the task itself).
+- **Agent → user.** The agent reports through status, progress, and **sub-tasks**
+  first — those are what the user watches live. **Activities** are a secondary
+  audit trail (why a choice was made). **Feedback** is a short post-work summary
+  with notes and takeaways on the task itself.
 
 Every design decision below follows from that. An integration that treats mhtodo
 as a place to dump status lines has failed, even if every command succeeds.
@@ -172,6 +173,20 @@ plain text.
 This is what must end up in the agent's always-on instructions (a skill, a rules
 file, a system prompt — see [§4](#4-host-mapping)). Encode all of it.
 
+### How the user reads the board
+
+The user follows an agent by scanning **in this order**:
+
+1. **Find the ticket** (title / card on the board)
+2. **Status** (which column it occupies)
+3. **Progress** (0–100)
+4. **Sub-tasks** (the live step plan — what is done, what is next)
+
+**Activities are mostly for auditing** — to reconstruct *why* the agent chose a
+particular path after the fact. They are not the primary live signal. Keep
+status, progress, and sub-tasks current even when you post few activities.
+Stale sub-tasks with a busy activity log is a failed integration.
+
 ### 3.1 Session state
 
 One pointer file per agent session:
@@ -204,7 +219,7 @@ activity already shown to the agent, for the comment relay in §3.6.
 | Status / progress | Agent moves it. | Agent moves it. |
 | Narration | **Activities only** while working. | Activities (and the description). |
 | Closing | Take to `review`. **The user** marks it done. | Agent may mark `done`. |
-| Decomposition | Step plan as sub-tasks on start (§3.5). Never narrow their row. | Same — immediate step plan on start. |
+| Decomposition | Visible step plan as sub-tasks on start (§3.5). Never narrow their row. | Same — immediate step plan on start. |
 
 **Feedback** is a short **post-work summary**: outcome in a sentence or two, plus any
 notes and takeaways the user should keep (gotchas, follow-ups, decisions). It lives
@@ -212,10 +227,11 @@ on the task card (GUI shows it when non-empty). It is **not** a running log —
 that is activities. Write or refresh feedback when handing back (§3.7); do not drip
 mid-job updates into it.
 
-Unifying habit: **progress narration always goes to activities.** Closing summary
-goes to **feedback**.
+Unifying habit: **live signal = status + progress + sub-tasks.** Closing summary
+goes to **feedback**. Activities are the **audit trail** for decisions and
+findings — not a substitute for the live fields.
 
-### 3.3 Starting work — search, then adopt or register
+### 3.3 Starting work — search, then adopt (ask before creating a root)
 
 Before investigating anything substantive:
 
@@ -225,14 +241,21 @@ mhtodo list --roots --json --search "<2-3 distinctive keywords from the request>
 
 - **A result is the same job** → adopt it. A duplicate row beside the user's is
   worse than no task at all.
-- **Nothing matches** → register a new one.
-- **Genuinely unsure** → ask, in one line.
+- **A result is in `review`** (or was handed back) and this session — or another —
+  is doing more work on it → **reopen**: move the parent to `wip`, add sub-tasks
+  for the additional work, and continue (§3.5 / §3.7). Do not leave new work
+  stranded under a `review` card.
+- **Nothing matches** → **ask the user** whether to create a root ticket, and what
+  title/scope they want. **Do not create a primary (root) task on your own.**
+  Unprompted root tickets proliferate and clutter the board.
+- **Genuinely unsure** which existing row matches → ask, in one line.
 
-Adopt:
+Adopt (including reopen from `review` / `waiting`):
 
 ```bash
 mhtodo status <id> wip
 mhtodo edit <id> --progress 5          # progress only — never --desc, never --title
+                                       # on reopen, set progress to reflect remaining work
 mhtodo activity add <id> --activity "Task Picked Up" \
   --comment "<how the brief was read and what happens first>"
 printf '%s\norigin=user\n' <id> > "$pointer"
@@ -241,7 +264,9 @@ printf '%s\norigin=user\n' <id> > "$pointer"
 That opening activity is the user's chance to correct a misread brief before
 anything is built.
 
-Register:
+**Register a root task only after the user agrees** (explicit "yes, create it",
+"add a ticket for …", or equivalent). Sub-tasks under an already-adopted parent
+do **not** need a separate ask — they are the step plan (§3.5).
 
 ```bash
 mhtodo add "[<context>] <short imperative title>" \
@@ -254,12 +279,17 @@ printf '%s\norigin=agent\n' <id> > "$pointer"
 directory basename or a short label like `[cloudflare]`. The bracket prefix is how
 the user tells concurrent agents apart on the board. Keep titles under ~60 chars.
 
-Skip registration entirely for conversational turns, one-line lookups, and work
-already covered by the session's open task.
+Skip root registration entirely for conversational turns, one-line lookups, and
+work already covered by the session's open task.
 
 Immediately after adopting or registering, draft the step plan (§3.5).
 
-### 3.4 Activities — the primary reporting channel
+### 3.4 Activities — audit trail (not the live signal)
+
+Activities explain *why* the agent did something. The user primarily watches
+**status → progress → sub-tasks** (§3 opening). Post activities for decisions,
+surprises, and hand-backs — not as a substitute for keeping the live fields
+current.
 
 ```bash
 mhtodo activity add <id> --activity "<Short Label>" [--comment "<detail>"]
@@ -301,28 +331,29 @@ Post one when:
 | Committing, pushing or opening a PR | `PR #142 Opened` |
 | Handing back | `Handed Back` |
 
-**Granularity: one activity per step forward.** The unit is a step that moved the
-job along, not a tool call. Sometimes that is a single tool call; more often it is a
-small run of them that together settled one thing. If the agent can say what
-changed because of it, it is an activity. If it cannot, fold it into the next one.
+**Granularity: one activity per meaningful decision or finding.** The unit is a
+step that moved the job along *and* that the user might later want to audit —
+not every tool call. Prefer updating the matching **sub-task status** and parent
+**progress** first; then add an activity when the reasoning matters.
 
-**Lean fine-grained rather than coarse.** A log that shows *how* the agent got there
-is worth more on the board than four summary paragraphs posted at the end. The
-failed attempt, the stale cache, the label that turned out not to exist — those are
-steps forward and they belong in the log. Two dozen short labelled entries across a
-long job is a healthy trace, not noise.
+Failed attempts, wrong turns, and surprising discoveries belong in the audit
+log when they explain a later choice. A dense activity stream with stale
+sub-tasks is noise; a short audit trail beside a current step plan is correct.
 
-Roughly one every few minutes of real work. **Twenty minutes of silence reads as a
-stalled agent.**
+Roughly one every few minutes of real work is still fine when there is something
+to audit. **Twenty minutes with no status/progress/sub-task movement** reads as a
+stalled agent — that is what must not go silent.
 
-### 3.5 Sub-tasks — step plan, one level
+### 3.5 Sub-tasks — the live step plan (one level)
 
-When a root task is adopted or registered and work begins, **immediately** draft
-a step plan for the job.
+Sub-tasks are **how the user follows the agent**. When a root task is adopted or
+registered and work begins, **immediately** draft a visible step plan.
 
-- **Two steps or fewer** — work on the parent only. No sub-tasks.
-- **Three or more steps** — create one sub-task per step under the parent as soon
-  as the plan is clear:
+- **Trivial one-shot** (a single discrete action, minutes of work) — parent only;
+  no sub-tasks.
+- **Two or more distinct steps** — create one sub-task per step under the parent
+  as soon as the plan is clear. Prefer a short visible plan over working only on
+  the parent.
 
 ```bash
 mhtodo add "<step title>" --parent <parent-id> --status pending --json
@@ -332,14 +363,15 @@ mhtodo status <step-id> wip
 mhtodo status <step-id> done
 ```
 
-Sub-tasks are the visible breakdown — especially valuable when the user wrote a
-coarse task: the plan appears without touching their row, and they can object to
-it. Three or four steps is a solid plan; twelve is a checklist nobody reads.
+Keep sub-task rows current as you go — mark `wip` when you start a step, `done`
+when it lands. That movement *is* the live progress the user watches. Three or
+four steps is a solid plan; twelve is a checklist nobody reads.
 
-> **Sub-task or activity?** A sub-task is a *planned step* in the breakdown.
-> An activity is an *action taken while completing* a step. "Add CSV serializer
-> endpoint" is a sub-task; `Serializer Implemented` is an activity on that
-> sub-task.
+> **Sub-task or activity?** A sub-task is a *planned step* in the breakdown —
+> the live signal. An activity is an *auditable action or decision* while
+> completing a step. "Add CSV serializer endpoint" is a sub-task;
+> `Serializer Implemented` (with reasoning in `--comment`) is an activity on
+> that sub-task.
 
 Sub-tasks use **`pending` → `wip` → `done` only** — never `review` or `waiting`.
 
@@ -349,9 +381,14 @@ treat "all sub-tasks done" as synonymous with "job finished" unless the work is
 actually complete.
 
 **Replan freely.** Add, remove, or reorder sub-tasks whenever the shape of the
-job changes — new findings, user input, blockers, scope shifts. Drop obsolete
-steps (`rm` only for rows created in error; otherwise mark `done` with a brief
-activity explaining why).
+job changes — new findings, user input, blockers, scope shifts, **or additional
+work after a hand-back**. Drop obsolete steps (`rm` only for rows created in
+error; otherwise mark `done` with a brief activity explaining why).
+
+**More work after `review`.** If the parent is (or was just) in `review` and
+new work appears — in this Claude session or another — move the parent back to
+`wip`, add sub-tasks for that additional work, and update progress. Leaving the
+card in `review` while an agent keeps building is wrong.
 
 **Blocking moves the parent.** Sub-tasks render inside the parent card on the
 board, not as separate kanban columns. When user input is required, set the
@@ -390,8 +427,15 @@ Keep it scannable; put the blow-by-blow in activities, not here.
 
 Use `waiting` on the **parent** instead when blocked on an answer — the whole
 card moves to the Waiting column (sub-tasks stay nested inside it). The closing
-activity is the step-trace the user can skim; **feedback** is what they read
-later for the digest — files, PRs, outcomes, gotchas — not "finished the task".
+activity is the step-trace the user can skim later for *why*; **feedback** is
+what they read for the digest — files, PRs, outcomes, gotchas — not "finished
+the task". **Sub-tasks and progress** remain what they watched while the work
+was live.
+
+**Reopen, do not pile onto `review`.** If further work is requested or performed
+while the parent is in `review` (same session or a later one), set the parent to
+`wip`, add sub-tasks for the new work, and continue (§3.3 / §3.5). Hand back to
+`review` again only when that additional work is ready.
 
 ### 3.8 Picking a task — "what's next?", todos, the list
 
@@ -441,8 +485,8 @@ or omit rows** (including `wip`).
 3. **After they pick** — adopt per §3.3 (or continue if it is already the
    session's open task). Only then set `wip` and begin work.
 
-If the list is empty, say so and offer to register new work — still do not
-register until they describe what they want.
+If the list is empty, say so and ask whether they want a new root ticket — still
+do **not** create one until they agree and describe what they want (§3.3).
 
 ### 3.9 Subagents
 
@@ -477,9 +521,10 @@ agent remembering:
 
 | Behaviour | Trigger | Effect |
 |---|---|---|
-| **A. Context injection + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks, feedback, and any new activity; when no task is registered, keyword-search the user's prompt against open root tasks and offer candidates — **unless** the turn is a task-picker request (§3.8), in which case follow §3.8 instead. Flip a `waiting` task back to `wip`. |
+| **A. Context injection + ticket reminder + candidate search** | Before each user turn is processed | Inject the active task's state, origin, sub-tasks, feedback, and any new activity. **Always remind** the agent to find or confirm the ticket for the current work and to keep **status, progress, and sub-tasks** current (activities are audit-only). When no task is registered, keyword-search the user's prompt against open root tasks and offer candidates — **unless** the turn is a task-picker request (§3.8), in which case follow §3.8 instead. Flip a `waiting` **or `review`** task back to `wip` when this turn continues work on it. Never auto-create a root task from the hook. |
 | **B. Ghost cleanup** | Session ends | If the task is still `wip`, set `waiting` and post an activity saying why. **Leave the pointer file in place** so a resumed session picks it back up. |
 | **C. Idle detection** | Runtime goes idle awaiting user input | If the task is `wip`, set `waiting`. **Skip permission/approval prompts** — nothing reliably fires when one is granted mid-turn, so the task would strand on `waiting` through an hour of real work. |
+| **D. Mid-session ticket nudge** | After the agent finishes a response (`Stop`), or on a host-equivalent cadence | Inject / surface a short reminder: confirm the session still has the right ticket linked; update parent status/progress and sub-task rows for work just done; reopen from `review` if more work landed. Do **not** create root tasks from this hook. |
 
 ### Claude Code (reference implementation)
 
@@ -489,23 +534,30 @@ agent remembering:
 | A | `UserPromptSubmit` | `~/.claude/hooks/mhtodo-reminder.sh` |
 | B | `SessionEnd` | `~/.claude/hooks/mhtodo-session-end.sh` |
 | C | `Notification` | `~/.claude/hooks/mhtodo-notification.sh` |
+| D | `Stop` | `~/.claude/hooks/mhtodo-stop.sh` |
 
 Hooks receive a JSON payload on stdin (`session_id`, `cwd`, `prompt`, `message`,
 `reason` depending on event). A `UserPromptSubmit` hook's stdout is injected into
-the turn's context. Register them in `~/.claude/settings.json` under `hooks`,
+the turn's context. A `Stop` hook should emit a brief additional-context reminder
+(or host-equivalent) so the *next* turn still sees the nudge if the runtime only
+injects on submit — pair with Behaviour A rather than relying on Stop alone.
+Register them in `~/.claude/settings.json` under `hooks`,
 **appending to** any existing array for that event — never replacing it.
 
 ### Other hosts
 
 - **Cursor / Windsurf / Copilot-style rules files** — write §3 into the rules
-  file. Behaviours A–C are usually unavailable; instead add an explicit
-  instruction to run `mhtodo show <id>` at the start of each turn and to set a
-  terminal status before replying. **§3.8 task-picker turns must use `AskQuestion`
+  file. Behaviours A–D are usually unavailable as real hooks; instead add an
+  explicit instruction to run `mhtodo show <id>` at the **start of each turn**
+  and again **after each major step**, updating status/progress/sub-tasks before
+  continuing, and to set a terminal status before replying. **Never create a
+  root task without asking.** **§3.8 task-picker turns must use `AskQuestion`
   (or equivalent)** — not a prose list. Tell the user which parts could not be
   automated.
-- **Agent SDKs / custom harnesses** — map A/B/C onto the pre-turn, session-teardown
-  and idle callbacks.
-- **No hook mechanism at all** — install the contract only, and say so plainly.
+- **Agent SDKs / custom harnesses** — map A/B/C/D onto the pre-turn,
+  session-teardown, idle, and post-response callbacks.
+- **No hook mechanism at all** — install the contract only (including the
+  turn-start + after-major-step ticket reminder), and say so plainly.
 
 ### Hook implementation notes
 
@@ -514,12 +566,16 @@ calls with a timeout, swallow parse failures, and **always exit 0**. A task
 tracker that breaks the user's agent is worse than no task tracker.
 
 The context-injection hook should also:
+- open with an explicit reminder to **find or confirm the ticket** for this turn's
+  work and to refresh **status / progress / sub-tasks** before continuing;
 - track a `.seen` marker so activities are relayed once, not replayed every turn —
   and treat a *missing* marker as "baseline, show nothing" while an *empty* marker
   means "show everything", or the very first activity is silently swallowed;
 - display 13-character id prefixes (see §2);
 - surface non-empty `feedback` when injecting task state (it is the last hand-back
-  digest, not live narration).
+  digest, not live narration);
+- when the linked task is in `review` and the new prompt continues that job,
+  instruct a reopen to `wip` with new sub-tasks rather than leaving it in Review.
 
 ---
 
@@ -542,7 +598,8 @@ ${XDG_STATE_HOME:-$HOME/.local/state}/mhtodo-agent/integration.json
     {"path": "~/.claude/skills/mhtodo/SKILL.md", "role": "contract"},
     {"path": "~/.claude/hooks/mhtodo-reminder.sh", "role": "context-injection"},
     {"path": "~/.claude/hooks/mhtodo-session-end.sh", "role": "ghost-cleanup"},
-    {"path": "~/.claude/hooks/mhtodo-notification.sh", "role": "idle-detection"}
+    {"path": "~/.claude/hooks/mhtodo-notification.sh", "role": "idle-detection"},
+    {"path": "~/.claude/hooks/mhtodo-stop.sh", "role": "mid-session-nudge"}
   ],
   "settings_touched": ["~/.claude/settings.json"],
   "settings_backup": "~/.claude/settings.json.bak-mhtodo-<stamp>"
@@ -568,9 +625,11 @@ overwrite — the user may have hand-tuned things.
    - contract rules that are missing, and rules present that this document has
      since **changed or reversed** — removals matter as much as additions;
    - commands or flags used that no longer exist in §2;
-   - hook behaviours A/B/C that are absent, or wired to the wrong event;
+   - hook behaviours A/B/C/D that are absent, or wired to the wrong event;
    - **any mechanism that lets the agent start work autonomously** — that
      violates §1 and must be removed;
+   - **any habit of creating root tasks without asking the user** — that
+     violates §3.3 and must be removed;
    - missing **`--feedback` at hand-back** and missing **markdown-field** guidance.
 3. **Preserve local customisation.** If an artifact contains user-authored
    material outside this contract, keep it and merge rather than replace.
@@ -592,14 +651,19 @@ it reads first. Search the installed artifact for these and **delete them**:
 
 | Old wording (delete it) | Now says |
 |---|---|
-| "Do not post per tool call", "`Ran a grep` is noise" | §3.4: one activity per **step forward**; lean fine-grained |
+| "Do not post per tool call", "`Ran a grep` is noise" | §3.4: activities are an **audit trail**; update status/progress/sub-tasks first |
 | "`--activity` is the headline … short and past tense" | §3.4: `--activity` is a **Title Case label, not a sentence** — 2–4 words, noun phrase |
 | Sentence-style example labels (`Picked up in a session`, `Traced it to the async GCS loader`, `Handed back for review — 3 files changed`) | Chip-style labels (`Task Picked Up`, `Root Cause Found`, `Handed Back`) |
 | Hand-back that only sets progress/status with no `--feedback` | §3.7: set `--feedback` with summary + notes/takeaways |
-| Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are planned steps, activities are actions within a step |
+| Sub-tasks only "as useful" / when pieces have "their own lifecycle" / activity when it "doesn't deserve its own progress bar" | §3.5: immediate step plan on start; sub-tasks are the **live** signal; activities are audit |
+| "Two steps or fewer — work on the parent only" / sub-tasks only for "three or more steps" | §3.5: sub-tasks for **two or more** distinct steps; parent-only only for trivial one-shots |
+| "Nothing matches → register a new one" / auto-create root tasks | §3.3: **ask the user** before creating any root task |
+| Activities as "the primary reporting channel" / "lean fine-grained" activity spam | §3 opening / §3.4: user scans ticket → status → progress → **sub-tasks**; activities are audit |
+| Leaving a card in `review` while more work continues | §3.3 / §3.5 / §3.7: reopen to `wip` and add sub-tasks for the additional work |
 | `waiting` or `review` on sub-tasks | §3.5: sub-tasks use `pending` → `wip` → `done` only; blocking moves the **parent** to `waiting` |
 | Task list as prose groups, omitting `wip`, or auto-picking the first `pending` row | §3.8: `mhtodo list --roots --json` in board order → **AskUserQuestion** / **AskQuestion** picker (status, date, title; no ids in labels) |
 | Adopting or updating tasks with `human_only: true` | §1 / §2: human-only tasks are user-owned; default list hides them — never adopt |
+| Hooks A–C only (no mid-session ticket reminder) | §4: Behaviour **D** (`Stop` / post-response) plus stronger A reminder to find/update the ticket |
 
 Example labels matter more than they look: they sit above the rule in the file and
 are what an agent actually copies. A correct rule underneath a table of sentences
@@ -624,13 +688,18 @@ will not change behaviour.
    rather than replacing them.
 6. **Verify.** For a hook-capable host, feed each hook a synthetic JSON payload on
    stdin and check the output and any resulting state change. At minimum:
-   - context-injection hook with a registered task → prints task state;
+   - context-injection hook with a registered task → prints task state **and** a
+     find/update-ticket reminder;
    - same hook with no task and a prompt matching an existing task → offers it as
      a candidate;
+   - same hook with a `review` task and a prompt that continues that job →
+     instructs reopen to `wip` (no silent stay in Review);
    - idle hook with a permission-style message → **no** status change;
    - idle hook with an idle-style message → `wip` becomes `waiting`;
    - context-injection hook afterwards → `waiting` returns to `wip`;
-   - session-end hook on a `wip` task → becomes `waiting` with an activity.
+   - session-end hook on a `wip` task → becomes `waiting` with an activity;
+   - Stop / mid-session nudge → reminds to sync status/progress/sub-tasks (does
+     not create root tasks).
 
    Create a throwaway task and pointer for this, and delete both afterwards.
 7. **Write the manifest** (§5).
