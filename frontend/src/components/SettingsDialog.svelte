@@ -312,13 +312,13 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
     onclick={handleClose}
   >
     <div
-      in:fly={{ y: 12, duration: 150 }}
+      in:fly={{ y: 8, duration: 80 }}
       onclick={(e) => e.stopPropagation()}
-      class="flex h-[min(80vh,800px)] w-full max-w-3xl flex-col rounded-lg border border-line bg-col shadow-2xl"
+      class="flex h-[min(80vh,800px)] w-full max-w-3xl flex-col rounded-lg border border-line bg-col shadow-md"
     >
       <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">Settings</h2>
@@ -338,16 +338,17 @@
         </button>
       </div>
 
-      <div class="flex min-h-0 flex-1 overflow-hidden">
+      <div class="@container flex min-h-0 flex-1 overflow-hidden">
         <nav
-          class="flex w-44 flex-none flex-col gap-0.5 overflow-y-auto border-r border-line-soft p-3"
+          class="flex max-h-14 w-full flex-none flex-row gap-0.5 overflow-x-auto border-b border-line-soft p-2
+            @[560px]:max-h-none @[560px]:w-44 @[560px]:flex-col @[560px]:overflow-y-auto @[560px]:border-b-0 @[560px]:border-r @[560px]:p-3"
           aria-label="Settings sections"
         >
           {#each pages as page (page.id)}
             <button
               type="button"
               onclick={() => (activePage = page.id)}
-              class="rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
+              class="whitespace-nowrap rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
                 {activePage === page.id
                 ? 'bg-accent/15 text-ink'
                 : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
@@ -359,7 +360,7 @@
                  template is its own sub-item, always visible so the set is
                  discoverable without opening the section first. -->
             {#if page.id === 'templates'}
-              <div class="mb-1 flex flex-col gap-0.5 pl-3">
+              <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
                 {#each templates as tpl (tpl.id)}
                   <button
                     type="button"

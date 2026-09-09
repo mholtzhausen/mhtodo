@@ -1,6 +1,7 @@
 <script lang="ts">
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
+  import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import HumanIcon from './HumanIcon.svelte'
 
@@ -12,6 +13,9 @@
     statusFilter = '',
     humanFilterEmpty = false,
     archiveDoneSubtasks = false,
+    settings = null,
+    claudeBinaryOk = false,
+    zedBinaryOk = false,
     onSelect,
     onQuickAdd,
     onArchived,
@@ -25,6 +29,9 @@
     statusFilter?: Status | '' | 'archived'
     humanFilterEmpty?: boolean
     archiveDoneSubtasks?: boolean
+    settings?: GUISettings | null
+    claudeBinaryOk?: boolean
+    zedBinaryOk?: boolean
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
     onArchived?: (n: number) => void
@@ -99,6 +106,8 @@
   let dropTarget = $state<Status | ''>('')
   let dropInsert = $state<{ status: Status; beforeId: string | null } | null>(null)
   let suppressClick = false
+  let dragOverRaf = 0
+  let pendingDrop: { col: Status; beforeId: string | null; crossColumn: boolean } | null = null
 
   // Hide native drag image — the in-column ghost shows placement instead.
   const emptyDragImage = typeof Image !== 'undefined' ? new Image() : null
@@ -120,6 +129,11 @@
     dragFrom = ''
     dropTarget = ''
     dropInsert = null
+    pendingDrop = null
+    if (dragOverRaf) {
+      cancelAnimationFrame(dragOverRaf)
+      dragOverRaf = 0
+    }
   }
 
   function setDropInsert(col: Status, beforeId: string | null, crossColumn: boolean) {
@@ -127,6 +141,14 @@
     else dropTarget = ''
     if (dropInsert?.status === col && dropInsert?.beforeId === beforeId) return
     dropInsert = { status: col, beforeId }
+  }
+
+  function flushPendingDrop() {
+    dragOverRaf = 0
+    if (!pendingDrop) return
+    const { col, beforeId, crossColumn } = pendingDrop
+    pendingDrop = null
+    setDropInsert(col, beforeId, crossColumn)
   }
 
   function liftDraggedCard() {
@@ -186,7 +208,10 @@
       }
     }
 
-    setDropInsert(col, beforeId, crossColumn)
+    pendingDrop = { col, beforeId, crossColumn }
+    if (!dragOverRaf) {
+      dragOverRaf = requestAnimationFrame(flushPendingDrop)
+    }
   }
 
   function onColumnDragOver(e: DragEvent, col: Status) {
@@ -305,13 +330,25 @@
     {/if}
   </div>
 {:else}
-  <div class="grid h-full gap-3 {visibleColumns.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-5'}">
+  <div
+    class="h-full min-h-0 {visibleColumns.length === 1
+      ? ''
+      : 'overflow-x-auto'}"
+  >
+  <div
+    class="grid h-full min-w-0 gap-3 {visibleColumns.length === 1
+      ? 'grid-cols-1 max-w-md'
+      : 'grid-cols-[repeat(5,minmax(200px,1fr))]'}"
+    style={visibleColumns.length === 1
+      ? undefined
+      : `min-width: ${visibleColumns.length * 200 + (visibleColumns.length - 1) * 12}px`}
+  >
     {#each visibleColumns as col (col.status)}
       {@const roots = columnRoots(col.status)}
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
-        class="flex min-h-0 flex-col rounded-md border shadow-sm transition-colors duration-150
+        class="flex min-h-0 flex-col rounded-md border shadow-sm
           {dropTarget === col.status
             ? 'border-accent/60 bg-accent/5'
             : 'border-line-soft bg-col'}"
@@ -337,7 +374,7 @@
               class="rounded p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"
             >
               <svg
-                class="h-3.5 w-3.5 {archiving ? 'animate-pulse text-accent' : 'text-ink-3'}"
+                class="h-3.5 w-3.5 {archiving ? 'text-accent' : 'text-ink-3'}"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -385,11 +422,11 @@
                 draggable="true"
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="relative rounded-md border border-l-2 border-line-soft shadow-sm transition-all duration-150 select-none cursor-grab
+                class="relative rounded-md border border-l-2 border-line-soft shadow-sm select-none cursor-grab
                   {col.edge}
                   {selectedId === t.id
                     ? 'bg-accent/10'
-                    : 'bg-card hover:bg-card-hi hover:shadow-lg'}
+                    : 'bg-card hover:bg-card-hi'}
                   {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
                 title="Drag to reorder within column or drop on another column to change status"
               >
@@ -426,7 +463,7 @@
                   <div class="flex items-center gap-2">
                     <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                       <div
-                        class="h-full rounded-full {col.bar} transition-all duration-150"
+                        class="h-full rounded-full {col.bar}"
                         style="width: {t.progress}%"
                       ></div>
                     </div>
@@ -455,7 +492,14 @@
                   </ul>
                 {/if}
                 <div class="flex justify-end px-2 pb-2 pt-1">
-                  <TaskActivityActions task={t} {onError} {onToast} />
+                  <TaskActivityActions
+                    task={t}
+                    {settings}
+                    {claudeBinaryOk}
+                    {zedBinaryOk}
+                    {onError}
+                    {onToast}
+                  />
                 </div>
               </div>
             {/each}
@@ -468,5 +512,6 @@
         </div>
       </section>
     {/each}
+  </div>
   </div>
 {/if}

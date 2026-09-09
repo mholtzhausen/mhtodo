@@ -110,6 +110,7 @@ export namespace core {
 	    IncludeDone: boolean;
 	    Archived: boolean;
 	    RootsOnly: boolean;
+	    ParentID: string;
 	    IncludeHumanOnly: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -126,6 +127,7 @@ export namespace core {
 	        this.IncludeDone = source["IncludeDone"];
 	        this.Archived = source["Archived"];
 	        this.RootsOnly = source["RootsOnly"];
+	        this.ParentID = source["ParentID"];
 	        this.IncludeHumanOnly = source["IncludeHumanOnly"];
 	    }
 	}

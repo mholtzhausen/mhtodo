@@ -34,6 +34,8 @@
   let tipEl = $state<HTMLDivElement | null>(null)
   /** Measured tip box; used so flip-above doesn't leave a huge gap. */
   let tipH = $state(0)
+  let tipMoveRaf = 0
+  let tipPending: { x: number; y: number } | null = null
 
   const TIP_W = 320
   const TIP_GAP = 8 // cursor ↔ tip edge (same whether above or below)
@@ -88,13 +90,26 @@
     tip = { x: e.clientX, y: e.clientY, task }
   }
 
+  function flushTipMove() {
+    tipMoveRaf = 0
+    if (!tip || !tipPending) return
+    tip = { ...tip, x: tipPending.x, y: tipPending.y }
+    tipPending = null
+  }
+
   function moveTip(e: MouseEvent) {
     if (!tip) return
-    tip = { ...tip, x: e.clientX, y: e.clientY }
+    tipPending = { x: e.clientX, y: e.clientY }
+    if (!tipMoveRaf) tipMoveRaf = requestAnimationFrame(flushTipMove)
   }
 
   function hideTip() {
     tip = null
+    tipPending = null
+    if (tipMoveRaf) {
+      cancelAnimationFrame(tipMoveRaf)
+      tipMoveRaf = 0
+    }
   }
 
   function onWindowPointerDown(e: PointerEvent) {
@@ -167,7 +182,7 @@
 
     {#if filterOpen}
       <div
-        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-80 overflow-y-auto rounded border border-line bg-card p-2 shadow-xl"
+        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-80 overflow-y-auto rounded border border-line bg-card p-2 shadow-md"
       >
         {#each ticketOptions as t (t.id)}
           <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-white/5">
@@ -269,9 +284,11 @@
 
 {#if tip}
   {@const t = tip.task}
+  {@const desc = (t.description ?? '').trim()}
+  {@const feedback = (t.feedback ?? '').trim()}
   <div
     bind:this={tipEl}
-    class="pointer-events-none fixed z-50 max-h-[min(360px,70vh)] overflow-hidden rounded-md border border-line bg-card shadow-2xl ring-1 ring-black/30"
+    class="pointer-events-none fixed z-50 max-h-[min(240px,50vh)] overflow-hidden rounded-md border border-line bg-card shadow-md ring-1 ring-black/30"
     style={tipStyle(tip)}
     role="tooltip"
   >
@@ -286,15 +303,15 @@
         <span>{t.progress}%</span>
       </p>
     </div>
-    <div class="max-h-[300px] overflow-y-auto px-3 py-2.5">
-      {#if t.description?.trim()}
-        <Markdown source={t.description} class="text-xs text-ink-2" />
+    <div class="max-h-[180px] overflow-hidden px-3 py-2.5">
+      {#if desc}
+        <p class="line-clamp-6 whitespace-pre-wrap text-xs text-ink-2">{desc}</p>
       {:else}
         <p class="text-xs italic text-ink-3">No description</p>
       {/if}
-      {#if t.feedback?.trim()}
+      {#if feedback}
         <hr class="my-2.5 border-0 border-t border-line-soft" />
-        <Markdown source={t.feedback} class="text-xs text-accent-hi/90" />
+        <p class="line-clamp-4 whitespace-pre-wrap text-xs text-accent-hi/90">{feedback}</p>
       {/if}
     </div>
   </div>

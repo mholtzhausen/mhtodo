@@ -45,6 +45,8 @@ export interface ListFilterInput {
   sort?: 'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'
   ascending?: boolean
   rootsOnly?: boolean
+  /** When set, only direct children of this parent (ignores rootsOnly). */
+  parentId?: string
   /** When set, overrides the default (include done if no status filter / archived view). */
   includeDone?: boolean
   /** GUI default true; CLI default false — include human-only tasks in results. */
@@ -66,6 +68,7 @@ const toGoFilter = (f: ListFilterInput) => ({
   IncludeDone: f.includeDone ?? (!f.status || !!f.archived),
   Archived: !!f.archived,
   RootsOnly: !!f.rootsOnly,
+  ParentID: f.parentId ?? '',
   IncludeHumanOnly: f.includeHumanOnly !== undefined ? f.includeHumanOnly : true
 })
 

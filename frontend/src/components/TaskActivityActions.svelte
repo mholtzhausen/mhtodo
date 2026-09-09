@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api, errMsg } from '../lib/api'
   import { claudeIconVisible } from '../lib/claudeIntegration'
-  import { claudeSpawnEnabled } from '../lib/settings'
+  import { claudeSpawnEnabled, type GUISettings } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
   import HumanIcon from './HumanIcon.svelte'
   import SlackIcon from './SlackIcon.svelte'
@@ -9,6 +9,9 @@
 
   let {
     task,
+    settings = null,
+    claudeBinaryOk = false,
+    zedBinaryOk = false,
     onError,
     onToast
   }: {
@@ -23,6 +26,9 @@
       slack_thread?: string
       todo_session?: string
     }
+    settings?: GUISettings | null
+    claudeBinaryOk?: boolean
+    zedBinaryOk?: boolean
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
@@ -37,19 +43,15 @@
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
   let archiving = $state(false)
-  let claudeActive = $state(false)
-  let zedActive = $state(false)
   let zedCommand = $state('')
-  let guiSettings = $state<Awaited<ReturnType<typeof api.getSettings>> | null>(null)
+  let zedCommandLoading = $state(false)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
 
   const showClaude = $derived(
-    guiSettings ? claudeIconVisible(task, guiSettings) : false
+    settings ? claudeIconVisible(task, settings) && claudeSpawnEnabled(settings) : false
   )
   const showZed = $derived(
-    !!guiSettings?.zed.enabled &&
-      zedActive &&
-      !!(task.cwd ?? '').trim()
+    !!settings?.zed.enabled && zedBinaryOk && !!(task.cwd ?? '').trim()
   )
   const zedTitle = $derived(zedCommand || 'Open in Zed')
   const slackURL = $derived((task.slack_thread ?? '').trim())
@@ -64,42 +66,17 @@
     onToast?.(msg, kind)
   }
 
-  $effect(() => {
-    void task.id
-    void task.cwd
-    void task.title
-    void task.todo_session
-    void task.human_only
-    void task.status
-    copied = false
-    claudeActive = false
-    zedActive = false
-    zedCommand = ''
-    guiSettings = null
-    ;(async () => {
-      try {
-        const settings = await api.getSettings()
-        guiSettings = settings
-        if (claudeSpawnEnabled(settings) && claudeIconVisible(task, settings)) {
-          claudeActive = await api.checkBinary(settings.claude.binary)
-        }
-        if (settings.zed.enabled && (task.cwd ?? '').trim()) {
-          zedActive = await api.checkBinary(settings.zed.binary)
-          if (zedActive) {
-            try {
-              zedCommand = await api.zedTicketCommand(task.id)
-            } catch {
-              zedCommand = ''
-            }
-          }
-        }
-      } catch {
-        claudeActive = false
-        zedActive = false
-        zedCommand = ''
-      }
-    })()
-  })
+  async function ensureZedCommand() {
+    if (!showZed || zedCommand || zedCommandLoading) return
+    zedCommandLoading = true
+    try {
+      zedCommand = await api.zedTicketCommand(task.id)
+    } catch {
+      zedCommand = ''
+    } finally {
+      zedCommandLoading = false
+    }
+  }
 
   function stop(e: MouseEvent) {
     e.stopPropagation()
@@ -165,6 +142,7 @@
     if (openingZed || !showZed) return
     openingZed = true
     try {
+      await ensureZedCommand()
       await api.openZedTicket(task.id)
     } catch (err) {
       reportError(errMsg(err))
@@ -216,9 +194,9 @@
   }
 
   const actionBtn =
-    'rounded p-1 transition-all hover:bg-white/8 disabled:cursor-default disabled:opacity-40'
+    'rounded p-1 hover:bg-white/8 disabled:cursor-default disabled:opacity-40'
   const toggleBtn =
-    'rounded p-0.5 transition-all disabled:cursor-default disabled:opacity-40'
+    'rounded p-0.5 disabled:cursor-default disabled:opacity-40'
   const toggleOff = 'text-ink-3/45 hover:bg-white/8 hover:text-ink-2'
   const toggleOn =
     'bg-accent/25 text-accent-hi shadow-[inset_0_1px_2px_rgba(0,0,0,0.4),inset_0_0_0_1px_rgba(255,255,255,0.08)] ring-1 ring-accent/40'
@@ -273,6 +251,7 @@
     <button
       type="button"
       onclick={openZed}
+      onmouseenter={() => void ensureZedCommand()}
       disabled={openingZed}
       title={zedTitle}
       aria-label="Open in Zed"
@@ -287,12 +266,12 @@
       type="button"
       onclick={openClaude}
       disabled={openingClaude}
-      title={claudeActive ? 'Open Claude session' : 'Open Claude'}
-      aria-label={claudeActive ? 'Open Claude session' : 'Open Claude'}
+      title={claudeBinaryOk ? 'Open Claude session' : 'Open Claude'}
+      aria-label={claudeBinaryOk ? 'Open Claude session' : 'Open Claude'}
       class="{actionBtn}
-        {claudeActive ? 'text-[#d97757] hover:text-[#e88a6a]' : 'text-ink-3 hover:text-accent-hi'}"
+        {claudeBinaryOk ? 'text-[#d97757] hover:text-[#e88a6a]' : 'text-ink-3 hover:text-accent-hi'}"
     >
-      {#if claudeActive}
+      {#if claudeBinaryOk}
         <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
           <path
             d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"

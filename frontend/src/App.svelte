@@ -9,10 +9,16 @@
   import NewTaskDialog from './components/NewTaskDialog.svelte'
   import SettingsDialog from './components/SettingsDialog.svelte'
   import ConfirmDialog from './components/ConfirmDialog.svelte'
-  import { api, errMsg, type Activity, type GUISettings, type Status } from './lib/api'
+  import { api, errMsg, type Activity, type GUISettings, type Status, type Task } from './lib/api'
   import { defaultSettings } from './lib/settings'
   import { boardAdjacentTaskId, listAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
+  import {
+    invalidateBinaryCache,
+    loadIntegrationSettings,
+    refreshBinaryReadiness,
+    setIntegrationSettings
+  } from './lib/integrationStatus'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
@@ -82,11 +88,28 @@
   let detailPanelWidth = $state(loadDetailPanelWidth())
   let resizingDetail = $state(false)
   let alwaysOnTop = $state(false)
+  let viewportWidth = $state(
+    typeof window !== 'undefined' ? window.innerWidth : 1100
+  )
+  let claudeBinaryOk = $state(false)
+  let zedBinaryOk = $state(false)
 
   let tasks = $state<any[]>([])
   let activities = $state<Activity[]>([])
   let activityFilterIds = $state<string[]>([])
   let loading = $state(true)
+  let loadSeq = 0
+  let loadTimer: ReturnType<typeof setTimeout> | undefined
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
+  let resizeRaf = 0
+  let detailResizeRaf = 0
+
+  /** Pinned detail would leave the main pane under ~640px — render as floating instead. */
+  const pinCramped = $derived(
+    detailMode === 'pinned' && viewportWidth - detailPanelWidth < 640
+  )
+  const renderDetailMode = $derived(pinCramped ? 'floating' : detailMode)
+  const narrowChrome = $derived(viewportWidth < 900)
   const TOAST_MS = 3000
   let toast: { id: number; msg: string; kind: 'error' | 'info' } | null = $state(null)
   let toastSeq = 0
@@ -183,12 +206,71 @@
     }
   }
 
+  async function applySettings(s: GUISettings) {
+    guiSettings = s
+    setIntegrationSettings(s)
+    invalidateBinaryCache()
+    try {
+      const ready = await refreshBinaryReadiness(s)
+      claudeBinaryOk = ready.claude
+      zedBinaryOk = ready.zed
+    } catch {
+      claudeBinaryOk = false
+      zedBinaryOk = false
+    }
+  }
+
+  function scheduleLoad(delayMs = 120) {
+    clearTimeout(loadTimer)
+    loadTimer = setTimeout(() => {
+      void load()
+    }, delayMs)
+  }
+
+  function scheduleSearchLoad() {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      void load()
+    }, 200)
+  }
+
+  const PATCH_OPS = new Set(['update', 'status', 'reorder', 'edit', 'activity'])
+
+  function onTasksChanged(payload?: { id?: string; op?: string }) {
+    const id = (payload?.id ?? '').trim()
+    const op = (payload?.op ?? '').trim()
+    if (view === 'activity' || !id || !PATCH_OPS.has(op)) {
+      scheduleLoad(op === 'external' ? 150 : 100)
+      return
+    }
+    void patchTask(id)
+  }
+
+  async function patchTask(id: string) {
+    const seq = ++loadSeq
+    try {
+      const t = (await api.get(id)) as Task
+      if (seq !== loadSeq) return
+      const idx = tasks.findIndex((x) => x.id === id)
+      if (idx >= 0) {
+        const next = tasks.slice()
+        next[idx] = t
+        tasks = next
+        return
+      }
+      // Newly visible (e.g. status/filter change) — refresh the list.
+      scheduleLoad(0)
+    } catch {
+      scheduleLoad(0)
+    }
+  }
+
   function selectTask(id: string) {
     selectedId = id
   }
 
   function navigateModalTask(dir: -1 | 1) {
-    if (detailMode !== 'modal' || !selectedId) return
+    if (renderDetailMode !== 'modal' || !selectedId) return
     let nextId: string | null = null
     if (view === 'board') {
       nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
@@ -237,7 +319,12 @@
 
     function onMove(ev: PointerEvent | MouseEvent) {
       if ('buttons' in ev && ev.buttons === 0) return
-      detailPanelWidth = clampDetailPanelWidth(startWidth + startX - ev.clientX)
+      const next = clampDetailPanelWidth(startWidth + startX - ev.clientX)
+      if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
+      detailResizeRaf = requestAnimationFrame(() => {
+        detailPanelWidth = next
+        detailResizeRaf = 0
+      })
     }
 
     function onUp() {
@@ -249,6 +336,10 @@
       document.removeEventListener('pointercancel', onUp, true)
       document.removeEventListener('mousemove', onMove, true)
       document.removeEventListener('mouseup', onUp, true)
+      if (detailResizeRaf) {
+        cancelAnimationFrame(detailResizeRaf)
+        detailResizeRaf = 0
+      }
       persistDetailPanelWidth()
     }
 
@@ -271,6 +362,7 @@
   }
 
   async function load() {
+    const seq = ++loadSeq
     try {
       if (view === 'activity') {
         // Include done so ticket filter + hover tooltips cover the full non-archived set.
@@ -278,6 +370,7 @@
           api.list({ sort: 'title', ascending: true, includeDone: true }),
           api.listActivity({})
         ])
+        if (seq !== loadSeq) return
         tasks = t
         activities = a
       } else {
@@ -293,12 +386,15 @@
             : status === 'archived'
               ? { archived: true, search, sort, ascending }
               : { status, search, sort, ascending }
-        tasks = await api.list(filter)
+        const t = await api.list(filter)
+        if (seq !== loadSeq) return
+        tasks = t
       }
     } catch (e) {
+      if (seq !== loadSeq) return
       showToast(errMsg(e))
     } finally {
-      loading = false
+      if (seq === loadSeq) loading = false
     }
   }
 
@@ -355,7 +451,7 @@
       else if (dialogOpen) {
         dialogOpen = false
         dialogParentId = ''
-      } else if (selectedId && detailMode !== 'pinned') selectedId = null
+      } else if (selectedId && renderDetailMode !== 'pinned') selectedId = null
       else api.hideWindow()
       return
     }
@@ -366,7 +462,7 @@
     }
     if (
       (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
-      detailMode === 'modal' &&
+      renderDetailMode === 'modal' &&
       selectedId &&
       !dialogOpen &&
       !confirmTask &&
@@ -440,14 +536,20 @@
   }
 
   function onWindowResize() {
-    const clamped = clampDetailPanelWidth(detailPanelWidth)
-    if (clamped !== detailPanelWidth) {
-      detailPanelWidth = clamped
-      persistDetailPanelWidth()
-    }
+    if (resizeRaf) cancelAnimationFrame(resizeRaf)
+    resizeRaf = requestAnimationFrame(() => {
+      viewportWidth = window.innerWidth
+      const clamped = clampDetailPanelWidth(detailPanelWidth)
+      if (clamped !== detailPanelWidth) {
+        detailPanelWidth = clamped
+        persistDetailPanelWidth()
+      }
+      resizeRaf = 0
+    })
   }
 
   onMount(async () => {
+    viewportWidth = window.innerWidth
     if (!inWails) {
       loading = false
       showToast('Running outside Wails — API unavailable (use `make dev`)')
@@ -461,11 +563,14 @@
       /* ignore */
     }
     try {
-      guiSettings = await api.getSettings()
+      await applySettings(await loadIntegrationSettings())
     } catch {
       /* ignore */
     }
-    unbindChanged = EventsOn('tasks:changed', () => load())
+    unbindChanged = EventsOn('tasks:changed', (...data: unknown[]) => {
+      const payload = data[0] as { id?: string; op?: string } | undefined
+      onTasksChanged(payload)
+    })
     unbindTrayNewTask = EventsOn('tray:new-task', () => openNewTask())
     unbindTrayNewTaskTemplate = EventsOn('tray:new-task-template', () =>
       openNewTask({ template: true })
@@ -477,6 +582,10 @@
 
   onDestroy(() => {
     clearTimeout(toastTimer)
+    clearTimeout(loadTimer)
+    clearTimeout(searchTimer)
+    if (resizeRaf) cancelAnimationFrame(resizeRaf)
+    if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
     unbindChanged?.()
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()
@@ -490,23 +599,30 @@
 </script>
 
 <div class="flex h-full flex-col {resizingDetail ? 'select-none' : ''}">
-  <header class="flex h-[52px] flex-none items-center gap-4 border-b border-line-soft bg-chrome px-5">
+  <header
+    class="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft bg-chrome px-3 py-2 sm:h-[52px] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-0"
+  >
     <div class="flex items-center gap-2.5">
       <span
         class="grid h-[22px] w-[22px] flex-none place-items-center rounded-[5px] bg-accent text-[12px] font-bold text-accent-ink"
       >
         M
       </span>
-      <h1 class="text-[15px] font-semibold tracking-tight text-ink">mhtodo</h1>
+      <h1
+        class="text-[15px] font-semibold tracking-tight text-ink
+          {narrowChrome ? 'sr-only' : ''}"
+      >
+        mhtodo
+      </h1>
     </div>
 
-    <nav class="flex items-stretch gap-1" role="tablist" aria-label="View">
+    <nav class="flex items-stretch gap-0.5 sm:gap-1" role="tablist" aria-label="View">
       {#each [['board', 'Board'], ['list', 'List'], ['activity', 'Activity']] as [v, label] (v)}
         <button
           role="tab"
           aria-selected={view === v}
           onclick={() => setView(v as View)}
-          class="relative px-3 text-[13px] font-medium transition-colors
+          class="relative px-2 text-[13px] font-medium transition-colors sm:px-3
             {view === v ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}"
         >
           {label}
@@ -515,8 +631,9 @@
       {/each}
     </nav>
 
-    <div class="flex-1"></div>
+    <div class="hidden flex-1 sm:block"></div>
 
+    <div class="ml-auto flex items-center gap-2 sm:ml-0">
     <button
       type="button"
       onclick={() => (settingsOpen = true)}
@@ -572,10 +689,11 @@
     <div class="btn-primary flex items-stretch overflow-hidden rounded bg-accent shadow-sm">
       <button
         onclick={() => openNewTask()}
-        class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hi"
+        class="flex items-center gap-2 px-2.5 py-1.5 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hi sm:px-3"
       >
         <span class="font-semibold leading-none">+</span>
-        New task <kbd>n</kbd>
+        <span class={narrowChrome ? 'sr-only' : ''}>New task</span>
+        <kbd class={narrowChrome ? 'hidden' : ''}>n</kbd>
       </button>
       <span class="my-1 w-px bg-accent-ink/25" aria-hidden="true"></span>
       <button
@@ -600,6 +718,7 @@
         </svg>
       </button>
     </div>
+    </div>
   </header>
 
   {#if view === 'list'}
@@ -616,7 +735,7 @@
       }}
       onSearchInput={(v: string) => {
         search = v
-        load()
+        scheduleSearchLoad()
       }}
       onSortChange={(f: 'created' | 'updated' | 'status' | 'progress' | 'title') => {
         sort = f
@@ -651,7 +770,7 @@
       }}
       onSearchInput={(v: string) => {
         search = v
-        load()
+        scheduleSearchLoad()
       }}
       onSortChange={() => {}}
       onToggleAsc={() => {}}
@@ -696,6 +815,9 @@
           statusFilter={status === 'archived' ? '' : status}
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
+          settings={guiSettings}
+          {claudeBinaryOk}
+          {zedBinaryOk}
           onSelect={selectTask}
           onQuickAdd={(s: Status) => openNewTask({ status: s })}
           onArchived={(n: number) => showToast(`Archived ${n} task${n === 1 ? '' : 's'}`, 'info')}
@@ -709,6 +831,10 @@
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           selectedId={selectedId}
           {showSubtasks}
+          showUpdated={!narrowChrome}
+          settings={guiSettings}
+          {claudeBinaryOk}
+          {zedBinaryOk}
           onSelect={selectTask}
           onError={showToast}
           onToast={showToast}
@@ -730,44 +856,11 @@
       {/if}
     </main>
 
-    {#if selectedTask && detailMode === 'pinned'}
-      {#key selectedTask.id}
-        <TaskDetail
-          task={selectedTask}
-          parentTitle={selectedParentTitle}
-          mode="pinned"
-          width={detailPanelWidth}
-          resizing={resizingDetail}
-          onResizeStart={startDetailResize}
-          onClose={() => (selectedId = null)}
-          onError={showToast}
-          onNotify={(m) => showToast(m, 'info')}
-          onDelete={(t: any) => requestDelete(t)}
-          onSetMode={setDetailMode}
-          onSelectParent={selectTask}
-          onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
-        />
-      {/key}
-    {/if}
-  </div>
-
-  <footer class="flex h-9 flex-none items-center gap-4 border-t border-line-soft bg-chrome px-5 text-xs text-ink-3">
-    <span class="truncate font-mono text-[11px]">{dbPath}</span>
-    <div class="flex-1"></div>
-    <span class="flex-none whitespace-nowrap"
-      ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
-      <kbd>1–5</kbd> status · <kbd>6</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
-      <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
-      <kbd>ctrl+q</kbd> quit</span
-    >
-  </footer>
-
-  {#if selectedTask && detailMode === 'floating'}
-    {#key selectedTask.id}
+    {#if selectedTask && renderDetailMode === 'pinned'}
       <TaskDetail
         task={selectedTask}
         parentTitle={selectedParentTitle}
-        mode="floating"
+        mode="pinned"
         width={detailPanelWidth}
         resizing={resizingDetail}
         onResizeStart={startDetailResize}
@@ -779,29 +872,58 @@
         onSelectParent={selectTask}
         onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
       />
-    {/key}
+    {/if}
+  </div>
+
+  <footer class="flex h-9 flex-none items-center gap-4 border-t border-line-soft bg-chrome px-5 text-xs text-ink-3">
+    <span class="truncate font-mono text-[11px]">{dbPath}</span>
+    <div class="flex-1"></div>
+    {#if !narrowChrome}
+      <span class="flex-none whitespace-nowrap"
+        ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
+        <kbd>1–5</kbd> status · <kbd>6</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
+        <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
+        <kbd>ctrl+q</kbd> quit</span
+      >
+    {/if}
+  </footer>
+
+  {#if selectedTask && renderDetailMode === 'floating'}
+    <TaskDetail
+      task={selectedTask}
+      parentTitle={selectedParentTitle}
+      mode="floating"
+      width={detailPanelWidth}
+      resizing={resizingDetail}
+      onResizeStart={startDetailResize}
+      onClose={() => (selectedId = null)}
+      onError={showToast}
+      onNotify={(m) => showToast(m, 'info')}
+      onDelete={(t: any) => requestDelete(t)}
+      onSetMode={setDetailMode}
+      onSelectParent={selectTask}
+      onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
+    />
   {/if}
 
-  {#if selectedTask && detailMode === 'modal'}
-    {#key selectedTask.id}
-      <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
-        onclick={() => (selectedId = null)}
-      >
-        <TaskDetail
-          task={selectedTask}
-          parentTitle={selectedParentTitle}
-          mode="modal"
-          onClose={() => (selectedId = null)}
-          onError={showToast}
-          onNotify={(m) => showToast(m, 'info')}
-          onDelete={(t: any) => requestDelete(t)}
-          onSetMode={setDetailMode}
-          onSelectParent={selectTask}
-          onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
-        />
-      </div>
-    {/key}
+  {#if selectedTask && renderDetailMode === 'modal'}
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+      onclick={() => (selectedId = null)}
+    >
+      <TaskDetail
+        task={selectedTask}
+        parentTitle={selectedParentTitle}
+        mode="modal"
+        onClose={() => (selectedId = null)}
+        onError={showToast}
+        onNotify={(m) => showToast(m, 'info')}
+        onDelete={(t: any) => requestDelete(t)}
+        onSetMode={setDetailMode}
+        onSelectParent={selectTask}
+        onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
+      />
+    </div>
   {/if}
 
   <NewTaskDialog
@@ -824,7 +946,7 @@
   <SettingsDialog
     open={settingsOpen}
     onClose={() => (settingsOpen = false)}
-    onSaved={(s) => (guiSettings = s)}
+    onSaved={(s) => void applySettings(s)}
     onError={showToast}
   />
 
@@ -840,9 +962,9 @@
   {#if toast}
     <div
       role="alert"
-      in:fly={{ y: 8, duration: 150 }}
-      out:fly={{ y: 8, duration: 150 }}
-      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded border px-4 py-2 text-sm shadow-xl
+      in:fly={{ y: 6, duration: 80 }}
+      out:fly={{ y: 6, duration: 80 }}
+      class="fixed bottom-10 left-1/2 z-[60] -translate-x-1/2 rounded border px-4 py-2 text-sm shadow-md
         {toast.kind === 'error'
           ? 'border-danger/50 bg-card-hi text-danger'
           : 'border-line bg-card-hi text-ink'}"

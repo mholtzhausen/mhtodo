@@ -250,6 +250,8 @@ status transitions → activity → delete) using only this CLI.
 - **Notifications:** on real →done and →waiting only (not →review).
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
+- **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; pinned detail auto-falls back to floating when the main pane would be under ~640px; footer shortcut legend hides below ~900px width.
+- **GUI refresh:** `tasks:changed` is debounced/coalesced; single-task updates patch in place when possible. Search input is debounced (~200ms). Claude/Zed binary readiness is cached app-wide (not per board card).
 
 ## Data & concurrency
 
@@ -261,7 +263,7 @@ status transitions → activity → delete) using only this CLI.
 
 | Bound method (GUI) | CLI command | Notes |
 |---|---|---|
-| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
+| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, parentId (direct children), includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
 | `GetTask(id)` | `show` | prefix match allowed |
 | `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly, IncludeInReport (*bool, default true), SlackThread, TodoSession |
 | `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/todo_session |

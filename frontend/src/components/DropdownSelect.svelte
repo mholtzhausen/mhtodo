@@ -135,7 +135,7 @@
       id={listId}
       role="listbox"
       aria-label={ariaLabel}
-      class="absolute left-0 top-[calc(100%+4px)] z-50 max-h-64 min-w-full overflow-y-auto rounded border border-line bg-col py-1 shadow-xl"
+      class="absolute left-0 top-[calc(100%+4px)] z-50 max-h-64 min-w-full overflow-y-auto rounded border border-line bg-col py-1 shadow-md"
     >
       {#each options as opt, idx (opt.value)}
         <li role="presentation">
@@ -148,7 +148,7 @@
             title={opt.title}
             onclick={() => pick(opt.value)}
             onkeydown={(e) => onOptionKeydown(e, idx)}
-            class="flex w-full items-center px-2.5 py-1.5 text-left text-xs font-medium transition-colors hover:bg-white/5
+            class="flex w-full items-center px-2.5 py-1.5 text-left text-xs font-medium hover:bg-white/5
               {value === opt.value ? (opt.activeClass ?? 'bg-accent/15 text-accent-hi') : 'text-ink-2'}"
           >
             {opt.label}

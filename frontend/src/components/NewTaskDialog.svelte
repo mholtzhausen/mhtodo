@@ -3,6 +3,7 @@
   import { api, errMsg, type Status } from '../lib/api'
   import { claudeBackendReady, claudeIconVisible } from '../lib/claudeIntegration'
   import { openExternalUrl } from '../lib/openExternal'
+  import { checkBinaryCached, getIntegrationSettings } from '../lib/integrationStatus'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
   import TemplatePicker from './TemplatePicker.svelte'
@@ -72,12 +73,12 @@
     guiSettings = null
     if (humanOnly) return
     try {
-      const settings = await api.getSettings()
+      const settings = getIntegrationSettings()
       guiSettings = settings
       if (!claudeIconVisible({ cwd, human_only: humanOnly, status: 'pending' }, settings)) {
         return
       }
-      const ready = await claudeBackendReady(settings, (p) => api.checkBinary(p))
+      const ready = await claudeBackendReady(settings, (p) => checkBinaryCached(p))
       claudeActive = ready.claude
       herdrActive = ready.backend
     } catch {
@@ -223,13 +224,13 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
   >
     <form
-      in:fly={{ y: 12, duration: 150 }}
+      in:fly={{ y: 8, duration: 80 }}
       onclick={(e) => e.stopPropagation()}
       onsubmit={submit}
-      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-2xl"
+      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-md"
     >
       <div class="relative flex flex-none items-center gap-1 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">

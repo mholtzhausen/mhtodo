@@ -108,8 +108,9 @@ type ListFilter struct {
 	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
 	IncludeDone bool   // default false → done tasks are hidden unless matched by Status
 	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
-	RootsOnly         bool // true → parent_id IS NULL only (v0.3)
-	IncludeHumanOnly  bool // false (default) → human_only tasks are hidden; true → include them
+	RootsOnly         bool   // true → parent_id IS NULL only (v0.3)
+	ParentID          string // if set, only direct children of this parent (ignores RootsOnly)
+	IncludeHumanOnly  bool   // false (default) → human_only tasks are hidden; true → include them
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

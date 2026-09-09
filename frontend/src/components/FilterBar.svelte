@@ -104,7 +104,7 @@
   />
 
   <label
-    class="flex h-8 min-w-[12rem] flex-1 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 sm:max-w-xs"
+    class="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded border border-line-soft bg-field px-2.5 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 sm:max-w-xs"
   >
     <svg
       class="h-3.5 w-3.5 flex-none text-ink-3"

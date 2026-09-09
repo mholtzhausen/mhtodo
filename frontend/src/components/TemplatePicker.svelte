@@ -116,9 +116,9 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     data-template-picker
-    in:fly={{ y: -6, duration: 120 }}
+    in:fly={{ y: -4, duration: 80 }}
     onkeydown={onKeydown}
-    class="absolute right-0 top-full z-30 mt-1.5 w-80 overflow-hidden rounded-lg border border-line bg-col shadow-2xl"
+    class="absolute right-0 top-full z-30 mt-1.5 w-80 overflow-hidden rounded-lg border border-line bg-col shadow-md"
   >
     <div class="border-b border-line-soft p-2">
       <div class="relative">
@@ -166,7 +166,7 @@
             aria-selected={i === cursor}
             onclick={() => onPick(tpl)}
             onmouseenter={() => (cursor = i)}
-            class="block w-full rounded px-2 py-2 text-left transition-colors
+            class="block w-full rounded px-2 py-2 text-left
               {i === cursor ? 'bg-accent/15' : 'hover:bg-white/5'}"
           >
             <span class="block truncate text-sm font-medium text-ink">{tpl.name}</span>

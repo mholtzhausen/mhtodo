@@ -437,6 +437,13 @@ func TestCreateWithParent(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("CountChildren = (%d, %v), want 1", n, err)
 	}
+	kids, err := svc.List(ctx, core.ListFilter{ParentID: parent.ID, IncludeDone: true, IncludeHumanOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kids) != 1 || kids[0].ID != child.ID {
+		t.Fatalf("List ParentID = %+v, want child only", kids)
+	}
 	// Cascade delete.
 	if _, err := svc.Delete(ctx, parent.ID); err != nil {
 		t.Fatal(err)

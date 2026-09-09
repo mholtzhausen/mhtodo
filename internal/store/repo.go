@@ -162,7 +162,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 	} else {
 		conds = append(conds, "archived_at IS NULL") // archived tasks are hidden unless explicitly requested
 	}
-	if f.RootsOnly {
+	if pid := strings.TrimSpace(f.ParentID); pid != "" {
+		conds = append(conds, "parent_id = ?")
+		args = append(args, pid)
+	} else if f.RootsOnly {
 		conds = append(conds, "parent_id IS NULL")
 	}
 	if !f.IncludeHumanOnly {

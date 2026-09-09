@@ -80,6 +80,12 @@ CLI surface for task templates.
 (when not in an input/textarea). Detail-pane description & feedback grow with content
 up to 500px, then scroll.
 
+**GUI window / responsiveness (desktop):** Wails floor is 800×560 (default 1100×720). The board
+uses `minmax(200px, 1fr)` columns with horizontal scroll instead of crushing five columns.
+Pinned detail auto-renders as floating when the main pane would be under ~640px (preference
+unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/`tasks:changed` debounce;
+search is debounced; Claude/Zed readiness is cached once per settings change (not per card).
+
 ## Hard constraints
 
 - **Build tags:** this distro ships webkit2gtk-4.1 only → all Go builds need `-tags webkit2_41`

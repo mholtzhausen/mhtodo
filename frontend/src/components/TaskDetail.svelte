@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { fly } from 'svelte/transition'
   import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
   import { claudeBackendReady, claudeIconVisible } from '../lib/claudeIntegration'
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import { openExternalUrl } from '../lib/openExternal'
+  import { checkBinaryCached, getIntegrationSettings } from '../lib/integrationStatus'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
@@ -109,10 +109,10 @@
     guiSettings = null
     if (humanOnly || task.status === 'done') return
     try {
-      const settings = await api.getSettings()
+      const settings = getIntegrationSettings()
       guiSettings = settings
       if (!claudeIconVisible({ ...task, cwd }, settings)) return
-      const ready = await claudeBackendReady(settings, (p) => api.checkBinary(p))
+      const ready = await claudeBackendReady(settings, (p) => checkBinaryCached(p))
       claudeActive = ready.claude
       herdrActive = ready.backend
     } catch {
@@ -159,8 +159,11 @@
       return
     }
     try {
-      const all = await api.list({ includeDone: true, includeHumanOnly: true })
-      subtasks = all.filter((t) => t.parent_id === task.id)
+      subtasks = await api.list({
+        parentId: task.id,
+        includeDone: true,
+        includeHumanOnly: true
+      })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -359,18 +362,13 @@
     mode === 'pinned'
       ? 'relative flex h-full flex-none flex-col border-l border-line bg-canvas'
       : mode === 'floating'
-        ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-2xl'
-        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-2xl'
-  )
-
-  const enterTransition = $derived(
-    mode === 'modal' ? { y: 12, duration: 150 } : { x: 40, duration: 150 }
+        ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-md'
+        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-line bg-canvas shadow-md'
   )
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <aside
-  in:fly={enterTransition}
   class={shellClass}
   style:width={resizable ? `${width}px` : undefined}
   style:max-width={resizable ? '100%' : undefined}
@@ -888,9 +886,10 @@
   {/snippet}
 
   {#if mode === 'modal'}
-    <div class="flex min-h-0 flex-1 overflow-hidden">
+    <div class="@container flex min-h-0 flex-1 overflow-hidden">
       <nav
-        class="flex w-44 flex-none flex-col gap-0.5 overflow-y-auto border-r border-line-soft p-3"
+        class="flex max-h-14 w-full flex-none flex-row gap-0.5 overflow-x-auto border-b border-line-soft p-2
+          @[560px]:max-h-none @[560px]:w-44 @[560px]:flex-col @[560px]:overflow-y-auto @[560px]:border-b-0 @[560px]:border-r @[560px]:p-3"
         aria-label="Task sections"
       >
         {#each modalSections as section (section.id)}
@@ -900,7 +899,7 @@
               activeSection = section.id
               if (section.id === 'subtasks') void loadSubtasks()
             }}
-            class="rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
+            class="whitespace-nowrap rounded px-3 py-2 text-left text-[13px] font-medium transition-colors
               {activeSection === section.id
               ? 'bg-accent/15 text-ink'
               : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"

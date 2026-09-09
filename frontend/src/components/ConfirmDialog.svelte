@@ -32,16 +32,16 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-[55] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+    class="fixed inset-0 z-[55] flex items-center justify-center bg-black/55 p-4"
     onclick={onCancel}
   >
     <div
-      in:fly={{ y: 12, duration: 150 }}
+      in:fly={{ y: 8, duration: 80 }}
       role="alertdialog"
       aria-modal="true"
       aria-label={title}
       onkeydown={onKeydown}
-      class="w-full max-w-sm rounded-lg border border-line bg-col shadow-2xl"
+      class="w-full max-w-sm rounded-lg border border-line bg-col shadow-md"
     >
       <div class="px-5 pt-4">
         <h2 class="text-base font-semibold text-ink">{title}</h2>

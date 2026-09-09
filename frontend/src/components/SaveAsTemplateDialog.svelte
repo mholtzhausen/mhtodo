@@ -151,12 +151,12 @@
   <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
   <div
     onclick={(e) => e.stopPropagation()}
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4"
   >
     <form
-      in:fly={{ y: 12, duration: 150 }}
+      in:fly={{ y: 8, duration: 80 }}
       onsubmit={submit}
-      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-2xl"
+      class="flex max-h-[92vh] w-full max-w-md flex-col rounded-lg border border-line bg-col shadow-md"
     >
       <div class="flex flex-none items-center gap-2.5 border-b border-line-soft px-5 py-3.5">
         <h2 class="flex-1 text-base font-semibold text-ink">Save as template</h2>
