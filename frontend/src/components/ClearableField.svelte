@@ -15,10 +15,11 @@
     onChange: (value: string) => void
   } = $props()
 
-  const fieldClass =
+  const fieldClass = $derived(
     'w-full rounded-control border border-line-soft bg-field py-1.5 pl-3 text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25' +
-    (value.trim() ? ' pr-8' : ' pr-3') +
-    (mono ? ' font-mono text-xs leading-relaxed resize-y' : ' text-sm')
+      (value.trim() ? ' pr-8' : ' pr-3') +
+      (mono ? ' font-mono text-xs leading-relaxed resize-y' : ' text-sm')
+  )
 </script>
 
 <div class="relative">

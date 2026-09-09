@@ -91,16 +91,19 @@
 </script>
 
 {#if open}
+  <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
   <div
     class="fixed inset-0 z-[55] flex items-center justify-center bg-black/55 p-4"
     onclick={() => !busy && onCancel()}
   >
+    <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
     <div
       use:focusOnOpen
       in:fly={{ y: 8, duration: 80 }}
       role="alertdialog"
       aria-modal="true"
       aria-label="Install or upgrade"
+      tabindex="-1"
       onkeydown={onKeydown}
       onclick={(e) => e.stopPropagation()}
       class="w-full max-w-md overflow-hidden rounded-panel border border-line bg-col shadow-md"

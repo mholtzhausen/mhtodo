@@ -236,7 +236,6 @@
     <form
       use:focusOnOpen
       in:fly={{ y: 8, duration: 80 }}
-      onclick={(e) => e.stopPropagation()}
       onsubmit={submit}
       class="flex max-h-[92vh] w-full max-w-md flex-col rounded-panel border border-line bg-col shadow-md"
     >

@@ -72,13 +72,22 @@
     done: 'bg-st-done'
   }
 
+  // Draft fields: seed from prop, then keep local until save / $effect resync.
+  // svelte-ignore state_referenced_locally
   let title = $state(task.title)
+  // svelte-ignore state_referenced_locally
   let description = $state(task.description)
+  // svelte-ignore state_referenced_locally
   let progress = $state(task.progress)
+  // svelte-ignore state_referenced_locally
   let cwd = $state(task.cwd ?? '')
+  // svelte-ignore state_referenced_locally
   let slackThread = $state(task.slack_thread ?? '')
+  // svelte-ignore state_referenced_locally
   let todoSession = $state(task.todo_session ?? '')
+  // svelte-ignore state_referenced_locally
   let humanOnly = $state(!!task.human_only)
+  // svelte-ignore state_referenced_locally
   let includeInReport = $state(task.include_in_report !== false)
 
   let editingDesc = $state(false)
@@ -370,7 +379,8 @@
   )
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- Click sink so modal backdrop close does not fire while editing the pane. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 <aside
   use:focusOnOpen={mode === 'modal'}
   class={shellClass}

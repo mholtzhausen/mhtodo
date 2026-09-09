@@ -32,6 +32,7 @@
 </script>
 
 {#if open}
+  <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
   <div
     class="fixed inset-0 z-[55] flex items-center justify-center bg-black/55 p-4"
     onclick={onCancel}
@@ -42,6 +43,7 @@
       role="alertdialog"
       aria-modal="true"
       aria-label={title}
+      tabindex="-1"
       onkeydown={onKeydown}
       class="w-full max-w-sm rounded-panel border border-line bg-col shadow-md"
     >

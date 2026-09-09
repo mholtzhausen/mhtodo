@@ -720,6 +720,8 @@
 <div
   class="flex h-full flex-col border border-line {resizingDetail ? 'select-none' : ''}"
 >
+  <!-- Frameless window: double-click header (outside chrome) toggles maximize. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header
     class="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft bg-chrome px-3 py-2 [--wails-draggable:drag] sm:h-[52px] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-0"
     ondblclick={onHeaderDblClick}
@@ -738,7 +740,7 @@
       </h1>
     </div>
 
-    <nav
+    <div
       class="flex items-stretch gap-0.5 [--wails-draggable:no-drag] sm:gap-1"
       data-window-chrome
       role="tablist"
@@ -756,7 +758,7 @@
           {#if view === v}<span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>{/if}
         </button>
       {/each}
-    </nav>
+    </div>
 
     <div class="hidden flex-1 sm:block"></div>
 
@@ -1127,6 +1129,8 @@
   {/if}
 
   {#if selectedTask && renderDetailMode === 'modal'}
+    <!-- Backdrop dismiss; Escape also closes via global key handler. -->
+    <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
     <div
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
       onclick={() => (selectedId = null)}

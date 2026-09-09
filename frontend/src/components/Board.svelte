@@ -435,6 +435,7 @@
         dragLifted && dragFrom === col.status && draggingId
           ? columnRoots(col.status).length
           : byStatus[col.status].length}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
         ondrop={(e) => onColumnDrop(e, col.status)}
@@ -530,6 +531,7 @@
           </button>
         </header>
 
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           data-lane-body
           class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 py-2.5
