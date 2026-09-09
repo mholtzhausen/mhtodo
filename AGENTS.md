@@ -29,7 +29,9 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   created_at / updated_at / completed_at. UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock.
-  GUI also supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
+  GUI is frameless: drag the app header to move; double-click the header (outside tabs/actions)
+  toggles maximize; header Close hides to tray and Quit exits (same as Esc / Ctrl+Q). Also
+  supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
   With always-on-top on, a successful Claude or Zed open hides the window to tray.
   Terminal spawn raises an existing Claude window by session PID / `mhtodo:<session>` title
@@ -99,11 +101,13 @@ Windows/macOS support, tags/labels/projects, due dates/reminders.
 (when not in an input/textarea). Detail-pane description & feedback grow with content
 up to 500px, then scroll.
 
-**GUI window / responsiveness (desktop):** Wails floor is 800×560 (default 1100×720). The board
-uses `minmax(200px, 1fr)` columns with horizontal scroll instead of crushing five columns.
-Pinned detail auto-renders as floating when the main pane would be under ~640px (preference
-unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/`tasks:changed` debounce;
-search is debounced; Claude/Zed readiness is cached once per settings change (not per card).
+**GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
+1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle
+maximize. The board uses `minmax(200px, 1fr)` columns with horizontal scroll instead of
+crushing five columns. Pinned detail auto-renders as floating when the main pane would be
+under ~640px (preference unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/
+`tasks:changed` debounce; search is debounced; Claude/Zed readiness is cached once per
+settings change (not per card).
 Header Install icon (left of Settings) is enabled when a release update is available; hold
 Ctrl while hovering to force-enable. Latest version is cached 60 minutes (hover refreshes when
 stale; dialog has a manual refresh). Confirmation offers install/upgrade (+ as service) and

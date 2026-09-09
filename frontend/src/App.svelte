@@ -437,6 +437,14 @@
     document.addEventListener('mouseup', onUp, true)
   }
 
+  function onHeaderDblClick(e: MouseEvent) {
+    if ((e.target as Element | null)?.closest('[data-window-chrome]')) return
+    if (!inWails) return
+    void import('../wailsjs/runtime/runtime.js').then(({ WindowToggleMaximise }) => {
+      WindowToggleMaximise()
+    })
+  }
+
   async function toggleAlwaysOnTop() {
     const next = !alwaysOnTop
     alwaysOnTop = next
@@ -709,9 +717,12 @@
   })
 </script>
 
-<div class="flex h-full flex-col {resizingDetail ? 'select-none' : ''}">
+<div
+  class="flex h-full flex-col border border-line {resizingDetail ? 'select-none' : ''}"
+>
   <header
-    class="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft bg-chrome px-3 py-2 sm:h-[52px] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-0"
+    class="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft bg-chrome px-3 py-2 [--wails-draggable:drag] sm:h-[52px] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-0"
+    ondblclick={onHeaderDblClick}
   >
     <div class="flex items-center gap-gap-md">
       <span
@@ -727,7 +738,12 @@
       </h1>
     </div>
 
-    <nav class="flex items-stretch gap-0.5 sm:gap-1" role="tablist" aria-label="View">
+    <nav
+      class="flex items-stretch gap-0.5 [--wails-draggable:no-drag] sm:gap-1"
+      data-window-chrome
+      role="tablist"
+      aria-label="View"
+    >
       {#each [['board', 'Board'], ['list', 'List'], ['activity', 'Activity']] as [v, label] (v)}
         <button
           role="tab"
@@ -744,7 +760,10 @@
 
     <div class="hidden flex-1 sm:block"></div>
 
-    <div class="ml-auto flex items-center gap-2 sm:ml-0">
+    <div
+      class="ml-auto flex items-center gap-2 [--wails-draggable:no-drag] sm:ml-0"
+      data-window-chrome
+    >
     <button
       type="button"
       aria-disabled={!installEnabled}
@@ -872,6 +891,53 @@
         </svg>
       </button>
     </div>
+
+    <span class="mx-0.5 hidden h-5 w-px bg-line-soft sm:block" aria-hidden="true"></span>
+
+    <button
+      type="button"
+      onclick={() => api.hideWindow()}
+      title="Hide to tray (Esc)"
+      aria-label="Hide to tray"
+      class="grid h-8 w-8 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </button>
+
+    <button
+      type="button"
+      onclick={() => api.quit()}
+      title="Quit (Ctrl+Q)"
+      aria-label="Quit"
+      class="grid h-8 w-8 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" x2="9" y1="12" y2="12" />
+      </svg>
+    </button>
     </div>
   </header>
 

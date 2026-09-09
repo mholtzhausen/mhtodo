@@ -178,6 +178,7 @@ func runGUI(args []string) {
 		Height:      720,
 		MinWidth:    800,
 		MinHeight:   560,
+		Frameless:   true, // custom chrome: drag + dblclick-maximize on app header
 		StartHidden: launchStartHidden, // user setting in config.yml (General → Start hidden)
 		Linux: &linux.Options{
 			Icon: appIcon, // window/taskbar icon (M6)

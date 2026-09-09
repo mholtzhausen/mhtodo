@@ -267,6 +267,7 @@ status transitions → activity → delete) using only this CLI.
   available; hold **Ctrl** while hovering to force-enable. Hover refreshes the GitHub
   version check when the 60-minute cache is stale; the dialog shows current/target versions
   with a manual refresh control (`install` vs `upgrade`, optional service + shell integration).
+- **Window:** frameless; drag the app header to move, double-click header (outside tabs/actions) to toggle maximize. Header Close / Esc hide to tray; header Quit / `Ctrl+Q` exits.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
