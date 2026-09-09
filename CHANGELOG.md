@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.8.0 (a1e87a6)
+
+### Features and Improvements
+- Frameless GUI window: drag the app header to move; double-click (outside tabs/actions) toggles maximize; header Close hides to tray and Quit exits
+- Header Install control: enabled when a GitHub release update is available (Ctrl+hover to force); cached latest-version check with manual refresh; confirm dialog for install/upgrade, optional service, and shell integration
+- New sub-tasks (GUI and `add --parent`) seed cwd, todo session, Slack thread, and human-only from the parent; `include_in_report` defaults to false for sub-tasks
+
+### Bugfixes
+- ClearableField padding stays in sync when clearing; Svelte a11y noise silenced for dialogs, board drag targets, and header chrome
+
+### Deprecations
+- (none)
+
 ## 2.7.0 (5960ff8)
 
 ### Features and Improvements
