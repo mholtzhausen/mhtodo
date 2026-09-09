@@ -428,6 +428,9 @@ func TestCreateWithParent(t *testing.T) {
 	if child.ParentID == nil || *child.ParentID != parent.ID {
 		t.Fatalf("child parent_id: %+v", child)
 	}
+	if child.IncludeInReport {
+		t.Fatalf("sub-task include_in_report = true, want false by default")
+	}
 	// One level only: cannot nest under a child.
 	_, err = svc.Create(ctx, core.CreateInput{Title: "Grand", ParentID: child.ID})
 	if !errors.Is(err, core.ErrParentIsChild) {

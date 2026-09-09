@@ -43,7 +43,9 @@ Single-task archive: `mhtodo archive ID` and the card archive action (done tasks
 
 **v0.3 (shipped):** one-level sub-tasks (`parent_id`), agent-authored activity/comment entries +
 Activity view, detail-pane pin, `review` status (after waiting), rebalanced list columns. See
-[`.agent/plan/`](.agent/plan/README.md).
+[`.agent/plan/`](.agent/plan/README.md). New sub-tasks in the GUI seed cwd, todo session, Slack
+thread, and human-only from the parent; `include_in_report` defaults to false (CLI `add --parent`
+likewise).
 
 **Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
 interpolated at emit time). The live board signal for agents is status → progress →

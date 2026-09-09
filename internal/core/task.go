@@ -72,7 +72,8 @@ type CreateInput struct {
 	ParentID    string // optional; empty = root. Must resolve to a root task.
 	Cwd         string // optional working directory path
 	HumanOnly   bool   // mark as human-only (agents exclude from default lists)
-	// IncludeInReport: nil → true (default); explicit false excludes from Slack report.
+	// IncludeInReport: nil → true for root tasks, false for sub-tasks; explicit
+	// value always wins.
 	IncludeInReport *bool
 	SlackThread     string // optional Slack thread URL
 	TodoSession     string // optional; empty → NewTodoSessionID() (UUIDv7) on create

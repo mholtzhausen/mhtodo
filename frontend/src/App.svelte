@@ -145,6 +145,23 @@
       : null
   )
 
+  /** Parent task when the create dialog is for a sub-task (seeds cwd/session/slack/human). */
+  const dialogParent = $derived(
+    dialogParentId ? (tasks.find((t) => t.id === dialogParentId) ?? null) : null
+  )
+  const dialogDefaultCwd = $derived(
+    dialogParentId ? (dialogParent?.cwd ?? '') : guiSettings.default_cwd
+  )
+  const dialogDefaultHumanOnly = $derived(
+    dialogParentId ? !!dialogParent?.human_only : guiSettings.default_human_only
+  )
+  /** Sub-tasks default off the Slack board report; roots use Settings default. */
+  const dialogDefaultIncludeInReport = $derived(
+    dialogParentId ? false : guiSettings.default_include_in_report
+  )
+  const dialogDefaultSlackThread = $derived(dialogParent?.slack_thread ?? '')
+  const dialogDefaultTodoSession = $derived(dialogParent?.todo_session ?? '')
+
   function showToast(msg: string, kind: 'error' | 'info' = 'error', ms = TOAST_MS) {
     const id = ++toastSeq
     toast = { id, msg, kind }
@@ -947,9 +964,11 @@
     open={dialogOpen}
     initialStatus={dialogInitialStatus || 'pending'}
     parentId={dialogParentId}
-    defaultCwd={guiSettings.default_cwd}
-    defaultHumanOnly={guiSettings.default_human_only}
-    defaultIncludeInReport={guiSettings.default_include_in_report}
+    defaultCwd={dialogDefaultCwd}
+    defaultHumanOnly={dialogDefaultHumanOnly}
+    defaultIncludeInReport={dialogDefaultIncludeInReport}
+    defaultSlackThread={dialogDefaultSlackThread}
+    defaultTodoSession={dialogDefaultTodoSession}
     openWithTemplatePicker={dialogTemplatePicker}
     onClose={() => {
       dialogOpen = false

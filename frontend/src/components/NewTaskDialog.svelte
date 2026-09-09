@@ -16,6 +16,8 @@
     defaultCwd = '',
     defaultHumanOnly = false,
     defaultIncludeInReport = true,
+    defaultSlackThread = '',
+    defaultTodoSession = '',
     /** Open with the template picker already showing and its filter focused. */
     openWithTemplatePicker = false,
     onClose,
@@ -28,6 +30,8 @@
     defaultCwd?: string
     defaultHumanOnly?: boolean
     defaultIncludeInReport?: boolean
+    defaultSlackThread?: string
+    defaultTodoSession?: string
     openWithTemplatePicker?: boolean
     onClose: () => void
     onError?: (msg: string) => void
@@ -97,6 +101,8 @@
     if (dialogInitialized) return
     status = initialStatus
     cwd = defaultCwd
+    slackThread = defaultSlackThread
+    todoSession = defaultTodoSession
     humanOnly = defaultHumanOnly
     includeInReport = defaultIncludeInReport
     dialogInitialized = true

@@ -109,7 +109,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&todoSession, "session", "", "todo session id/name (default: shortid-slugified-title)")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
-	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default)")
+	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")
 	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")
 	return cmd
 }

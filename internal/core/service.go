@@ -113,6 +113,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		return Task{}, fmt.Errorf("generate id: %w", err)
 	}
 	includeInReport := true
+	if parentID != nil {
+		// Sub-tasks stay off the Slack board report unless the caller opts in.
+		includeInReport = false
+	}
 	if in.IncludeInReport != nil {
 		includeInReport = *in.IncludeInReport
 	}
