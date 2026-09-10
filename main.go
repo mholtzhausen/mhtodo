@@ -151,6 +151,8 @@ func runGUI(args []string) {
 		},
 		NewTask:             app.openNewTaskFromTray,
 		NewTaskFromTemplate: app.openNewTaskFromTemplateFromTray,
+		OpenSettings:        app.openSettingsFromTray,
+		FocusTask:           app.openFocusTaskFromTray,
 		Quit:                app.Quit,
 	})
 

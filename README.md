@@ -104,7 +104,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--session ""` / `--slack-thread ""` clear those fields |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
-| `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; the GUI always notifies on →done/→waiting) |
+| `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
 | `archive` | `mhtodo archive [ID]` | with no ID, archives **all** currently-done tasks; with ID, archives that single done task only (must be done; already archived → `already_archived`); reversible via `unarchive` |
 | `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
 | `activity add` | `mhtodo activity add ID --activity TEXT [--comment TEXT]` | agent/user-authored entry (at least one of activity/comment); not auto-logged |
@@ -267,16 +267,20 @@ status transitions → activity → delete) using only this CLI.
   available; hold **Ctrl** while hovering to force-enable. Hover refreshes the GitHub
   version check when the 60-minute cache is stale; the dialog shows current/target versions
   with a manual refresh control (`install` vs `upgrade`, optional service + shell integration).
-- **Window:** frameless; drag the app header to move, double-click header (outside tabs/actions) to toggle maximize. Header Close / Esc hide to tray; header Quit / `Ctrl+Q` exits.
+- **Window:** frameless; drag the app header to move, double-click header (outside tabs/actions) to toggle maximize. Header Close / Esc hide to tray; hold **Ctrl** while hovering Close to reveal Exit, then Ctrl+click (or `Ctrl+Q`) to quit.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
   (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
   detail short-ID: copy button for short ID, `Ctrl+click` (⌘-click) for full UUID ·
   `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
-- **System tray:** Show/Hide, New Task, New Task from Template, Quit; close hides to tray; label shows
-  open-task count.
+- **System tray:** Show/Hide, New Task, New Task from Template, Settings, Quit; close hides to tray. Label shows
+  attention counts when configured statuses have root tasks (e.g. `mhtodo · 2 waiting, 1 review`),
+  otherwise the open-task count. Configurable status submenus list recent root tasks; click opens the
+  window and selects the task (Settings → Notifications).
   Global hotkey (X11) toggles the window and raises it on show. The grab is renewed periodically and after resume from suspend (screen lock can drop passive X11 grabs).
-- **Notifications:** on real →done and →waiting only (not →review).
+- **Notifications:** Settings → Notifications configures tray label/menu statuses and `notify-send` on
+  GUI status transitions (defaults: →review on; →wip / →waiting / →done off). Tray menus refresh on
+  local and CLI-driven DB changes.
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
 - **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; pinned detail auto-falls back to floating when the main pane would be under ~640px; footer shortcut legend hides below ~900px width.
@@ -297,7 +301,7 @@ status transitions → activity → delete) using only this CLI.
 | `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly, IncludeInReport (*bool, default true), SlackThread, TodoSession |
 | `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/todo_session |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
-| `SetStatus(id, status)` | `status` / `done` | notifies on →done/→waiting; assigns end rank on column change |
+| `SetStatus(id, status)` | `status` / `done` | optional notify-send per Settings (wip/waiting/review/done); assigns end rank on column change |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
 | `Archive(id)` | `archive ID` | single done task → archive |
 | `ArchiveDone()` | `archive` | bulk done → archive |

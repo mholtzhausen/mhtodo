@@ -6,6 +6,8 @@
     DEFAULT_CLAUDE_TICKET_PROMPT,
     DEFAULT_HERDR_SPACE_NAME,
     normalizeSpawn,
+    STATUS_OPTIONS,
+    toggleStatusInOrder,
     type ClaudeConfig,
     type ClaudeSpawn,
     type GUISettings,
@@ -43,11 +45,12 @@
   let terminalFound = $state(false)
   let zedFound = $state(false)
 
-  type SettingsPage = 'general' | 'integrations' | 'templates' | 'themes'
+  type SettingsPage = 'general' | 'notifications' | 'integrations' | 'templates' | 'themes'
   let activePage = $state<SettingsPage>('general')
 
   const pages: { id: SettingsPage; label: string }[] = [
     { id: 'general', label: 'General' },
+    { id: 'notifications', label: 'Notifications' },
     { id: 'integrations', label: 'Integrations' },
     { id: 'templates', label: 'Task Templates' },
     { id: 'themes', label: 'Themes' }
@@ -325,6 +328,7 @@
       default_include_in_report,
       archive_done_subtasks,
       start_hidden,
+      notifications,
       claude,
       herdr,
       terminal,
@@ -335,6 +339,13 @@
     void default_include_in_report
     void archive_done_subtasks
     void start_hidden
+    void notifications.tray_label_statuses
+    void notifications.tray_menu_statuses
+    void notifications.max_items_per_status
+    void notifications.notify_send_wip
+    void notifications.notify_send_waiting
+    void notifications.notify_send_review
+    void notifications.notify_send_done
     void claude.spawn
     void claude.enabled
     void claude.binary
@@ -610,6 +621,115 @@
                   >
                 </span>
               </label>
+              </div>
+            </section>
+          {:else if activePage === 'notifications'}
+            <section>
+              <h3 class="mb-4 text-sm font-semibold text-ink">Notifications</h3>
+              <div class="flex flex-col gap-gap-lg">
+                <div>
+                  <p class="mb-1 text-sm text-ink-2">Tray label statuses</p>
+                  <p class="mb-2 text-xs italic text-ink-3/75">
+                    When any of these have root tasks, the tray title shows counts (e.g. “2 waiting, 1
+                    review”). Otherwise it falls back to the open-task count.
+                  </p>
+                  <div class="flex flex-col gap-2">
+                    {#each STATUS_OPTIONS as opt}
+                      <label class="flex cursor-pointer items-center gap-gap-md">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.tray_label_statuses.includes(opt.id)}
+                          onchange={(e) => {
+                            settings.notifications.tray_label_statuses = toggleStatusInOrder(
+                              settings.notifications.tray_label_statuses,
+                              opt.id,
+                              e.currentTarget.checked
+                            )
+                          }}
+                          class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                        />
+                        <span class="text-sm text-ink-2">{opt.label}</span>
+                      </label>
+                    {/each}
+                  </div>
+                </div>
+
+                <div>
+                  <p class="mb-1 text-sm text-ink-2">Tray menu statuses</p>
+                  <p class="mb-2 text-xs italic text-ink-3/75">
+                    Status submenus under the tray icon; click a task to open mhtodo and select it.
+                  </p>
+                  <div class="flex flex-col gap-2">
+                    {#each STATUS_OPTIONS as opt}
+                      <label class="flex cursor-pointer items-center gap-gap-md">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.tray_menu_statuses.includes(opt.id)}
+                          onchange={(e) => {
+                            settings.notifications.tray_menu_statuses = toggleStatusInOrder(
+                              settings.notifications.tray_menu_statuses,
+                              opt.id,
+                              e.currentTarget.checked
+                            )
+                          }}
+                          class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                        />
+                        <span class="text-sm text-ink-2">{opt.label}</span>
+                      </label>
+                    {/each}
+                  </div>
+                </div>
+
+                <label class="block">
+                  <span class="micro mb-1.5">Max tasks per status submenu</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    bind:value={settings.notifications.max_items_per_status}
+                    class="w-24 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                  />
+                </label>
+
+                <div class="border-t border-line-soft pt-4">
+                  <p class="mb-2 text-sm font-medium text-ink-2">Desktop notifications (notify-send)</p>
+                  <div class="flex flex-col gap-2">
+                    <label class="flex cursor-pointer items-center gap-gap-md">
+                      <input
+                        type="checkbox"
+                        bind:checked={settings.notifications.notify_send_wip}
+                        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                      />
+                      <span class="text-sm text-ink-2"
+                        >Notify on →in progress <span class="text-ink-3">(→wip)</span></span
+                      >
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-gap-md">
+                      <input
+                        type="checkbox"
+                        bind:checked={settings.notifications.notify_send_waiting}
+                        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                      />
+                      <span class="text-sm text-ink-2">Notify on →waiting</span>
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-gap-md">
+                      <input
+                        type="checkbox"
+                        bind:checked={settings.notifications.notify_send_review}
+                        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                      />
+                      <span class="text-sm text-ink-2">Notify on →review</span>
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-gap-md">
+                      <input
+                        type="checkbox"
+                        bind:checked={settings.notifications.notify_send_done}
+                        class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                      />
+                      <span class="text-sm text-ink-2">Notify on →done</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </section>
           {:else if activePage === 'integrations'}

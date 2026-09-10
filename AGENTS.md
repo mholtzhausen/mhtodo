@@ -30,13 +30,17 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock.
   GUI is frameless: drag the app header to move; double-click the header (outside tabs/actions)
-  toggles maximize; header Close hides to tray and Quit exits (same as Esc / Ctrl+Q). Also
+  toggles maximize; header Close (×) hides to tray; hold Ctrl while hovering to reveal
+  Exit and Ctrl+click (or Ctrl+Q) to quit. Also
   supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
   With always-on-top on, a successful Claude or Zed open hides the window to tray.
   Terminal spawn raises an existing Claude window by session PID / `mhtodo:<session>` title
   instead of opening a duplicate.
-- Desktop notifications on →done and →waiting (`notify-send`).
+  Tray label shows attention summaries (configurable statuses); status submenus list root tasks
+  and focus them on click (Settings → Notifications).
+- Desktop notifications (`notify-send`) on status transitions, toggleable in Settings → Notifications
+  (defaults: →review on; →wip / →waiting / →done off).
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 
 **Post-v0.1 (v0.2, shipped 2026-08-20):** archive/unarchive for done tasks — bulk archive from the

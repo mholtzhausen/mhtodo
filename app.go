@@ -23,6 +23,7 @@ import (
 	"mhtodo/internal/store"
 	mhsync "mhtodo/internal/sync"
 	"mhtodo/internal/tray"
+	"mhtodo/internal/traymenu"
 )
 
 //go:embed all:frontend/dist
@@ -99,7 +100,7 @@ func (a *App) startup(ctx context.Context) {
 	} else {
 		a.watcher = w
 	}
-	a.refreshTooltip()
+	a.refreshTray()
 	a.registerGlobalHotkey()
 	log.Printf("mhtodo started (db %s)", store.DBPath())
 }
@@ -112,6 +113,7 @@ func (a *App) domReady(_ context.Context) {
 		a.restoreWindowPos()
 	}
 	a.startPosCapture()
+	a.refreshTray()
 }
 
 func (a *App) shutdown(_ context.Context) {
@@ -173,19 +175,33 @@ func (a *App) UpdateTask(id string, patch core.UpdateInput) (core.Task, error) {
 }
 
 // SetStatus maps to CLI `status` / `done`. Notifies on real →done/→waiting
-// transitions (05-gui-spec.md); no-op re-sets and plain edits stay silent.
+// transitions when enabled in Settings → Notifications; no-op re-sets and
+// plain edits stay silent.
 func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 	prev, perr := a.svc.Get(a.ctx, id) // old status for transition detection
 	t, err := a.svc.SetStatus(a.ctx, id, status)
 	if err == nil {
 		a.emitChanged(t.ID, "status")
 		if perr == nil && prev.Status != t.Status {
+			ncfg := a.notificationsConfig()
 			switch t.Status {
-			case core.StatusDone:
-				a.notifier.TaskDone(t.ID, t.Title)
-				a.maybeCloseHerdrTabOnDone(t)
+			case core.StatusWIP:
+				if ncfg.NotifySendWIP {
+					a.notifier.TaskWIP(t.ID, t.Title)
+				}
 			case core.StatusWaiting:
-				a.notifier.TaskWaiting(t.ID, t.Title)
+				if ncfg.NotifySendWaiting {
+					a.notifier.TaskWaiting(t.ID, t.Title)
+				}
+			case core.StatusReview:
+				if ncfg.NotifySendReview {
+					a.notifier.TaskReview(t.ID, t.Title)
+				}
+			case core.StatusDone:
+				if ncfg.NotifySendDone {
+					a.notifier.TaskDone(t.ID, t.Title)
+				}
+				a.maybeCloseHerdrTabOnDone(t)
 			}
 		}
 	}
@@ -460,9 +476,22 @@ func (a *App) GetGUISettings() (settings.GUISettings, error) {
 	return settings.Load(a.repo)
 }
 
-// SetGUISettings persists GUI preferences.
+// SetGUISettings persists GUI preferences and refreshes the tray menu.
 func (a *App) SetGUISettings(s settings.GUISettings) error {
-	return settings.Save(s)
+	if err := settings.Save(s); err != nil {
+		return err
+	}
+	a.refreshTray()
+	return nil
+}
+
+// notificationsConfig returns Notifications prefs (defaults on load error).
+func (a *App) notificationsConfig() settings.NotificationsConfig {
+	s, err := settings.Load(a.repo)
+	if err != nil {
+		return settings.Default().Notifications
+	}
+	return s.Notifications
 }
 
 // CheckBinary reports whether path resolves to an executable (for integration UI).
@@ -653,7 +682,7 @@ func (a *App) emitChanged(id, op string) {
 		return
 	}
 	wruntime.EventsEmit(a.ctx, "tasks:changed", map[string]string{"id": id, "op": op})
-	a.refreshTooltip()
+	a.refreshTray()
 }
 
 // emitTemplatesChanged notifies the frontend that the template set changed, so
@@ -676,23 +705,90 @@ func (a *App) emitThemesChanged(id, op string) {
 	wruntime.EventsEmit(a.ctx, "themes:changed", map[string]string{"id": id, "op": op})
 }
 
-// refreshTooltip updates the tray count (open = not done), refreshed on every
-// change per 05-gui-spec.md. Two channels: the spec tooltip text (effective on
-// Windows/macOS; getlantern/systray's Linux AppIndicator backend ignores it)
-// and a compact label — XAyatanaLabel on this machine, visible in Cinnamon
-// when tray labels are enabled. Transient DB errors are ignored; the next
-// change retries.
-func (a *App) refreshTooltip() {
-	n, err := a.svc.CountOpen(a.ctx)
-	if err != nil {
+// refreshTray updates the tray label and status submenus on every tasks:changed
+// (and settings save). Attention statuses come from Settings → Notifications.
+func (a *App) refreshTray() {
+	if a.svc == nil {
 		return
 	}
-	tray.SetTooltip(fmt.Sprintf("mhtodo — %d open tasks", n))
-	label := "mhtodo"
-	if n > 0 {
-		label = fmt.Sprintf("mhtodo (%d)", n)
+	ncfg := a.notificationsConfig()
+	maxItems := traymenu.ClampMaxItems(ncfg.MaxItemsPerStatus)
+
+	// Union of statuses we need counts/lists for.
+	needed := map[string]bool{}
+	for _, st := range ncfg.TrayLabelStatuses {
+		needed[st] = true
 	}
+	for _, st := range ncfg.TrayMenuStatuses {
+		needed[st] = true
+	}
+
+	counts := map[string]int{}
+	tasksByStatus := map[string][]traymenu.TaskRef{}
+	for st := range needed {
+		status, err := core.ParseStatus(st)
+		if err != nil {
+			continue
+		}
+		list, err := a.svc.List(a.ctx, core.ListFilter{
+			Status:           status,
+			IncludeDone:      status == core.StatusDone,
+			RootsOnly:        true,
+			IncludeHumanOnly: true,
+			Sort:             "updated",
+			Ascending:        false,
+			Limit:            maxItems,
+		})
+		if err != nil {
+			continue
+		}
+		// Count: when limited, re-list without limit for accurate submenu title,
+		// but only when we hit the cap (cheap path otherwise).
+		count := len(list)
+		if count >= maxItems {
+			all, err := a.svc.List(a.ctx, core.ListFilter{
+				Status:           status,
+				IncludeDone:      status == core.StatusDone,
+				RootsOnly:        true,
+				IncludeHumanOnly: true,
+				Sort:             "updated",
+				Ascending:        false,
+			})
+			if err == nil {
+				count = len(all)
+			}
+		}
+		counts[st] = count
+		refs := make([]traymenu.TaskRef, 0, len(list))
+		for _, t := range list {
+			refs = append(refs, traymenu.TaskRef{ID: t.ID, Title: t.Title})
+		}
+		tasksByStatus[st] = refs
+	}
+
+	attention := traymenu.FormatAttentionLabel(ncfg.TrayLabelStatuses, counts)
+	openCount := 0
+	if n, err := a.svc.CountOpen(a.ctx); err == nil {
+		openCount = n
+	}
+	label := traymenu.FormatTrayLabel(attention, openCount)
+	tray.SetTooltip(label)
 	tray.SetLabel(label)
+
+	sections := traymenu.BuildSections(ncfg.TrayMenuStatuses, counts, tasksByStatus, maxItems)
+	tray.UpdateStatusMenus(sections)
+}
+
+// openFocusTaskFromTray raises the window and asks the frontend to select a task.
+func (a *App) openFocusTaskFromTray(id string) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return
+	}
+	a.showWindow()
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "focus-task", id)
+	}
 }
 
 // --- window lifecycle ---------------------------------------------------------
@@ -931,6 +1027,15 @@ func (a *App) openNewTaskFromTemplateFromTray() {
 	a.showWindow()
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "tray:new-task-template")
+	}
+}
+
+// openSettingsFromTray is the tray "Settings" action: show the window and open
+// the Settings dialog.
+func (a *App) openSettingsFromTray() {
+	a.showWindow()
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "tray:open-settings")
 	}
 }
 

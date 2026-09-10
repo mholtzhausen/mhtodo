@@ -127,9 +127,10 @@
   let installBusy = $state(false)
   let installRefreshing = $state(false)
   let installStatus = $state<InstallStatus | null>(null)
-  /** Ctrl held — with hover, unlocks Install even when already up to date. */
-  let installCtrl = $state(false)
+  /** Ctrl held — unlocks Install force-update and reveals header Exit. */
+  let ctrlHeld = $state(false)
   let installHover = $state(false)
+  let closeHover = $state(false)
   let guiSettings = $state<GUISettings>(defaultSettings())
   let confirmTask = $state<any | null>(null)
   let confirmMsg = $state('')
@@ -172,16 +173,18 @@
 
   const installUpdateAvailable = $derived(!!installStatus && !installStatus.up_to_date)
   /** Enabled when a newer release exists, or Ctrl is held while hovering (force). */
-  const installEnabled = $derived(installUpdateAvailable || (installCtrl && installHover))
+  const installEnabled = $derived(installUpdateAvailable || (ctrlHeld && installHover))
+  /** Ctrl+hover on the window Close control: show Exit instead of hide-to-tray. */
+  const showExit = $derived(ctrlHeld && closeHover)
 
-  function onInstallKeydown(e: KeyboardEvent) {
-    if (e.key === 'Control') installCtrl = true
+  function onCtrlKeydown(e: KeyboardEvent) {
+    if (e.key === 'Control') ctrlHeld = true
   }
-  function onInstallKeyup(e: KeyboardEvent) {
-    if (e.key === 'Control') installCtrl = false
+  function onCtrlKeyup(e: KeyboardEvent) {
+    if (e.key === 'Control') ctrlHeld = false
   }
-  function onInstallBlur() {
-    installCtrl = false
+  function onCtrlBlur() {
+    ctrlHeld = false
   }
 
   const INSTALL_CACHE_TTL_MS = 60 * 60 * 1000
@@ -356,6 +359,14 @@
     selectedId = id
   }
 
+  /** Tray status-submenu click: raise already happened in Go; select the task here. */
+  function focusTaskFromTray(id: string) {
+    const tid = String(id ?? '').trim()
+    if (!tid) return
+    if (view === 'activity') view = 'board'
+    selectedId = tid
+  }
+
   function navigateModalTask(dir: -1 | 1) {
     if (renderDetailMode !== 'modal' || !selectedId) return
     let nextId: string | null = null
@@ -497,6 +508,8 @@
   let unbindThemesChanged: (() => void) | undefined
   let unbindTrayNewTask: (() => void) | undefined
   let unbindTrayNewTaskTemplate: (() => void) | undefined
+  let unbindTrayOpenSettings: (() => void) | undefined
+  let unbindFocusTask: (() => void) | undefined
 
   /** Single entry point for every "create a task" affordance. */
   function openNewTask(opts: { status?: Status | ''; parentId?: string; template?: boolean } = {}) {
@@ -687,10 +700,16 @@
     unbindTrayNewTaskTemplate = EventsOn('tray:new-task-template', () =>
       openNewTask({ template: true })
     )
+    unbindTrayOpenSettings = EventsOn('tray:open-settings', () => {
+      settingsOpen = true
+    })
+    unbindFocusTask = EventsOn('focus-task', (...data: unknown[]) => {
+      focusTaskFromTray(String(data[0] ?? ''))
+    })
     window.addEventListener('keydown', onKeydown)
-    window.addEventListener('keydown', onInstallKeydown)
-    window.addEventListener('keyup', onInstallKeyup)
-    window.addEventListener('blur', onInstallBlur)
+    window.addEventListener('keydown', onCtrlKeydown)
+    window.addEventListener('keyup', onCtrlKeyup)
+    window.addEventListener('blur', onCtrlBlur)
     window.addEventListener('resize', onWindowResize)
     await load()
   })
@@ -705,10 +724,12 @@
     unbindThemesChanged?.()
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()
+    unbindTrayOpenSettings?.()
+    unbindFocusTask?.()
     window.removeEventListener('keydown', onKeydown)
-    window.removeEventListener('keydown', onInstallKeydown)
-    window.removeEventListener('keyup', onInstallKeyup)
-    window.removeEventListener('blur', onInstallBlur)
+    window.removeEventListener('keydown', onCtrlKeydown)
+    window.removeEventListener('keyup', onCtrlKeyup)
+    window.removeEventListener('blur', onCtrlBlur)
     window.removeEventListener('resize', onWindowResize)
     if (resizingDetail) {
       document.body.style.cursor = ''
@@ -771,14 +792,14 @@
       aria-disabled={!installEnabled}
       onpointerenter={(e) => {
         installHover = true
-        installCtrl = e.ctrlKey
+        ctrlHeld = e.ctrlKey
         void refreshInstallStatus(false)
       }}
       onpointerleave={() => {
         installHover = false
       }}
       onpointermove={(e) => {
-        installCtrl = e.ctrlKey
+        ctrlHeld = e.ctrlKey
       }}
       onclick={() => {
         if (!installEnabled) return
@@ -898,47 +919,57 @@
 
     <button
       type="button"
-      onclick={() => api.hideWindow()}
-      title="Hide to tray (Esc)"
-      aria-label="Hide to tray"
-      class="grid h-8 w-8 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+      onpointerenter={(e) => {
+        closeHover = true
+        ctrlHeld = e.ctrlKey
+      }}
+      onpointerleave={() => {
+        closeHover = false
+      }}
+      onpointermove={(e) => {
+        ctrlHeld = e.ctrlKey
+      }}
+      onclick={(e) => {
+        if (e.ctrlKey) api.quit()
+        else void api.hideWindow()
+      }}
+      title={showExit ? 'Quit (Ctrl+click / Ctrl+Q)' : 'Hide to tray (Esc) · hold Ctrl for Quit'}
+      aria-label={showExit ? 'Quit' : 'Hide to tray'}
+      class="grid h-8 w-8 place-items-center rounded-control border transition-colors
+        {showExit
+          ? 'border-danger/40 bg-danger/10 text-danger hover:bg-danger/20'
+          : 'border-line-soft text-ink-3 hover:bg-white/5 hover:text-ink'}"
     >
-      <svg
-        class="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M18 6 6 18" />
-        <path d="m6 6 12 12" />
-      </svg>
-    </button>
-
-    <button
-      type="button"
-      onclick={() => api.quit()}
-      title="Quit (Ctrl+Q)"
-      aria-label="Quit"
-      class="grid h-8 w-8 place-items-center rounded-control border border-line-soft text-ink-3 transition-colors hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
-    >
-      <svg
-        class="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-        <polyline points="16 17 21 12 16 7" />
-        <line x1="21" x2="9" y1="12" y2="12" />
-      </svg>
+      {#if showExit}
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" x2="9" y1="12" y2="12" />
+        </svg>
+      {:else}
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      {/if}
     </button>
     </div>
   </header>
@@ -1105,7 +1136,7 @@
         ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
         <kbd>1–5</kbd> status · <kbd>6</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
         <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
-        <kbd>ctrl+q</kbd> quit</span
+        <kbd>ctrl+q</kbd> / <kbd>ctrl+click</kbd> × quit</span
       >
     {/if}
   </footer>

@@ -532,12 +532,37 @@ export namespace settings {
 	        this.space_name = source["space_name"];
 	    }
 	}
+	export class NotificationsConfig {
+	    tray_label_statuses: string[];
+	    tray_menu_statuses: string[];
+	    max_items_per_status: number;
+	    notify_send_wip: boolean;
+	    notify_send_waiting: boolean;
+	    notify_send_review: boolean;
+	    notify_send_done: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotificationsConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tray_label_statuses = source["tray_label_statuses"];
+	        this.tray_menu_statuses = source["tray_menu_statuses"];
+	        this.max_items_per_status = source["max_items_per_status"];
+	        this.notify_send_wip = source["notify_send_wip"];
+	        this.notify_send_waiting = source["notify_send_waiting"];
+	        this.notify_send_review = source["notify_send_review"];
+	        this.notify_send_done = source["notify_send_done"];
+	    }
+	}
 	export class GUISettings {
 	    default_cwd: string;
 	    default_human_only: boolean;
 	    default_include_in_report: boolean;
 	    archive_done_subtasks: boolean;
 	    start_hidden: boolean;
+	    notifications: NotificationsConfig;
 	    claude: ClaudeConfig;
 	    herdr: HerdrConfig;
 	    terminal: TerminalConfig;
@@ -554,6 +579,7 @@ export namespace settings {
 	        this.default_include_in_report = source["default_include_in_report"];
 	        this.archive_done_subtasks = source["archive_done_subtasks"];
 	        this.start_hidden = source["start_hidden"];
+	        this.notifications = this.convertValues(source["notifications"], NotificationsConfig);
 	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
 	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
 	        this.terminal = this.convertValues(source["terminal"], TerminalConfig);
@@ -578,6 +604,7 @@ export namespace settings {
 		    return a;
 		}
 	}
+	
 	
 	
 

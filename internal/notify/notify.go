@@ -46,6 +46,16 @@ func (n *Notifier) TaskWaiting(id, title string) {
 	n.send(id, "waiting", fmt.Sprintf("Waiting on external: %s", title), id)
 }
 
+// TaskWIP notifies a →wip transition ("In progress: <title>").
+func (n *Notifier) TaskWIP(id, title string) {
+	n.send(id, "wip", fmt.Sprintf("In progress: %s", title), id)
+}
+
+// TaskReview notifies a →review transition ("Ready for review: <title>").
+func (n *Notifier) TaskReview(id, title string) {
+	n.send(id, "review", fmt.Sprintf("Ready for review: %s", title), id)
+}
+
 // send dedupes per id+status within 60s, then fires notify-send with the app
 // name constant for grouping. The body carries the task ID so the user can
 // `mhtodo show <id>` from a terminal. Errors are logged and never returned.

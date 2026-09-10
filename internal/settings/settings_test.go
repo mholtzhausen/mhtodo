@@ -3,6 +3,7 @@ package settings
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -20,6 +21,13 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.DefaultIncludeInReport = false
 	want.ArchiveDoneSubtasks = true
 	want.StartHidden = true
+	want.Notifications.TrayLabelStatuses = []string{"waiting"}
+	want.Notifications.TrayMenuStatuses = []string{"waiting", "review", "wip"}
+	want.Notifications.MaxItemsPerStatus = 7
+	want.Notifications.NotifySendWIP = true
+	want.Notifications.NotifySendWaiting = false
+	want.Notifications.NotifySendReview = false
+	want.Notifications.NotifySendDone = true
 	want.Claude.Enabled = true
 	want.Claude.Spawn = SpawnHerdr
 	want.Claude.Binary = "/usr/bin/claude"
@@ -41,7 +49,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("round-trip mismatch:\nwant %+v\ngot  %+v", want, got)
 	}
 	data, err := os.ReadFile(path)
@@ -50,6 +58,33 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "default_cwd:") {
 		t.Fatalf("expected yaml config at %s, got:\n%s", path, data)
+	}
+	if !strings.Contains(string(data), "notifications:") {
+		t.Fatalf("expected notifications section in yaml:\n%s", data)
+	}
+}
+
+func TestNotificationsDefaultsWhenAbsent(t *testing.T) {
+	path := configPathIn(t, "config.yml")
+	if err := os.WriteFile(path, []byte("start_hidden: false\nclaude:\n  binary: claude\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	def := Default().Notifications
+	if !reflect.DeepEqual(got.Notifications.TrayLabelStatuses, def.TrayLabelStatuses) {
+		t.Fatalf("label statuses = %v, want %v", got.Notifications.TrayLabelStatuses, def.TrayLabelStatuses)
+	}
+	if got.Notifications.MaxItemsPerStatus != 10 {
+		t.Fatalf("max items = %d", got.Notifications.MaxItemsPerStatus)
+	}
+	if got.Notifications.NotifySendWaiting || got.Notifications.NotifySendDone || got.Notifications.NotifySendWIP {
+		t.Fatal("notify-send wip/waiting/done defaults should be false")
+	}
+	if !got.Notifications.NotifySendReview {
+		t.Fatal("notify-send review default should be true")
 	}
 }
 

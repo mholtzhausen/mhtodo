@@ -1,4 +1,12 @@
-# mhtodo — progress (updated 26-09-09)
+# mhtodo — progress (updated 26-09-10)
+
+## v0.7 — Tray menu notifications (complete)
+
+- [x] Settings → Notifications (`tray_label_statuses`, `tray_menu_statuses`, max items, notify-send toggles)
+  - [x] Desktop notify defaults: →review on; →wip / →waiting / →done off
+- [x] Tray label attention summary + status submenus (fixed slots); click → show + `focus-task`
+- [x] Refresh on `tasks:changed` (GUI + CLI/external) and settings save
+- [x] Docs + unit tests (`traymenu` helpers, settings round-trip)
 
 ## v0.6 — GUI themes (complete)
 

@@ -31,6 +31,7 @@ list layout — full CLI ↔ GUI parity over `internal/core.Service`.
 | `07-docs-version.md` | README agent contract, AGENTS.md scope, VERSION bump |
 | `08-task-templates.md` | Task templates (v0.5) |
 | `09-themes.md` | GUI themes (v0.6) |
+| `10-tray-notifications.md` | Tray menu notifications (v0.7) |
 
 ## Milestone order
 

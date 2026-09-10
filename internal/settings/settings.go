@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -90,17 +91,29 @@ type TerminalConfig struct {
 	EnvStart string `json:"env_start" yaml:"env_start"`
 }
 
+// NotificationsConfig drives tray label / status submenus and notify-send toggles.
+type NotificationsConfig struct {
+	TrayLabelStatuses []string `json:"tray_label_statuses" yaml:"tray_label_statuses"` // drive icon label summary
+	TrayMenuStatuses  []string `json:"tray_menu_statuses" yaml:"tray_menu_statuses"`   // status submenu order
+	MaxItemsPerStatus  int      `json:"max_items_per_status" yaml:"max_items_per_status"`
+	NotifySendWIP      bool     `json:"notify_send_wip" yaml:"notify_send_wip"`         // →wip (default off)
+	NotifySendWaiting  bool     `json:"notify_send_waiting" yaml:"notify_send_waiting"` // →waiting (default off)
+	NotifySendReview   bool     `json:"notify_send_review" yaml:"notify_send_review"`   // →review (default on)
+	NotifySendDone     bool     `json:"notify_send_done" yaml:"notify_send_done"`       // →done (default off)
+}
+
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd              string             `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly        bool               `json:"default_human_only" yaml:"default_human_only"`
-	DefaultIncludeInReport  bool               `json:"default_include_in_report" yaml:"default_include_in_report"`
-	ArchiveDoneSubtasks     bool               `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
-	StartHidden             bool               `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
-	Claude                  ClaudeConfig       `json:"claude" yaml:"claude"`
-	Herdr                   HerdrConfig        `json:"herdr" yaml:"herdr"`
-	Terminal                TerminalConfig     `json:"terminal" yaml:"terminal"`
-	Zed                     IntegrationConfig  `json:"zed" yaml:"zed"`
+	DefaultCwd              string              `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly        bool                `json:"default_human_only" yaml:"default_human_only"`
+	DefaultIncludeInReport  bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
+	ArchiveDoneSubtasks     bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden             bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	Notifications           NotificationsConfig `json:"notifications" yaml:"notifications"`
+	Claude                  ClaudeConfig        `json:"claude" yaml:"claude"`
+	Herdr                   HerdrConfig         `json:"herdr" yaml:"herdr"`
+	Terminal                TerminalConfig      `json:"terminal" yaml:"terminal"`
+	Zed                     IntegrationConfig   `json:"zed" yaml:"zed"`
 }
 
 type claudeFile struct {
@@ -135,16 +148,27 @@ type terminalFile struct {
 	UserSet  bool   `yaml:"user_set,omitempty"`
 }
 
+type notificationsFile struct {
+	TrayLabelStatuses []string `yaml:"tray_label_statuses,omitempty"`
+	TrayMenuStatuses  []string `yaml:"tray_menu_statuses,omitempty"`
+	MaxItemsPerStatus  *int     `yaml:"max_items_per_status,omitempty"`
+	NotifySendWIP      *bool    `yaml:"notify_send_wip,omitempty"`
+	NotifySendWaiting  *bool    `yaml:"notify_send_waiting,omitempty"`
+	NotifySendReview   *bool    `yaml:"notify_send_review,omitempty"`
+	NotifySendDone     *bool    `yaml:"notify_send_done,omitempty"`
+}
+
 type configFile struct {
-	DefaultCwd             string          `yaml:"default_cwd"`
-	DefaultHumanOnly       bool            `yaml:"default_human_only"`
-	DefaultIncludeInReport *bool           `yaml:"default_include_in_report,omitempty"`
-	ArchiveDoneSubtasks    bool            `yaml:"archive_done_subtasks"`
-	StartHidden            bool            `yaml:"start_hidden"`
-	Claude                 claudeFile      `yaml:"claude"`
-	Herdr                  herdrFile       `yaml:"herdr"`
-	Terminal               terminalFile    `yaml:"terminal"`
-	Zed                    integrationFile `yaml:"zed"`
+	DefaultCwd             string            `yaml:"default_cwd"`
+	DefaultHumanOnly       bool              `yaml:"default_human_only"`
+	DefaultIncludeInReport *bool             `yaml:"default_include_in_report,omitempty"`
+	ArchiveDoneSubtasks    bool              `yaml:"archive_done_subtasks"`
+	StartHidden            bool              `yaml:"start_hidden"`
+	Notifications          notificationsFile `yaml:"notifications"`
+	Claude                 claudeFile        `yaml:"claude"`
+	Herdr                  herdrFile         `yaml:"herdr"`
+	Terminal               terminalFile      `yaml:"terminal"`
+	Zed                    integrationFile   `yaml:"zed"`
 }
 
 // Default returns factory defaults for a fresh install.
@@ -154,12 +178,114 @@ func Default() GUISettings {
 
 func defaultConfigFile() configFile {
 	requireCwd := true
+	maxItems := 10
+	notifyWIP := false
+	notifyWaiting := false
+	notifyReview := true
+	notifyDone := false
 	return configFile{
 		StartHidden: defaultLaunchHidden(),
-		Claude:      claudeFile{Binary: "claude", RequireCwd: &requireCwd},
-		Herdr:       herdrFile{Binary: "herdr"},
-		Zed:         integrationFile{Binary: "zed"},
+		Notifications: notificationsFile{
+			TrayLabelStatuses: []string{"waiting", "review"},
+			TrayMenuStatuses:  []string{"waiting", "review"},
+			MaxItemsPerStatus:  &maxItems,
+			NotifySendWIP:      &notifyWIP,
+			NotifySendWaiting:  &notifyWaiting,
+			NotifySendReview:   &notifyReview,
+			NotifySendDone:     &notifyDone,
+		},
+		Claude: claudeFile{Binary: "claude", RequireCwd: &requireCwd},
+		Herdr:  herdrFile{Binary: "herdr"},
+		Zed:    integrationFile{Binary: "zed"},
 	}
+}
+
+// allowedNotificationStatuses are valid values for tray label/menu status lists.
+var allowedNotificationStatuses = map[string]bool{
+	"pending": true,
+	"wip":     true,
+	"waiting": true,
+	"review":  true,
+	"done":    true,
+}
+
+func normalizeStatusList(in []string, fallback []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.ToLower(strings.TrimSpace(s))
+		if s == "" || !allowedNotificationStatuses[s] || seen[s] {
+			continue
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	if len(out) == 0 && fallback != nil {
+		return append([]string(nil), fallback...)
+	}
+	return out
+}
+
+func normalizeNotifications(nf *notificationsFile) {
+	defLabel := []string{"waiting", "review"}
+	defMenu := []string{"waiting", "review"}
+	nf.TrayLabelStatuses = normalizeStatusList(nf.TrayLabelStatuses, defLabel)
+	nf.TrayMenuStatuses = normalizeStatusList(nf.TrayMenuStatuses, defMenu)
+	if nf.MaxItemsPerStatus == nil || *nf.MaxItemsPerStatus <= 0 {
+		v := 10
+		nf.MaxItemsPerStatus = &v
+	} else if *nf.MaxItemsPerStatus > 20 {
+		v := 20
+		nf.MaxItemsPerStatus = &v
+	}
+	if nf.NotifySendWIP == nil {
+		v := false
+		nf.NotifySendWIP = &v
+	}
+	if nf.NotifySendWaiting == nil {
+		v := false
+		nf.NotifySendWaiting = &v
+	}
+	if nf.NotifySendReview == nil {
+		v := true
+		nf.NotifySendReview = &v
+	}
+	if nf.NotifySendDone == nil {
+		v := false
+		nf.NotifySendDone = &v
+	}
+}
+
+func notificationsToGUI(nf notificationsFile) NotificationsConfig {
+	normalizeNotifications(&nf)
+	return NotificationsConfig{
+		TrayLabelStatuses: append([]string(nil), nf.TrayLabelStatuses...),
+		TrayMenuStatuses:  append([]string(nil), nf.TrayMenuStatuses...),
+		MaxItemsPerStatus:  *nf.MaxItemsPerStatus,
+		NotifySendWIP:      *nf.NotifySendWIP,
+		NotifySendWaiting:  *nf.NotifySendWaiting,
+		NotifySendReview:   *nf.NotifySendReview,
+		NotifySendDone:     *nf.NotifySendDone,
+	}
+}
+
+func notificationsFromGUI(n NotificationsConfig) notificationsFile {
+	max := n.MaxItemsPerStatus
+	wip := n.NotifySendWIP
+	waiting := n.NotifySendWaiting
+	review := n.NotifySendReview
+	done := n.NotifySendDone
+	nf := notificationsFile{
+		TrayLabelStatuses: n.TrayLabelStatuses,
+		TrayMenuStatuses:  n.TrayMenuStatuses,
+		MaxItemsPerStatus:  &max,
+		NotifySendWIP:      &wip,
+		NotifySendWaiting:  &waiting,
+		NotifySendReview:   &review,
+		NotifySendDone:     &done,
+	}
+	normalizeNotifications(&nf)
+	return nf
 }
 
 func claudeRequireCwd(cf claudeFile) bool {
@@ -438,7 +564,7 @@ func readConfigFile(path string) (configFile, error) {
 	}
 	before := cf
 	normalizeConfigFile(&cf)
-	if cf != before {
+	if !reflect.DeepEqual(cf, before) {
 		if err := writeConfigFile(path, cf); err != nil {
 			return cf, err
 		}
@@ -473,6 +599,7 @@ func normalizeConfigFile(cf *configFile) {
 	if cf.Zed.Binary == "" {
 		cf.Zed.Binary = "zed"
 	}
+	normalizeNotifications(&cf.Notifications)
 	migrateSpawnFromLegacy(cf)
 	stripStoredIntegrationDefaults(cf)
 	expandIntegrationBinaries(cf)
@@ -500,6 +627,7 @@ func toGUI(cf configFile) GUISettings {
 		DefaultIncludeInReport: includeInReport,
 		ArchiveDoneSubtasks:    cf.ArchiveDoneSubtasks,
 		StartHidden:            cf.StartHidden,
+		Notifications:          notificationsToGUI(cf.Notifications),
 		Claude: ClaudeConfig{
 			IntegrationConfig: IntegrationConfig{
 				Enabled:  cf.Claude.Enabled,
@@ -536,6 +664,7 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultIncludeInReport = &include
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.StartHidden = s.StartHidden
+	cf.Notifications = notificationsFromGUI(s.Notifications)
 	cf.Claude.Binary = s.Claude.Binary
 	cf.Claude.EnvStart = s.Claude.EnvStart
 	cf.Claude.TicketPrompt = s.Claude.TicketPrompt
