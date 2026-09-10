@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Features and Improvements
+- (none)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
+## 2.9.0 (0d24c03)
+
+### Features and Improvements
+- Tray menu notifications: attention label (`mhtodo · 2 waiting, 1 review`) plus configurable status submenus; click opens and focuses the task
+- Settings → Notifications: tray label/menu statuses, max items per submenu, notify-send toggles (→wip / →waiting / →done off by default; →review on)
+- Header window chrome: single Close (×) hides to tray; Ctrl+hover reveals Exit, Ctrl+click (or Ctrl+Q) quits
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 2.8.0 (a1e87a6)
 
 ### Features and Improvements
