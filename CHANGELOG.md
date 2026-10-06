@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 2.10.0
+## 2.10.0 (4f7c458)
 
 ### Features and Improvements
 - Deep links: `mhtodo open TARGET` and `mhtodo://task/{id}` (desktop `x-scheme-handler/mhtodo`) raise the GUI on a task and open its detail modal
