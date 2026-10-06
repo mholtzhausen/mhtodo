@@ -1,0 +1,38 @@
+---
+layout: default
+---
+
+<div class="home">
+  <p class="home-kicker">Release notes &amp; guides</p>
+
+  {{ content }}
+
+  {%- if site.posts.size > 0 -%}
+    <h2 class="post-list-heading">{{ page.list_title | default: "Posts" }}</h2>
+    <ul class="post-list">
+      {%- for post in site.posts -%}
+      <li>
+        {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+        {%- assign cat = post.categories | first -%}
+        <span class="post-meta">
+          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: date_format }}</time>
+          {%- if cat -%}
+            <span class="post-category cat-{{ cat }}">{{ cat }}</span>
+          {%- endif -%}
+        </span>
+        <h3>
+          <a class="post-link" href="{{ post.url | relative_url }}">
+            {{ post.title | escape }}
+          </a>
+        </h3>
+        {%- if site.show_excerpts -%}
+          <div class="post-excerpt">{{ post.excerpt }}</div>
+        {%- endif -%}
+      </li>
+      {%- endfor -%}
+    </ul>
+
+    <p class="rss-subscribe">subscribe <a href="{{ "/feed.xml" | relative_url }}">via RSS</a></p>
+  {%- endif -%}
+
+</div>

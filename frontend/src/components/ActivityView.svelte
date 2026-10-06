@@ -209,72 +209,68 @@
         <p class="text-xs text-ink-3/70">Agents can post with <code class="font-mono">mhtodo activity add</code>.</p>
       </div>
     {:else}
-      <ul class="space-y-1.5 p-2">
+      <ul class="divide-y divide-line-soft">
         {#each filtered as a (a.id)}
           {@const task = taskById[a.task_id]}
           {@const parent = task?.parent_id ? taskById[task.parent_id] : undefined}
-          <li class="rounded-control bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06]">
-            <div class="mb-1.5 flex gap-3">
+          <li class="px-3 py-2.5 hover:bg-white/[0.04]">
+            <div class="flex gap-3">
               <div class="flex w-28 flex-none flex-col gap-0.5 pt-0.5">
                 <span class="text-xs text-ink-2">{relTime(a.created_at)}</span>
                 <span class="font-mono text-[10px] text-ink-3">{absList(a.created_at)}</span>
               </div>
-              <div class="flex min-w-0 flex-1 items-baseline gap-1.5 truncate text-sm font-medium">
-                {#if task?.parent_id}
-                  <button
-                    type="button"
-                    onclick={() => onSelectTask(task.parent_id!)}
-                    onmouseenter={(e) => showTip(e, parent)}
-                    onmousemove={moveTip}
-                    onmouseleave={hideTip}
-                    class="max-w-[55%] shrink truncate text-left text-accent-hi hover:underline"
-                  >
-                    {parent?.title ?? shortId(task.parent_id)}
-                  </button>
-                  <span class="shrink-0 text-ink-3" aria-hidden="true">></span>
-                  <button
-                    type="button"
-                    onclick={() => onSelectTask(a.task_id)}
-                    onmouseenter={(e) => showTip(e, task)}
-                    onmousemove={moveTip}
-                    onmouseleave={hideTip}
-                    class="min-w-0 truncate text-left text-accent-hi hover:underline"
-                  >
-                    {task.title}
-                  </button>
-                {:else}
-                  <button
-                    type="button"
-                    onclick={() => onSelectTask(a.task_id)}
-                    onmouseenter={(e) => showTip(e, task)}
-                    onmousemove={moveTip}
-                    onmouseleave={hideTip}
-                    class="truncate text-left text-accent-hi hover:underline"
-                  >
-                    {task?.title ?? shortId(a.task_id)}
-                  </button>
-                {/if}
-              </div>
-            </div>
-            {#if a.activity || a.comment}
-              <div class="flex min-w-0 items-start gap-2">
-                {#if a.activity}
-                  <span
-                    class="inline-block max-w-full shrink-0 break-words rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-xs font-medium leading-snug text-accent-hi"
-                  >
-                    {a.activity}
-                  </span>
-                  {#if a.comment}
-                    <span class="shrink-0 self-baseline text-ink-3" aria-hidden="true">—</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 items-baseline gap-1.5 truncate text-sm">
+                  {#if task?.parent_id}
+                    <button
+                      type="button"
+                      onclick={() => onSelectTask(task.parent_id!)}
+                      onmouseenter={(e) => showTip(e, parent)}
+                      onmousemove={moveTip}
+                      onmouseleave={hideTip}
+                      class="max-w-[55%] shrink truncate text-left font-medium text-accent-hi hover:underline"
+                    >
+                      {parent?.title ?? shortId(task.parent_id)}
+                    </button>
+                    <span class="shrink-0 text-ink-3" aria-hidden="true">></span>
+                    <button
+                      type="button"
+                      onclick={() => onSelectTask(a.task_id)}
+                      onmouseenter={(e) => showTip(e, task)}
+                      onmousemove={moveTip}
+                      onmouseleave={hideTip}
+                      class="min-w-0 truncate text-left font-medium text-accent-hi hover:underline"
+                    >
+                      {task.title}
+                    </button>
+                  {:else}
+                    <button
+                      type="button"
+                      onclick={() => onSelectTask(a.task_id)}
+                      onmouseenter={(e) => showTip(e, task)}
+                      onmousemove={moveTip}
+                      onmouseleave={hideTip}
+                      class="truncate text-left font-medium text-accent-hi hover:underline"
+                    >
+                      {task?.title ?? shortId(a.task_id)}
+                    </button>
                   {/if}
-                {/if}
-                {#if a.comment}
-                  <div class="min-w-0 flex-1 text-sm text-ink-2">
-                    <Markdown source={a.comment} />
+                </div>
+                {#if a.activity || a.comment}
+                  <div class="mt-1 text-sm leading-snug text-ink-2">
+                    {#if a.activity}
+                      <span class="font-semibold text-ink">{a.activity}</span>
+                    {/if}
+                    {#if a.activity && a.comment}
+                      <span> </span>
+                    {/if}
+                    {#if a.comment}
+                      <Markdown source={a.comment} class="md-inline" />
+                    {/if}
                   </div>
                 {/if}
               </div>
-            {/if}
+            </div>
           </li>
         {/each}
       </ul>

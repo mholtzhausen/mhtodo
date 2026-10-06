@@ -702,9 +702,9 @@
       </div>
     </div>
 
+    <!-- Tablist stays draggable in the flex gap; only the tab buttons are no-drag. -->
     <div
-      class="flex min-w-0 flex-1 items-stretch gap-0.5 [--wails-draggable:no-drag] sm:gap-1"
-      data-window-chrome
+      class="flex min-w-0 flex-1 items-stretch gap-0.5 sm:gap-1"
       role="tablist"
       aria-label="View"
     >
@@ -712,8 +712,9 @@
         <button
           role="tab"
           aria-selected={view === v}
+          data-window-chrome
           onclick={() => setView(v as View)}
-          class="relative px-2 text-[13px] font-medium transition-colors sm:px-3
+          class="relative px-2 text-[13px] font-medium transition-colors [--wails-draggable:no-drag] sm:px-3
             {view === v ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}"
         >
           {label}
@@ -726,8 +727,9 @@
       <button
         role="tab"
         aria-selected={view === 'archive'}
+        data-window-chrome
         onclick={() => setView('archive')}
-        class="relative ml-auto px-2 text-[13px] font-medium transition-colors sm:ml-0 sm:px-3
+        class="relative ml-auto px-2 text-[13px] font-medium transition-colors [--wails-draggable:no-drag] sm:ml-0 sm:px-3
           {view === 'archive' ? 'text-ink' : 'text-ink-3/30 hover:text-ink-3'}"
       >
         Archived

@@ -161,3 +161,5 @@ for how this file and the plan folder are structured.
 - Keep this file updated when scope, constraints, or the plan location changes.
 - Public blog (Jekyll / GitHub Pages) lives in `docs/` — posts in `docs/_posts/`; do not treat
   `docs/` as empty API stubs. Site: https://mholtzhausen.github.io/mhtodo/
+  Minima skin (Paper body + Slate header): `docs/assets/main.scss`, `_includes/head-custom.html`,
+  `_layouts/home.html`.

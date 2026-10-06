@@ -301,6 +301,19 @@ kbd {
   color: var(--color-ink-3);
 }
 
+/* Activity list: comment continues on the same line as the bold summary. */
+.md-inline {
+  display: inline;
+}
+.md-inline > p:first-child {
+  display: inline;
+  margin: 0;
+}
+.md-inline > p:first-child + *,
+.md-inline > :not(p:first-child) {
+  margin-top: 0.35em;
+}
+
 /* Detail-pane description / feedback: grow with content, scroll after 500px. */
 .md-scroll {
   max-height: 500px;

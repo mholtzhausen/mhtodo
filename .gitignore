@@ -6,3 +6,10 @@ frontend/node_modules/
 /build/
 frontend/package.json.md5
 tmp/
+
+# Jekyll / GitHub Pages local build (docs/)
+docs/_site/
+docs/vendor/
+docs/.bundle/
+docs/.jekyll-cache/
+docs/.sass-cache/

@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 3.0.1 (PENDING)
+
+### Features and Improvements
+- Docs / GitHub Pages blog: Minima skin with Paper reading surface, Slate header, Sora + Source Serif typography, and release/guide category chips (`docs/assets/main.scss`)
+- Activity view: thin separators between entries; activity summary is bold text with the comment continuing on the same line (no accent chip)
+
+### Bugfixes
+- Frameless header: the flex gap that pushes Archived right is draggable again (and double-click maximize works there); only the tab buttons stay non-draggable
+
+### Deprecations
+- (none)
+
 ## 3.0.0 (6cf9d71)
 
 ### Features and Improvements

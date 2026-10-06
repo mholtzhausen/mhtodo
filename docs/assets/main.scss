@@ -1,0 +1,437 @@
+---
+# mhtodo Minima skin — Paper reading surface + Slate chrome.
+# Overrides compile into /assets/main.css (minima 2.5.x on GitHub Pages).
+---
+
+// Minima variable overrides (must precede @import)
+$base-font-family: "Source Serif 4", Georgia, "Times New Roman", serif !default;
+$base-font-size: 18px !default;
+$base-font-weight: 400 !default;
+$small-font-size: $base-font-size * 0.875 !default;
+$base-line-height: 1.65 !default;
+
+$spacing-unit: 30px !default;
+
+$text-color: #1a2030 !default;
+$background-color: #f4f6fa !default;
+$brand-color: #3b5bdb !default;
+
+$grey-color: #7a8499 !default;
+$grey-color-light: #d8dee9 !default;
+$grey-color-dark: #4a556b !default;
+
+$content-width: 720px !default;
+
+$on-palm: 600px !default;
+$on-laptop: 800px !default;
+
+@import "minima";
+
+// ---------------------------------------------------------------------------
+// Design tokens (Paper body + Slate header) — mirror GUI factories
+// ---------------------------------------------------------------------------
+:root {
+  // Paper
+  --paper-canvas: #f4f6fa;
+  --paper-chrome: #e8ecf4;
+  --paper-ink: #1a2030;
+  --paper-ink2: #4a556b;
+  --paper-ink3: #7a8499;
+  --paper-line: #c5cddc;
+  --paper-line-soft: #d8dee9;
+  --paper-accent: #3b5bdb;
+  --paper-accent-hi: #4c6ef5;
+
+  // Slate (header / code)
+  --slate-chrome: #1f242f;
+  --slate-canvas: #252b37;
+  --slate-card: #343c4d;
+  --slate-ink: #eef1f7;
+  --slate-ink2: #b6bed0;
+  --slate-ink3: #8791a5;
+  --slate-accent: #7b8cff;
+  --slate-line: #4a556b;
+
+  // Status (category chips)
+  --st-release: #2f9e44;
+  --st-guide: #3b5bdb;
+
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --measure: 68ch;
+  --radius: 6px;
+}
+
+// ---------------------------------------------------------------------------
+// Atmosphere
+// ---------------------------------------------------------------------------
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--paper-ink);
+  background-color: var(--paper-canvas);
+  background-image:
+    linear-gradient(165deg, #eef2f9 0%, var(--paper-canvas) 42%, #e8ecf4 100%),
+    linear-gradient(rgba(26, 32, 48, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 32, 48, 0.035) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.site-title,
+.page-heading,
+.post-list-heading,
+.post-link,
+.post-title,
+.footer-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--paper-ink);
+}
+
+a {
+  color: var(--paper-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+
+  &:hover {
+    color: var(--paper-accent-hi);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Header — Slate chrome
+// ---------------------------------------------------------------------------
+.site-header {
+  border-top: none;
+  border-bottom: 1px solid var(--slate-line);
+  background: var(--slate-chrome);
+  min-height: 0;
+  padding: 0.85rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(8px);
+}
+
+.site-header .wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.site-title {
+  float: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin: 0;
+
+  &,
+  &:visited {
+    color: var(--slate-ink);
+  }
+
+  &:hover {
+    color: var(--slate-accent);
+    text-decoration: none;
+  }
+}
+
+.site-nav {
+  float: none;
+  line-height: 1.2;
+
+  .page-link {
+    color: var(--slate-ink2);
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+
+    &:hover {
+      color: var(--slate-ink);
+      text-decoration: none;
+    }
+  }
+
+  .menu-icon > svg {
+    fill: var(--slate-ink2);
+  }
+
+  @include media-query($on-palm) {
+    background-color: var(--slate-canvas);
+    border-color: var(--slate-line);
+
+    .page-link {
+      color: var(--slate-ink2);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main content measure
+// ---------------------------------------------------------------------------
+.page-content {
+  padding-top: 2.25rem;
+  padding-bottom: 3rem;
+}
+
+.wrapper {
+  max-width: $content-width;
+}
+
+.home > .home-kicker {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-ink3);
+  margin: 0 0 0.75rem;
+}
+
+.home > p:not(.home-kicker) {
+  max-width: var(--measure);
+  color: var(--paper-ink2);
+}
+
+.home > .home-kicker + p {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  color: var(--paper-ink);
+  max-width: var(--measure);
+  margin-bottom: 0.85rem;
+}
+
+.post-list-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-ink3);
+  margin: 2.5rem 0 1rem;
+  border-bottom: 1px solid var(--paper-line-soft);
+  padding-bottom: 0.5rem;
+}
+
+// ---------------------------------------------------------------------------
+// Post list — accent rule, no cards
+// ---------------------------------------------------------------------------
+.post-list {
+  margin-left: 0;
+  list-style: none;
+
+  > li {
+    margin-bottom: 1.75rem;
+    padding: 0.15rem 0 0.15rem 1rem;
+    border-left: 3px solid var(--paper-line);
+    transition: border-color 0.15s ease;
+
+    &:hover {
+      border-left-color: var(--paper-accent);
+    }
+  }
+
+  h3 {
+    margin: 0.35rem 0 0.4rem;
+  }
+}
+
+.post-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--paper-ink3);
+  letter-spacing: 0.01em;
+}
+
+.post-category {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  line-height: 1.2;
+  background: var(--paper-chrome);
+  color: var(--paper-ink2);
+
+  &.cat-release {
+    background: rgba(47, 158, 68, 0.12);
+    color: var(--st-release);
+  }
+
+  &.cat-guide {
+    background: rgba(59, 91, 219, 0.12);
+    color: var(--st-guide);
+  }
+}
+
+.post-link {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--paper-ink) !important;
+  text-decoration: none !important;
+
+  &:hover {
+    color: var(--paper-accent) !important;
+  }
+}
+
+.post-list > li > p,
+.post-list .post-excerpt {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--paper-ink2);
+}
+
+.rss-subscribe {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--paper-ink3);
+  margin-top: 2rem;
+}
+
+// ---------------------------------------------------------------------------
+// Posts & pages — prose
+// ---------------------------------------------------------------------------
+.post-header {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--paper-line-soft);
+}
+
+.post-title,
+.page-heading {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin-bottom: 0.65rem;
+  max-width: 20em;
+}
+
+.post-content,
+.page-content .post-content,
+article.post .post-content {
+  max-width: var(--measure);
+
+  h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.35rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--paper-line-soft);
+  }
+
+  h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+  }
+
+  p,
+  li {
+    color: var(--paper-ink);
+  }
+
+  blockquote {
+    border-left: 3px solid var(--paper-accent);
+    color: var(--paper-ink2);
+    background: rgba(232, 236, 244, 0.55);
+    margin-left: 0;
+    padding: 0.65rem 1rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Code — Slate dark
+// ---------------------------------------------------------------------------
+pre,
+pre.highlight,
+.highlight pre {
+  background: var(--slate-canvas) !important;
+  border: 1px solid var(--slate-line);
+  border-radius: var(--radius);
+  color: var(--slate-ink);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+:not(pre) > code {
+  background: var(--paper-chrome);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line-soft);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+.highlight {
+  background: transparent;
+  border-radius: var(--radius);
+}
+
+// ---------------------------------------------------------------------------
+// Footer
+// ---------------------------------------------------------------------------
+.site-footer {
+  border-top: 1px solid var(--paper-line-soft);
+  background: transparent;
+  padding: 1.75rem 0 2.5rem;
+  color: var(--paper-ink3);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+
+  a {
+    color: var(--paper-ink2);
+
+    &:hover {
+      color: var(--paper-accent);
+    }
+  }
+
+  .footer-heading {
+    color: var(--paper-ink2);
+    font-size: 0.95rem;
+  }
+}
+
+.social-media-list a:hover {
+  text-decoration: none;
+}
