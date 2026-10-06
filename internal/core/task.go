@@ -9,6 +9,7 @@ import (
 
 // Status is a task's lifecycle state. waiting is first-class: blocked on an
 // external dependency, not a flag. review sits after waiting (v0.3).
+// pr (Pull Request) sits between review and done.
 type Status string
 
 const (
@@ -16,10 +17,11 @@ const (
 	StatusWIP     Status = "wip"
 	StatusWaiting Status = "waiting"
 	StatusReview  Status = "review"
+	StatusPR      Status = "pr"
 	StatusDone    Status = "done"
 )
 
-var allStatuses = []Status{StatusPending, StatusWIP, StatusWaiting, StatusReview, StatusDone}
+var allStatuses = []Status{StatusPending, StatusWIP, StatusWaiting, StatusReview, StatusPR, StatusDone}
 
 // ParseStatus validates a status string.
 func ParseStatus(s string) (Status, error) {
@@ -50,6 +52,7 @@ type Task struct {
 	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
 	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
 	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
+	PRURL           string `json:"pr_url"`            // optional pull-request URL; setting empty→non-empty advances status to pr
 	TodoSession     string `json:"todo_session"` // Claude session UUID linked to this ticket (set via edit --session)
 	TerminalPID     int    `json:"terminal_pid"` // legacy column (unused; kept for schema stability)
 
@@ -77,6 +80,7 @@ type CreateInput struct {
 	// value always wins.
 	IncludeInReport *bool
 	SlackThread     string // optional Slack thread URL
+	PRURL           string // optional pull-request URL; non-empty forces status pr
 	TodoSession     string // optional; left empty on create unless set (prefer edit --session on adopt)
 }
 
@@ -91,13 +95,14 @@ type UpdateInput struct {
 	HumanOnly       *bool
 	IncludeInReport *bool
 	SlackThread     *string
+	PRURL           *string
 	TodoSession     *string
 }
 
 func (in UpdateInput) hasFields() bool {
 	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
 		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil || in.SlackThread != nil ||
-		in.TodoSession != nil
+		in.PRURL != nil || in.TodoSession != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
@@ -158,7 +163,7 @@ func (e *AmbiguousIDError) Error() string {
 type InvalidStatusError struct{ Status string }
 
 func (e *InvalidStatusError) Error() string {
-	return fmt.Sprintf("invalid status %q (want pending, wip, waiting, review or done)", e.Status)
+	return fmt.Sprintf("invalid status %q (want pending, wip, waiting, review, pr or done)", e.Status)
 }
 
 var ErrEmptyTitle = errors.New("title must not be empty")

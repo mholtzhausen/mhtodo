@@ -3,10 +3,10 @@ name: mhtodo
 description: >-
   Drive mhtodo (personal todo CLI+GUI) as a two-way channel with the user.
   Use when the user pastes an MHTodo Ticket / mhtodo://task/ block, mentions
-  todos / what's next / pick up a task / hand back / review, asks about the
-  board, or you start or continue work that should be tracked on a ticket.
-  Covers adopt, --session, sub-tasks, status/progress, waiting/review, and
-  never adopting human_only or autonomous board pickup.
+  todos / what's next / pick up a task / hand back / review / pull request / PR,
+  asks about the board, or you start or continue work that should be tracked on
+  a ticket. Covers adopt, --session, sub-tasks, status/progress, waiting/review/pr,
+  and never adopting human_only or autonomous board pickup.
 ---
 
 # mhtodo — agent workflows
@@ -19,8 +19,8 @@ description: >-
 mhtodo list --roots [--search S] [--json]
 mhtodo show ID
 mhtodo open TARGET
-mhtodo status ID pending|wip|waiting|review|done
-mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S
+mhtodo status ID pending|wip|waiting|review|pr|done
+mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S|--pr-url URL
 mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
 mhtodo activity add ID --activity "Label" --comment "…"
 mhtodo activity list --task ID [--json]
@@ -59,7 +59,7 @@ Treat that as pointing at the ticket. Resolve with `mhtodo show` / `mhtodo open`
 Before substantive work:
 
 1. `mhtodo list --roots --json --search "<keywords>"` (or use a pasted id).
-2. Same job → adopt. In `review` with more work → reopen to `wip`. Nothing matches → **ask** before creating a root. Unsure → ask.
+2. Same job → adopt. In `review` or `pr` with more work → reopen to `wip`. Nothing matches → **ask** before creating a root. Unsure → ask.
 3. **Git hygiene (required before any code work):** checkout `master` (or `main` if that is the repo default). Working tree must be clean. If anything is dirty (uncommitted changes, untracked work you did not expect, mid-rebase, etc.), **stop and clear it up with the user** — do not stash, discard, or commit on their behalf unless they explicitly approve. Only then create a new branch for this ticket and start work.
 4. Adopt:
 
@@ -81,7 +81,7 @@ mhtodo activity add <id> --activity "Task Picked Up" --comment "<brief>"
 
 - Confirm the linked ticket and `--session` still match this chat.
 - Refresh parent **status**, **progress**, and **sub-tasks** for work just done.
-- If continuing a `waiting` or `review` card → set parent `wip` and add sub-tasks as needed.
+- If continuing a `waiting`, `review`, or `pr` card → set parent `wip` and add sub-tasks as needed.
 - Never auto-create a root from this checklist.
 
 ## 5. Live board rules
@@ -89,18 +89,26 @@ mhtodo activity add <id> --activity "Task Picked Up" --comment "<brief>"
 - User scans: ticket → status → progress → **sub-tasks**. Keep those current.
 - Activities: Title Case 2–4 word label + detail in `--comment` (audit only).
 - Feedback (`--feedback`): short post-work summary at hand-back only — not a running log.
-- **Ownership:** user-originated → never change title; never overwrite description; hand back to `review` (user marks done). Agent-originated → may refine title/desc; may `done`.
+- **Ownership:** user-originated → never change title; never overwrite description; hand back to `review` (user marks done), or set `--pr-url` when you open a PR (auto-advances to `pr`). Agent-originated → may refine title/desc; may `done`.
 - Do not narrate bookkeeping (“created a task…”) unless they asked about the board.
 
 ## 6. Step plan (sub-tasks)
 
-One level only. Drive steps `pending → wip → done`. Blocking or hand-back uses the **parent** (`waiting` / `review`). Multiple sub-tasks may be `wip` in parallel (subagents). Replan by adding/editing sub-tasks — not by narrowing the user’s root title/description.
+One level only. Drive steps `pending → wip → done`. Blocking or hand-back uses the **parent** (`waiting` / `review` / `pr`). Multiple sub-tasks may be `wip` in parallel (subagents). Replan by adding/editing sub-tasks — not by narrowing the user’s root title/description.
 
-## 7. Blocked / hand back / reopen
+## 7. Blocked / hand back / reopen / pull request
 
 - **Blocked on user:** parent `waiting` + activity with the question.
-- **Hand back:** every sub-task `done` → `--progress 100` + `--feedback` → parent `review` (or `done` if agent-owned). Never leave parent on `wip` at end of turn.
-- **Reopen:** more work while in `review` → parent `wip` + new sub-tasks; do not pile work under a review card.
+- **Hand back (no PR yet):** every sub-task `done` → `--progress 100` + `--feedback` → parent `review` (or `done` if agent-owned). Never leave parent on `wip` at end of turn.
+- **Opened a pull request:** after creating the PR for this ticket:
+
+```bash
+mhtodo edit <id> --pr-url <https://…/pull/N>   # also advances status to pr
+mhtodo show <id> --json                        # confirm status is "pr" and pr_url is set
+```
+
+  Do not skip the `show` check. Clearing `--pr-url` does not move the ticket out of `pr`.
+- **Reopen:** more work while in `review` or `pr` → parent `wip` + new sub-tasks; do not pile work under a review/PR card.
 
 ## 8. Task picker (“what’s next?”)
 
@@ -112,7 +120,7 @@ When they ask what’s next / todos / pick a task:
 
 ## 9. Subagents
 
-Share the parent ticket. Do not register a separate root per subagent. Each subagent drives its sub-task; the orchestrator owns parent `waiting` / `review`.
+Share the parent ticket. Do not register a separate root per subagent. Each subagent drives its sub-task; the orchestrator owns parent `waiting` / `review` / `pr`.
 
 ## 10. Housekeeping
 

@@ -30,6 +30,7 @@ var migrations = []migration{
 	{version: 11, fn: backfillEmptyTodoSessions},
 	{version: 12, fn: addTerminalPIDColumn},
 	{version: 13, fn: seedThemesV13},
+	{version: 14, up: schemaV14},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -136,6 +137,83 @@ CREATE TABLE task_templates (
 // v10: per-task session identity for Claude --session-id/--resume/--name, Zed MHTODO_SESSION, shell claude.todo.
 const schemaV10 = `
 ALTER TABLE tasks ADD COLUMN todo_session TEXT NOT NULL DEFAULT '';
+`
+
+// v14: Pull Request lane (status pr between review and done) + optional pr_url.
+// SQLite cannot ALTER a CHECK constraint, so tasks and task_templates are rebuilt.
+const schemaV14 = `
+CREATE TABLE tasks_v14 (
+  id                TEXT PRIMARY KEY,
+  title             TEXT NOT NULL,
+  description       TEXT NOT NULL DEFAULT '',
+  feedback          TEXT NOT NULL DEFAULT '',
+  status            TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','wip','waiting','review','pr','done')),
+  progress          INTEGER NOT NULL DEFAULT 0
+                    CHECK (progress BETWEEN 0 AND 100),
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL,
+  completed_at      TEXT,
+  archived_at       TEXT,
+  parent_id         TEXT REFERENCES tasks_v14(id) ON DELETE CASCADE,
+  board_rank        REAL,
+  cwd               TEXT NOT NULL DEFAULT '',
+  human_only        INTEGER NOT NULL DEFAULT 0
+                    CHECK (human_only IN (0, 1)),
+  include_in_report INTEGER NOT NULL DEFAULT 1
+                    CHECK (include_in_report IN (0, 1)),
+  slack_thread      TEXT NOT NULL DEFAULT '',
+  todo_session      TEXT NOT NULL DEFAULT '',
+  terminal_pid      INTEGER NOT NULL DEFAULT 0,
+  pr_url            TEXT NOT NULL DEFAULT ''
+);
+
+INSERT INTO tasks_v14 (
+  id, title, description, feedback, status, progress, created_at, updated_at,
+  completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report,
+  slack_thread, todo_session, terminal_pid, pr_url
+)
+SELECT
+  id, title, description, feedback, status, progress, created_at, updated_at,
+  completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report,
+  slack_thread, todo_session, terminal_pid, ''
+FROM tasks;
+
+DROP TABLE tasks;
+ALTER TABLE tasks_v14 RENAME TO tasks;
+
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_updated ON tasks(updated_at DESC);
+CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+CREATE INDEX idx_tasks_parent ON tasks(parent_id);
+CREATE INDEX idx_tasks_status_rank ON tasks(status, board_rank);
+
+CREATE TABLE task_templates_v14 (
+  id                TEXT PRIMARY KEY,
+  name              TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  title_prefix      TEXT,
+  description       TEXT,
+  status            TEXT CHECK (status IS NULL OR status IN
+                      ('pending','wip','waiting','review','pr','done')),
+  cwd               TEXT,
+  slack_thread      TEXT,
+  human_only        INTEGER CHECK (human_only IS NULL OR human_only IN (0, 1)),
+  include_in_report INTEGER CHECK (include_in_report IS NULL OR include_in_report IN (0, 1)),
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+
+INSERT INTO task_templates_v14 (
+  id, name, title_prefix, description, status, cwd, slack_thread,
+  human_only, include_in_report, created_at, updated_at
+)
+SELECT
+  id, name, title_prefix, description, status, cwd, slack_thread,
+  human_only, include_in_report, created_at, updated_at
+FROM task_templates;
+
+DROP TABLE task_templates;
+ALTER TABLE task_templates_v14 RENAME TO task_templates;
 `
 
 // v12: OS PID of mhtodo-managed Claude terminal session (spawn=terminal).

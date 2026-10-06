@@ -55,6 +55,12 @@ func statusNoun(status string, n int) string {
 	if status == "review" && n != 1 {
 		return "reviews"
 	}
+	if status == "pr" && n != 1 {
+		return "PRs"
+	}
+	if status == "pr" {
+		return "PR"
+	}
 	return status
 }
 
@@ -88,6 +94,8 @@ func StatusDisplayName(status string) string {
 		return "Waiting"
 	case "review":
 		return "Review"
+	case "pr":
+		return "Pull Request"
 	case "done":
 		return "Done"
 	default:

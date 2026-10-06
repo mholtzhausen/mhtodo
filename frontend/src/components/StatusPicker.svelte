@@ -33,6 +33,13 @@
       dot: 'bg-st-review'
     },
     {
+      s: 'pr',
+      label: 'PR',
+      short: 'PR',
+      active: 'border-st-pr/60 bg-st-pr/15 text-st-pr',
+      dot: 'bg-st-pr'
+    },
+    {
       s: 'done',
       label: 'Done',
       short: 'Done',
@@ -47,7 +54,7 @@
     role="radiogroup"
     aria-label="Status"
     class="grid grid-cols-3 gap-1 rounded-control border border-line-soft bg-field p-1 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]
-      @[320px]:grid-cols-5"
+      @[360px]:grid-cols-6"
   >
     {#each OPTIONS as o (o.s)}
       <button
@@ -60,8 +67,8 @@
           {value === o.s ? o.active : ''}"
       >
         <span class="h-[7px] w-[7px] flex-none rounded-full {o.dot}"></span>
-        <span class="@[320px]:hidden">{o.short}</span>
-        <span class="hidden @[320px]:inline">{o.label}</span>
+        <span class="@[360px]:hidden">{o.short}</span>
+        <span class="hidden @[360px]:inline">{o.label}</span>
       </button>
     {/each}
   </div>

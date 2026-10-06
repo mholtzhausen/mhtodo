@@ -107,6 +107,7 @@ var allowedNotificationStatuses = map[string]bool{
 	"wip":     true,
 	"waiting": true,
 	"review":  true,
+	"pr":      true,
 	"done":    true,
 }
 

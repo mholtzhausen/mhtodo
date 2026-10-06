@@ -18,6 +18,8 @@ func slackStatusIcon(st Status) string {
 		return "◷"
 	case StatusReview:
 		return "◎"
+	case StatusPR:
+		return "▹"
 	case StatusDone:
 		return "✓"
 	default:
@@ -33,7 +35,7 @@ type slackSection struct {
 }
 
 // FormatSlackReport renders root tasks into the Slack paste format: Completed,
-// Todo, then WIP (wip + waiting + review grouped under one heading). Tasks
+// Todo, then WIP (wip + waiting + review + pr grouped under one heading). Tasks
 // should already be in board order; this re-buckets by section.
 func FormatSlackReport(tasks []Task) string {
 	var completed, todo, wip []Task
@@ -43,7 +45,7 @@ func FormatSlackReport(tasks []Task) string {
 			completed = append(completed, t)
 		case StatusPending:
 			todo = append(todo, t)
-		case StatusWIP, StatusWaiting, StatusReview:
+		case StatusWIP, StatusWaiting, StatusReview, StatusPR:
 			wip = append(wip, t)
 		}
 	}
@@ -84,7 +86,7 @@ func sortSlackTasks(tasks []Task) {
 	})
 }
 
-// sortSlackWIPTasks keeps wip → waiting → review, then board rank within each.
+// sortSlackWIPTasks keeps wip → waiting → review → pr, then board rank within each.
 func sortSlackWIPTasks(tasks []Task) {
 	sort.SliceStable(tasks, func(i, j int) bool {
 		a, b := tasks[i], tasks[j]
@@ -104,6 +106,8 @@ func slackWIPOrder(st Status) int {
 		return 1
 	case StatusReview:
 		return 2
+	case StatusPR:
+		return 3
 	default:
 		return 99
 	}

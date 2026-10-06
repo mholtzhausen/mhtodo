@@ -2,7 +2,9 @@
 
 ## Status
 
-All status flags/help: `pending|wip|waiting|review|done`.
+All status flags/help: `pending|wip|waiting|review|pr|done`.
+
+`--pr-url` on `add`/`edit`: optional pull-request URL; empty→non-empty on edit (or non-empty on add) advances status to `pr`.
 
 ## Sub-tasks
 

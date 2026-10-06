@@ -263,6 +263,53 @@ func TestEditSessionPostsActivity(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
+func TestEditPRURLAdvancesToPR(t *testing.T) {
+	svc, repo := newTestService(t)
+	ctx := context.Background()
+	seed(t, repo, "prurl111-0000-7000-8000-000000000001", "with pr", core.StatusWIP, 40)
+
+	url := "https://github.com/org/repo/pull/42"
+	got, err := svc.Edit(ctx, "prurl", core.UpdateInput{PRURL: &url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PRURL != url {
+		t.Fatalf("pr_url = %q, want %q", got.PRURL, url)
+	}
+	if got.Status != core.StatusPR {
+		t.Fatalf("status = %q, want pr", got.Status)
+	}
+
+	// Changing URL while already set does not bounce status away from pr.
+	url2 := "https://github.com/org/repo/pull/43"
+	got, err = svc.Edit(ctx, "prurl", core.UpdateInput{PRURL: &url2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != core.StatusPR || got.PRURL != url2 {
+		t.Fatalf("update url: status=%q url=%q", got.Status, got.PRURL)
+	}
+
+	// Clearing URL leaves status on pr.
+	empty := ""
+	got, err = svc.Edit(ctx, "prurl", core.UpdateInput{PRURL: &empty})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PRURL != "" || got.Status != core.StatusPR {
+		t.Fatalf("clear url: status=%q url=%q", got.Status, got.PRURL)
+	}
+
+	// Create with pr_url lands in pr lane.
+	created, err := svc.Create(ctx, core.CreateInput{Title: "from pr", PRURL: url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Status != core.StatusPR || created.PRURL != url {
+		t.Fatalf("create with pr_url: %+v", created)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	svc, repo := newTestService(t)
 	ctx := context.Background()

@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent, cwd, slackThread, template string
+	var desc, feedback, status, parent, cwd, slackThread, prURL, template string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -55,6 +55,9 @@ func newAddCmd() *cobra.Command {
 				if cmd.Flags().Changed("slack-thread") {
 					in.SlackThread = slackThread
 				}
+				if cmd.Flags().Changed("pr-url") {
+					in.PRURL = prURL
+				}
 				if cmd.Flags().Changed("human-only") {
 					in.HumanOnly = humanOnly
 				}
@@ -72,6 +75,7 @@ func newAddCmd() *cobra.Command {
 				in.Cwd = cwd
 				in.HumanOnly = humanOnly
 				in.SlackThread = slackThread
+				in.PRURL = prURL
 				switch {
 				case cmd.Flags().Changed("include-in-report"):
 					v := includeInReport
@@ -100,11 +104,12 @@ func newAddCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&desc, "desc", "", "task description")
 	cmd.Flags().StringVar(&feedback, "feedback", "", "agent feedback (shown in GUI when set)")
-	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|done; default pending)")
+	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|pr|done; default pending)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
+	cmd.Flags().StringVar(&prURL, "pr-url", "", "pull request URL (non-empty advances status to pr)")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")

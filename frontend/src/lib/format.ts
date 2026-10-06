@@ -49,5 +49,6 @@ export const STATUS_LABELS: Record<string, string> = {
   wip: 'In progress',
   waiting: 'Waiting',
   review: 'Review',
+  pr: 'Pull Request',
   done: 'Done'
 }

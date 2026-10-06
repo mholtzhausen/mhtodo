@@ -44,6 +44,7 @@ export const THEME_FIELDS: readonly ThemeFieldMeta[] = [
   { key: 'color.stWip', category: 'Status', label: 'WIP', kind: 'color' },
   { key: 'color.stWaiting', category: 'Status', label: 'Waiting', kind: 'color' },
   { key: 'color.stReview', category: 'Status', label: 'Review', kind: 'color' },
+  { key: 'color.stPr', category: 'Status', label: 'Pull Request', kind: 'color' },
   { key: 'color.stDone', category: 'Status', label: 'Done', kind: 'color' },
   { key: 'color.danger', category: 'Feedback', label: 'Danger', kind: 'color' },
   {
@@ -85,6 +86,7 @@ export const SLATE_FACTORY_TOKENS: Record<string, string> = {
   'color.stWip': '#7b8cff',
   'color.stWaiting': '#e8ab4a',
   'color.stReview': '#c084fc',
+  'color.stPr': '#38bdf8',
   'color.stDone': '#4cc48e',
   'color.danger': '#ff8492',
   'color.track': 'rgba(255, 255, 255, 0.13)',

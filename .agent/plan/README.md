@@ -13,7 +13,7 @@ list layout — full CLI ↔ GUI parity over `internal/core.Service`.
   List: indent under parent when shown. No progress rollup. Show/hide toggle (persisted).
 - **Activity:** Agent/user-authored only — **no auto events**. Each entry has `activity`
   and `comment` text fields (at least one required), plus `id`, `task_id`, `created_at`.
-- **Status order:** `pending → wip → waiting → review → done`. Notify on →done / →waiting only.
+- **Status order:** `pending → wip → waiting → review → pr → done`. Notify on →done / →waiting only (→review on by default in Settings).
 - **Delete parent:** Cascade-delete children; confirm dialog names the child count.
 
 ## Files in this plan

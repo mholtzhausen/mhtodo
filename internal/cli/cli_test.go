@@ -392,6 +392,40 @@ func TestSlackThread(t *testing.T) {
 	}
 }
 
+func TestPRURL(t *testing.T) {
+	out, _, run := newCLI(t)
+	link := "https://github.com/org/repo/pull/7"
+
+	out.Reset()
+	if code := run("add", "WIP task", "--status", "wip", "--json"); code != 0 {
+		t.Fatalf("add exit %d", code)
+	}
+	var tsk core.Task
+	mustJSON(t, out.Bytes(), &tsk)
+	id := tsk.ID
+
+	out.Reset()
+	if code := run("edit", id, "--pr-url", link, "--json"); code != 0 {
+		t.Fatalf("edit --pr-url exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.PRURL != link {
+		t.Fatalf("pr_url = %q, want %q", tsk.PRURL, link)
+	}
+	if tsk.Status != core.StatusPR {
+		t.Fatalf("status = %q, want pr", tsk.Status)
+	}
+
+	out.Reset()
+	if code := run("add", "Already PR", "--pr-url", link, "--json"); code != 0 {
+		t.Fatalf("add --pr-url exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	if tsk.Status != core.StatusPR || tsk.PRURL != link {
+		t.Fatalf("add with pr_url: status=%q url=%q", tsk.Status, tsk.PRURL)
+	}
+}
+
 func TestReorderCLI(t *testing.T) {
 	out, _, run := newCLI(t)
 	if code := run("add", "Alpha"); code != 0 {

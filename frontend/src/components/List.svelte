@@ -36,6 +36,7 @@
     wip: 'border-st-wip/60 bg-st-wip/20 text-st-wip',
     waiting: 'border-st-waiting/50 bg-st-waiting/15 text-st-waiting',
     review: 'border-st-review/50 bg-st-review/15 text-st-review',
+    pr: 'border-st-pr/50 bg-st-pr/15 text-st-pr',
     done: 'border-st-done/50 bg-st-done/15 text-st-done'
   }
   const bar: Record<Status, string> = {
@@ -43,6 +44,7 @@
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
     review: 'bg-st-review',
+    pr: 'bg-st-pr',
     done: 'bg-st-done'
   }
 

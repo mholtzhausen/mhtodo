@@ -1,7 +1,7 @@
 // GUI settings types — mirror internal/settings/settings.go (Wails bindings).
 import { settings as goSettings } from '../../wailsjs/go/models'
 
-export type TaskStatusId = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
+export type TaskStatusId = 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
 
 export interface IntegrationConfig {
   enabled: boolean
@@ -34,6 +34,7 @@ export const STATUS_OPTIONS: { id: TaskStatusId; label: string }[] = [
   { id: 'wip', label: 'WIP' },
   { id: 'waiting', label: 'Waiting' },
   { id: 'review', label: 'Review' },
+  { id: 'pr', label: 'Pull Request' },
   { id: 'done', label: 'Done' }
 ]
 

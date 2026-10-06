@@ -80,6 +80,7 @@ export namespace core {
 	    HumanOnly: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread: string;
+	    PRURL: string;
 	    TodoSession: string;
 	
 	    static createFrom(source: any = {}) {
@@ -98,6 +99,7 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
 	    }
 	}
@@ -152,6 +154,7 @@ export namespace core {
 	    human_only: boolean;
 	    include_in_report: boolean;
 	    slack_thread: string;
+	    pr_url: string;
 	    todo_session: string;
 	    terminal_pid: number;
 	
@@ -177,6 +180,7 @@ export namespace core {
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
 	        this.slack_thread = source["slack_thread"];
+	        this.pr_url = source["pr_url"];
 	        this.todo_session = source["todo_session"];
 	        this.terminal_pid = source["terminal_pid"];
 	    }
@@ -344,6 +348,7 @@ export namespace core {
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread?: string;
+	    PRURL?: string;
 	    TodoSession?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -360,6 +365,7 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
 	    }
 	}

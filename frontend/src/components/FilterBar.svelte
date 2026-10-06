@@ -62,6 +62,11 @@
       label: STATUS_LABELS.review,
       activeClass: 'text-st-review'
     },
+    {
+      value: 'pr',
+      label: STATUS_LABELS.pr,
+      activeClass: 'text-st-pr'
+    },
     { value: 'done', label: STATUS_LABELS.done, activeClass: 'text-st-done' },
     { value: 'archived', label: 'Archived', activeClass: 'text-ink' }
   ]

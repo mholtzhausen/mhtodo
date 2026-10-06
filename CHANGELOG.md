@@ -4,6 +4,8 @@
 
 ### Features and Improvements
 - Detail pane shows **Todo session** again (`todo_session`; same as `edit --session`)
+- Board lane **Pull Request** (`pr`) between review and done; optional `pr_url` on tasks (`edit`/`add --pr-url`); setting a URL advances status to `pr`; PR column collapsed by default; card link left of mark-done
+- Claude skill: after opening a PR, set `--pr-url` and confirm the ticket is in the `pr` lane
 
 ### Bugfixes
 - Markdown links in description, feedback, and activity open in the system browser instead of navigating the Wails webview

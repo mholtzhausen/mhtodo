@@ -29,8 +29,9 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 
 **In scope (v0.1):**
 - Task fields: title, description, feedback (agent-authored; GUI shows when non-empty),
-  status (`pending | wip | waiting | review | done`), progress 0–100,
-  created_at / updated_at / completed_at. UUIDv7 IDs with short-prefix lookup.
+  status (`pending | wip | waiting | review | pr | done`), progress 0–100,
+  created_at / updated_at / completed_at, optional `pr_url` (pull-request link; setting
+  empty→non-empty advances status to `pr`). UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock
  (`internal/instance` + `mhtodo.open` deep links via `mhtodo://task/{id}` / `mhtodo open`).
@@ -103,13 +104,14 @@ Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
 (when not in an input/textarea); http(s) links open in the system browser (not the
-webview). Detail pane includes **Todo session** (`todo_session` / `edit --session`).
+webview). Detail pane includes **Todo session** (`todo_session` / `edit --session`) and
+**Pull request** (`pr_url` / `edit --pr-url`; setting a URL advances to the `pr` lane).
 Detail-pane description & feedback grow with content up to 500px, then scroll.
 
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle
 maximize. The board uses `minmax(200px, 1fr)` columns with horizontal scroll instead of
-crushing five columns. Pinned detail auto-renders as floating when the main pane would be
+  crushing six columns (PR collapsed by default). Pinned detail auto-renders as floating when the main pane would be
 under ~640px (preference unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/
 `tasks:changed` debounce; search is debounced; Zed binary readiness is cached once per
 settings change (not per card).

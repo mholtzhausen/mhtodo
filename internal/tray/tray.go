@@ -27,7 +27,7 @@ type Handlers struct {
 }
 
 // statusKeys is the fixed set of submenu roots (slots preallocated once).
-var statusKeys = []string{"pending", "wip", "waiting", "review", "done"}
+var statusKeys = []string{"pending", "wip", "waiting", "review", "pr", "done"}
 
 type statusSlot struct {
 	parent *systray.MenuItem

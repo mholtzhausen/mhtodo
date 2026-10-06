@@ -121,6 +121,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		includeInReport = *in.IncludeInReport
 	}
 	idStr := id.String()
+	prURL := strings.TrimSpace(in.PRURL)
+	if prURL != "" {
+		// Non-empty PR URL advances (or creates) in the Pull Request lane.
+		st = StatusPR
+	}
 	t := Task{
 		ID:              idStr,
 		Title:           title,
@@ -135,6 +140,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,
 		SlackThread:     strings.TrimSpace(in.SlackThread),
+		PRURL:           prURL,
 		TodoSession:     strings.TrimSpace(in.TodoSession), // not auto-seeded; agents set via edit --session
 	}
 	if st == StatusDone {
@@ -206,8 +212,9 @@ func (s *Service) ResolveID(ctx context.Context, ref string) (string, error) {
 	}
 }
 
-// Edit applies the set fields (title/description/feedback/progress). Status is not
-// changed here — use SetStatus. created_at is immutable; updated_at always bumps.
+// Edit applies the set fields (title/description/feedback/progress/…). Status is
+// not changed here except when pr_url goes empty→non-empty (advances to StatusPR);
+// otherwise use SetStatus. created_at is immutable; updated_at always bumps.
 func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, error) {
 	if !in.hasFields() {
 		return Task{}, ErrNoFieldsToUpdate
@@ -247,6 +254,15 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	if in.SlackThread != nil {
 		t.SlackThread = strings.TrimSpace(*in.SlackThread)
 	}
+	advanceToPR := false
+	if in.PRURL != nil {
+		prev := strings.TrimSpace(t.PRURL)
+		next := strings.TrimSpace(*in.PRURL)
+		t.PRURL = next
+		if prev == "" && next != "" && t.Status != StatusPR {
+			advanceToPR = true
+		}
+	}
 	sessionSet := false
 	sessionID := ""
 	if in.TodoSession != nil {
@@ -254,7 +270,21 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 		t.TodoSession = sessionID
 		sessionSet = sessionID != ""
 	}
-	t.UpdatedAt = s.now()
+	now := s.now()
+	t.UpdatedAt = now
+	if advanceToPR {
+		oldStatus := t.Status
+		switch {
+		case t.Status == StatusDone:
+			t.CompletedAt = nil // done → other rule
+		}
+		t.Status = StatusPR
+		if t.ParentID == nil && oldStatus != StatusPR {
+			if err := s.assignEndBoardRank(ctx, &t); err != nil {
+				return Task{}, err
+			}
+		}
+	}
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
 	}

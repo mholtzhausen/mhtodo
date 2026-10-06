@@ -7,7 +7,7 @@ import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from 
 import { toGoTemplateInput, type TaskTemplate, type TemplateValues } from './templates'
 import { toGoThemeInput, type Theme } from './themes'
 
-export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'done'
+export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
 
 // JSON field names are a stable agent contract (internal/core/task.go).
 export interface Task {
@@ -27,6 +27,7 @@ export interface Task {
   human_only: boolean
   include_in_report: boolean
   slack_thread: string
+  pr_url: string
   todo_session: string
   terminal_pid?: number
 }
@@ -101,6 +102,7 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
+    prUrl?: string
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -113,6 +115,7 @@ export const api = {
       HumanOnly: !!input.humanOnly,
       IncludeInReport: input.includeInReport,
       SlackThread: input.slackThread ?? '',
+      PRURL: input.prUrl ?? '',
       TodoSession: ''
     }) as Promise<Task>
   },
@@ -125,6 +128,7 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
+    prUrl?: string
     todoSession?: string
   }) {
     return App.UpdateTask(id, {
@@ -136,6 +140,7 @@ export const api = {
       HumanOnly: patch.humanOnly ?? null,
       IncludeInReport: patch.includeInReport ?? null,
       SlackThread: patch.slackThread ?? null,
+      PRURL: patch.prUrl ?? null,
       TodoSession: patch.todoSession !== undefined ? patch.todoSession : null
     })
   },

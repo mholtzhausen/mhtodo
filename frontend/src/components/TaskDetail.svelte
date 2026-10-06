@@ -67,6 +67,7 @@
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
     review: 'bg-st-review',
+    pr: 'bg-st-pr',
     done: 'bg-st-done'
   }
 
@@ -81,6 +82,8 @@
   let cwd = $state(task.cwd ?? '')
   // svelte-ignore state_referenced_locally
   let slackThread = $state(task.slack_thread ?? '')
+  // svelte-ignore state_referenced_locally
+  let prUrl = $state(task.pr_url ?? '')
   // svelte-ignore state_referenced_locally
   let todoSession = $state(task.todo_session ?? '')
   // svelte-ignore state_referenced_locally
@@ -166,6 +169,7 @@
     progress = task.progress
     cwd = task.cwd ?? ''
     slackThread = task.slack_thread ?? ''
+    prUrl = task.pr_url ?? ''
     todoSession = task.todo_session ?? ''
     humanOnly = !!task.human_only
     includeInReport = task.include_in_report !== false
@@ -255,6 +259,16 @@
     if (v === (task.slack_thread ?? '')) return
     try {
       await api.update(task.id, { slackThread: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function savePRUrl() {
+    const v = prUrl.trim()
+    if (v === (task.pr_url ?? '')) return
+    try {
+      await api.update(task.id, { prUrl: v })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -669,6 +683,34 @@
               e.preventDefault()
               void openExternalUrl(slackThread.trim())
             }}>{slackThread.trim()}</a
+          >
+        </p>
+      {/if}
+    </label>
+
+    <label class="block">
+      <span class="micro mb-1.5">Pull request</span>
+      <input
+        bind:value={prUrl}
+        onblur={savePRUrl}
+        placeholder="https://… (optional PR link)"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      />
+      <p class="mt-1 text-[11px] text-ink-3">
+        Setting a URL advances the ticket to the Pull Request lane.
+      </p>
+      {#if prUrl.trim()}
+        <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
+          Linked PR:
+          <a
+            href={prUrl.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent hover:underline"
+            onclick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(prUrl.trim())
+            }}>{prUrl.trim()}</a
           >
         </p>
       {/if}

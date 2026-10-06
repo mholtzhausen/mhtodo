@@ -111,8 +111,10 @@ func statusMarkdownOrder(st Status) int {
 		return 2
 	case StatusReview:
 		return 3
-	case StatusDone:
+	case StatusPR:
 		return 4
+	case StatusDone:
+		return 5
 	default:
 		return 99
 	}

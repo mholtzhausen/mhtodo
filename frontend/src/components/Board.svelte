@@ -4,6 +4,7 @@
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
+  import { openExternalUrl } from '../lib/openExternal'
 
   let {
     tasks,
@@ -60,6 +61,13 @@
       bar: 'bg-st-review',
       edge: 'border-l-st-review'
     },
+    {
+      status: 'pr',
+      label: 'Pull Request',
+      dot: 'bg-st-pr',
+      bar: 'bg-st-pr',
+      edge: 'border-l-st-pr'
+    },
     { status: 'done', label: 'Done', dot: 'bg-st-done', bar: 'bg-st-done', edge: 'border-l-st-done' }
   ]
 
@@ -74,28 +82,40 @@
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
     review: 'bg-st-review',
+    pr: 'bg-st-pr',
     done: 'bg-st-done'
   }
 
   const COLLAPSED_COL_W = 28
   const EXPANDED_COL_MIN = 200
   const COL_GAP = 12
-  const COLLAPSE_STATUSES: Status[] = ['pending', 'wip', 'waiting', 'review', 'done']
-  const COLLAPSE_STORAGE_KEY = 'mhtodo.collapsedColumns'
+  const COLLAPSE_STATUSES: Status[] = ['pending', 'wip', 'waiting', 'review', 'pr', 'done']
+  const COLLAPSE_STORAGE_KEY = 'mhtodo.collapsedColumns.v2'
+  const DEFAULT_COLLAPSED: Status[] = ['pr']
 
   function loadCollapsedColumns(): Partial<Record<Status, boolean>> {
     try {
       const raw = localStorage.getItem(COLLAPSE_STORAGE_KEY)
-      if (!raw) return {}
+      if (!raw) {
+        const out: Partial<Record<Status, boolean>> = {}
+        for (const s of DEFAULT_COLLAPSED) out[s] = true
+        return out
+      }
       const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed)) return {}
+      if (!Array.isArray(parsed)) {
+        const out: Partial<Record<Status, boolean>> = {}
+        for (const s of DEFAULT_COLLAPSED) out[s] = true
+        return out
+      }
       const out: Partial<Record<Status, boolean>> = {}
       for (const s of parsed) {
         if (COLLAPSE_STATUSES.includes(s as Status)) out[s as Status] = true
       }
       return out
     } catch {
-      return {}
+      const out: Partial<Record<Status, boolean>> = {}
+      for (const s of DEFAULT_COLLAPSED) out[s] = true
+      return out
     }
   }
 
@@ -562,30 +582,54 @@
                   {draggingId === t.id && !dragLifted ? 'cursor-grabbing opacity-60' : ''}"
                 title="Drag to reorder within column or drop on another column to change status"
               >
-                <button
-                  type="button"
-                  tabindex={t.status === 'done' ? -1 : 0}
-                  disabled={t.status === 'done'}
-                  title={t.status === 'done' ? 'Done' : 'Mark done'}
-                  aria-label={t.status === 'done' ? 'Done' : `Mark “${t.title}” done`}
-                  aria-pressed={t.status === 'done'}
-                  onclick={(e) => void markDone(t.id, e)}
+                <div
+                  class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1"
                   onmousedown={(e) => e.stopPropagation()}
-                  ondragstart={(e) => e.preventDefault()}
-                  class="absolute right-1.5 top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-chip border transition-colors
-                    {t.status === 'done'
-                      ? 'cursor-default border-st-done bg-st-done text-white'
-                      : 'cursor-pointer border-ink-3/50 bg-card/80 text-transparent hover:border-st-done hover:bg-st-done/20 hover:text-st-done'}"
                 >
-                  <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                    <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
+                  {#if (t.pr_url ?? '').trim()}
+                    <button
+                      type="button"
+                      title="Open pull request"
+                      aria-label={`Open pull request for “${t.title}”`}
+                      onclick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void openExternalUrl(String(t.pr_url).trim())
+                      }}
+                      ondragstart={(e) => e.preventDefault()}
+                      class="flex h-3.5 w-3.5 items-center justify-center rounded-chip border border-st-pr/50 bg-card/80 text-st-pr transition-colors hover:border-st-pr hover:bg-st-pr/20"
+                    >
+                      <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                        <path d="M6 3.5h6.5V10" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M12.5 3.5 6.5 9.5" stroke-linecap="round" />
+                        <path d="M3.5 6.5v6h6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  {/if}
+                  <button
+                    type="button"
+                    tabindex={t.status === 'done' ? -1 : 0}
+                    disabled={t.status === 'done'}
+                    title={t.status === 'done' ? 'Done' : 'Mark done'}
+                    aria-label={t.status === 'done' ? 'Done' : `Mark “${t.title}” done`}
+                    aria-pressed={t.status === 'done'}
+                    onclick={(e) => void markDone(t.id, e)}
+                    ondragstart={(e) => e.preventDefault()}
+                    class="flex h-3.5 w-3.5 items-center justify-center rounded-chip border transition-colors
+                      {t.status === 'done'
+                        ? 'cursor-default border-st-done bg-st-done text-white'
+                        : 'cursor-pointer border-ink-3/50 bg-card/80 text-transparent hover:border-st-done hover:bg-st-done/20 hover:text-st-done'}"
+                  >
+                    <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                      <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </div>
                 <button
                   type="button"
                   onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 pr-6 text-left focus:outline-none"
+                  class="w-full cursor-grab p-2.5 text-left focus:outline-none {(t.pr_url ?? '').trim() ? 'pr-10' : 'pr-6'}"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">

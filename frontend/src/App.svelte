@@ -652,10 +652,14 @@
         load()
         break
       case '5':
-        status = status === 'done' ? '' : 'done'
+        status = status === 'pr' ? '' : 'pr'
         load()
         break
       case '6':
+        status = status === 'done' ? '' : 'done'
+        load()
+        break
+      case '7':
         if (view === 'board') {
           status = 'archived'
           setView('list')
@@ -1172,7 +1176,7 @@
     {#if !narrowChrome}
       <span class="flex-none whitespace-nowrap"
         ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
-        <kbd>1–5</kbd> status · <kbd>6</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
+        <kbd>1–6</kbd> status · <kbd>7</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
         <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
         <kbd>ctrl+q</kbd> / <kbd>ctrl+click</kbd> × quit</span
       >
