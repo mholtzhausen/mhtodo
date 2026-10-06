@@ -14,14 +14,16 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 13
+const IntegrationVersion = 14
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v13 Removed direct Claude/Herdr/terminal spawn from the app. No mhtodo
+const integrationChangelog = `v14 Ticket deep links: GUI copy uses mhtodo://task/{short8} - {status} - {title} …
+    (opens via mhtodo open / desktop x-scheme-handler). mhtodo open TARGET raises
+    the GUI on that task (TARGET = id/prefix or URI).
+v13 Removed direct Claude/Herdr/terminal spawn from the app. No mhtodo
     integration / claude.todo shell helper; no --session on add/edit. Zed opens
     the task working directory only (no MHTODO_SESSION). Agent skill/hooks for
-    Claude Code remain the host-mapping reference. GUI can copy a ticket
-    reference line: mhtodo ticket {short8} - {status} - {title} …
+    Claude Code remain the host-mapping reference.
 v12 Full task-template CLI: mhtodo template list|search|show|create|update|rm
     and add --template REF (CLI flags override presets). Search supports
     --mode fuzzy|regex and --cwd (exact path). Agents should probe with

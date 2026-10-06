@@ -184,6 +184,7 @@ install_files() { # $1 = dir containing mhtodo, mhtodo.desktop, icon.png — ove
   install -Dm644 "$d/$APP.desktop"    "$PREFIX/share/applications/$APP.desktop"
   install -Dm644 "$d/icon.png"        "$PREFIX/share/icons/hicolor/512x512/apps/$APP.png"
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$PREFIX/share/applications" || true
+  command -v xdg-mime >/dev/null 2>&1 && xdg-mime default "$APP.desktop" x-scheme-handler/mhtodo || true
 }
 
 install_service() { # (re)write the user unit and start it; restarts a running instance

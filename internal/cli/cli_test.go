@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"mhtodo/internal/cli"
 	"mhtodo/internal/core"
+	"mhtodo/internal/instance"
 	"mhtodo/internal/store"
 	"mhtodo/internal/update"
 )
@@ -446,6 +449,78 @@ func TestShow(t *testing.T) {
 	}
 }
 
+func TestOpen(t *testing.T) {
+	out, errb, run := newCLI(t)
+	db := os.Getenv("MHTODO_DB_PATH")
+	id := "aaaa1111-0000-7000-8000-000000000001"
+	seedTasks(t, db, fixedTask(id, "First", core.StatusWIP, 40))
+
+	dir := t.TempDir()
+	restoreLock := instance.SetLockPathForTest(func() string {
+		return filepath.Join(dir, "mhtodo.lock")
+	})
+	t.Cleanup(restoreLock)
+
+	launched := 0
+	restoreLaunch := cli.LaunchGUIForTest(func() error {
+		launched++
+		return nil
+	})
+	t.Cleanup(restoreLaunch)
+
+	// Cold start: write focus request + launch GUI.
+	if code := run("open", id, "--json"); code != 0 {
+		t.Fatalf("open launch: exit %d (%s)", code, errb.String())
+	}
+	var got map[string]string
+	mustJSON(t, out.Bytes(), &got)
+	if got["id"] != id || got["action"] != "launched" || got["uri"] != "mhtodo://task/"+core.ShortID(id) {
+		t.Fatalf("open json wrong: %#v", got)
+	}
+	if launched != 1 {
+		t.Fatalf("launch count %d, want 1", launched)
+	}
+	ref, ok := instance.TakeFocusRequest()
+	if !ok || ref != id {
+		t.Fatalf("pending focus (%q,%v), want %s", ref, ok, id)
+	}
+
+	// Running instance: signal path (sleep holds the lock).
+	out.Reset()
+	errb.Reset()
+	launched = 0
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cmd.Process.Kill()
+		cmd.Wait()
+	})
+	if err := os.WriteFile(instance.LockPath(), []byte(fmt.Sprintf("%d\n", cmd.Process.Pid)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code := run("open", "mhtodo://task/"+core.ShortID(id), "--json"); code != 0 {
+		t.Fatalf("open focus: exit %d (%s)", code, errb.String())
+	}
+	mustJSON(t, out.Bytes(), &got)
+	if got["action"] != "focused" {
+		t.Fatalf("want focused, got %#v", got)
+	}
+	if launched != 0 {
+		t.Fatalf("should not launch when running, got %d", launched)
+	}
+	ref, ok = instance.TakeFocusRequest()
+	if !ok || ref != id {
+		t.Fatalf("focus request (%q,%v)", ref, ok)
+	}
+
+	errb.Reset()
+	if code := run("open", "missing9999-0000-7000-8000-000000000099"); code != cli.ExitNotFound {
+		t.Errorf("missing: exit %d, want 2 (%s)", code, errb.String())
+	}
+}
+
 // --- edit ---------------------------------------------------------------------
 
 func TestEdit(t *testing.T) {
@@ -696,14 +771,16 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 13",
+		"Integration contract version: 14",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
 		"board|created|updated|status|progress|title",
-		"mhtodo ticket",
+		"mhtodo://task/",
+		"mhtodo open",
 		"mhtodo template search",
+		"v14 Ticket deep links",
 		"v13 Removed direct Claude",
 		"v12 Full task-template CLI",
 		"v11 User scan order",
@@ -739,7 +816,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 13 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 14 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

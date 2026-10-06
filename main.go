@@ -26,6 +26,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 
 	"mhtodo/internal/cli"
+	"mhtodo/internal/instance"
 	"mhtodo/internal/platform"
 	"mhtodo/internal/settings"
 	"mhtodo/internal/tray"
@@ -43,7 +44,30 @@ func main() {
 		runGUI(args) // blocks for the app's lifetime
 		return
 	}
+	// Desktop MimeType handler: Exec=mhtodo %u passes mhtodo://task/… as argv[1].
+	if hasMhtodoScheme(args[0]) {
+		os.Exit(cli.Run(append([]string{"open"}, args...), version, commit))
+		return
+	}
 	os.Exit(cli.Run(args, version, commit))
+}
+
+// hasMhtodoScheme reports whether s starts with "mhtodo:" (case-insensitive).
+func hasMhtodoScheme(s string) bool {
+	const prefix = "mhtodo:"
+	if len(s) < len(prefix) {
+		return false
+	}
+	for i := 0; i < len(prefix); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		if c != prefix[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // NOTE (M3, 2026-08-19): this machine's Go toolchains reject //go:embed into
@@ -92,37 +116,44 @@ func runGUI(args []string) {
 	fs.Parse(args)
 
 	launchStartHidden = resolveLaunchStartHidden()
+	// startHidden is the build-tag const (true under make dev). Distinct from the
+	// user StartHidden setting: deep-link SIGUSR2 must still work when the user
+	// prefers launch-to-tray, but must stay off under wails hot-reload.
+	devRebuild := startHidden
 
 	// Single instance: a second launch focuses the running one and exits.
 	// Under -tags dev (make dev), skip focus signaling — wails generate module
 	// and hot-reload rebuilds spawn short-lived second processes that would
 	// otherwise pop the hidden window on every rebuild.
-	if err := acquireInstanceLock(); err != nil {
-		var ar *AlreadyRunningError
+	// A pending mhtodo.focus file (from `mhtodo open`) is left in place so the
+	// running instance can TakeFocusRequest on SIGUSR2.
+	if err := instance.Acquire(); err != nil {
+		var ar *instance.AlreadyRunningError
 		if errors.As(err, &ar) {
-			if launchStartHidden {
+			if devRebuild {
 				log.Printf("mhtodo is already running (pid %d); exiting quietly (dev)", ar.PID)
 			} else {
 				log.Printf("mhtodo is already running (pid %d); focusing existing window", ar.PID)
-				syscall.Kill(ar.PID, syscall.SIGUSR2) // best-effort focus request (never SIGUSR1 — see above)
+				// Empty focus request = show window only (also clears a stale deep link).
+				_ = instance.WriteFocusRequest("")
+				_ = instance.SignalFocus(ar.PID) // best-effort; never SIGUSR1 — see SignalFocus
 			}
 			return
 		}
 		log.Fatalf("instance lock: %v", err)
 	}
 
-	// Focus-on-relaunch: a second instance signals us to show the window.
-	// MUST be SIGUSR2 — WebKit/JSC installs its own C handler for signal 10
-	// (SIGUSR1, "JSC_SIGNAL_FOR_GC"); sending SIGUSR1 to this process crashes it
-	// with SIGSEGV during cgo execution (verified 2026-08-19).
-	// Not registered when StartHidden: rebuild spawns would steal focus.
-	if !launchStartHidden {
+	// Focus-on-relaunch / deep link: a second instance (or `mhtodo open`) signals
+	// SIGUSR2. MUST be SIGUSR2 — WebKit/JSC owns SIGUSR1 ("JSC_SIGNAL_FOR_GC");
+	// SIGUSR1 crashes the GUI (verified 2026-08-19).
+	// Not registered under make dev: rebuild spawns would steal focus.
+	if !devRebuild {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGUSR2)
 		go func() {
 			for range sigCh {
-				log.Println("focus requested by second instance → showing window")
-				app.showWindow()
+				log.Println("focus requested by second instance")
+				app.applyPendingFocus()
 			}
 		}()
 	}

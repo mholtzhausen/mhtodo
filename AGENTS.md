@@ -4,9 +4,11 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|open|edit|status|done|reorder|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
  `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host (including Claude Code skill/hooks).
+ `mhtodo open` raises the GUI on a task (id/prefix or `mhtodo://task/…`); the desktop entry registers
+ `x-scheme-handler/mhtodo`.
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
  systemd unit (prompts on a TTY; flags for non-interactive).
  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
@@ -27,8 +29,9 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   status (`pending | wip | waiting | review | done`), progress 0–100,
   created_at / updated_at / completed_at. UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
-- System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock.
-  GUI is frameless: drag the app header to move; double-click the header (outside tabs/actions)
+- System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock
+ (`internal/instance` + `mhtodo.open` deep links via `mhtodo://task/{id}` / `mhtodo open`).
+ GUI is frameless: drag the app header to move; double-click the header (outside tabs/actions)
   toggles maximize; header Close (×) hides to tray; hold Ctrl while hovering to reveal
   Exit and Ctrl+click (or Ctrl+Q) to quit. Also
   supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
@@ -60,7 +63,7 @@ running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
 **Zed** (Settings → Integrations) opens the task working directory when enabled; there is no
 direct Claude/Herdr/terminal spawn. Board/list cards can copy a markdown report or a
-ticket reference line (`mhtodo ticket {short8} - {status} - {title} …`). Legacy DB columns
+ticket reference line (`mhtodo://task/{short8} - {status} - {title} …`). Legacy DB columns
 `todo_session` / `terminal_pid` remain for schema stability but are unused.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default

@@ -125,6 +125,7 @@ func InstallFiles(ex Extracted, info InstallInfo) error {
 			return fmt.Errorf("install desktop: %w", err)
 		}
 		_ = exec.Command("update-desktop-database", filepath.Join(info.Prefix, "share", "applications")).Run()
+		_ = exec.Command("xdg-mime", "default", AppName+".desktop", "x-scheme-handler/mhtodo").Run()
 	}
 	if ex.Icon != "" {
 		dest := IconPath(info.Prefix)

@@ -46,6 +46,7 @@ install -Dm755 mhtodo ~/.local/bin/mhtodo
 install -Dm644 mhtodo.desktop ~/.local/share/applications/
 install -Dm644 icon.png ~/.local/share/icons/hicolor/512x512/apps/mhtodo.png
 update-desktop-database ~/.local/share/applications
+xdg-mime default mhtodo.desktop x-scheme-handler/mhtodo
 ```
 
 ### From the installer script (`install.sh`)
@@ -101,6 +102,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
+| `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--slack-thread ""` clear those fields |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
@@ -185,11 +187,15 @@ have a working directory. It runs the configured binary with the task `cwd` (opt
 prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts still install via
 `mhtodo ai` (Claude Code skill/hooks remain the reference mapping).
 
-Card actions also copy a paste-ready **markdown report** or a **ticket reference** line:
+Card actions also copy a paste-ready **markdown report** or a **ticket reference** line
+(deep link + status/title reminder):
 
 ```
-mhtodo ticket {short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
+mhtodo://task/{short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
 ```
+
+Clicking `mhtodo://task/…` (or running `mhtodo open mhtodo://task/{short8}`) raises the
+GUI on that task when mhtodo is installed with its desktop entry.
 
 ### Agent usage examples
 

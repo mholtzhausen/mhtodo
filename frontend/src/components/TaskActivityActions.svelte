@@ -66,7 +66,7 @@
     const id = shortId(task.id)
     const status = (task.status ?? 'pending').trim() || 'pending'
     const title = (task.title ?? '').trim() || '(untitled)'
-    return `mhtodo ticket ${id} - ${status} - ${title} *remember to update subtasks and activity comments if you do work on this*`
+    return `mhtodo://task/${id} - ${status} - ${title} *remember to update subtasks and activity comments if you do work on this*`
   }
 
   async function ensureZedCommand() {

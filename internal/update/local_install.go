@@ -83,6 +83,8 @@ func InstallLocal(opts LocalInstallOptions) (LocalInstallResult, error) {
 	}
 	res.Desktop = desktopDest
 	_ = exec.Command("update-desktop-database", filepath.Join(prefix, "share", "applications")).Run()
+	// Prefer this desktop entry for mhtodo:// deep links (best-effort).
+	_ = exec.Command("xdg-mime", "default", AppName+".desktop", "x-scheme-handler/mhtodo").Run()
 
 	iconDest := IconPath(prefix)
 	if err := writeEmbeddedFile("embed/icon.png", iconDest, 0o644); err != nil {

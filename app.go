@@ -16,6 +16,7 @@ import (
 
 	"mhtodo/internal/core"
 	"mhtodo/internal/globalhk"
+	"mhtodo/internal/instance"
 	"mhtodo/internal/integrations"
 	"mhtodo/internal/notify"
 	"mhtodo/internal/platform"
@@ -114,6 +115,8 @@ func (a *App) domReady(_ context.Context) {
 	}
 	a.startPosCapture()
 	a.refreshTray()
+	// Cold-start deep link: `mhtodo open` wrote mhtodo.focus before launching us.
+	a.applyPendingFocus()
 }
 
 func (a *App) shutdown(_ context.Context) {
@@ -131,7 +134,20 @@ func (a *App) shutdown(_ context.Context) {
 	if a.repo != nil {
 		a.repo.Close()
 	}
-	releaseInstanceLock()
+	instance.Release()
+}
+
+// applyPendingFocus consumes a deep-link / second-launch focus request.
+// With a task id: raise + select. With an empty request file: raise only.
+// With no file: raise only (second bare `mhtodo` launch).
+func (a *App) applyPendingFocus() {
+	ref, ok := instance.TakeFocusRequest()
+	if ok && ref != "" {
+		log.Printf("deep link focus → %s", ref)
+		a.openFocusTaskFromTray(ref)
+		return
+	}
+	a.showWindow()
 }
 
 // --- bound methods (parity contract) -----------------------------------------

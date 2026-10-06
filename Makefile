@@ -169,6 +169,7 @@ install-files: ## @ internal — copy binary + .desktop + icon into $(PREFIX)
 	install -Dm644 packaging/$(APP).desktop $(PREFIX)/share/applications/$(APP).desktop
 	install -Dm644 assets/icon.png $(PREFIX)/share/icons/hicolor/512x512/apps/$(APP).png
 	-update-desktop-database $(PREFIX)/share/applications 2>/dev/null || true
+	-xdg-mime default $(APP).desktop x-scheme-handler/mhtodo 2>/dev/null || true
 
 install: build install-files ## install binary + .desktop + icon into $(PREFIX) (~/.local)
 

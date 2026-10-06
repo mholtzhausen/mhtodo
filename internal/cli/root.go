@@ -287,7 +287,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	root.PersistentFlags().BoolP("quiet", "q", false, "suppress non-essential output")
 
 	for _, c := range []*cobra.Command{
-		newAddCmd(), newListCmd(), newShowCmd(), newEditCmd(),
+		newAddCmd(), newListCmd(), newShowCmd(), newOpenCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
 		newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(),

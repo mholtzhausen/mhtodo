@@ -59,6 +59,7 @@ mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [-
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
+mhtodo open TARGET                                        # raise GUI on task (id/prefix or mhtodo://task/…)
 mhtodo list [--all] [--archived] [--roots] [--human-only] [--status S] [--search S] [--sort F] [--limit N]
 mhtodo reorder ID [--before ID]
 mhtodo activity add ID [--activity S] [--comment S]       # at least one
@@ -124,11 +125,14 @@ puts a one-line handoff on the clipboard. Treat a user paste like this as pointi
 at that ticket:
 
 ```
-mhtodo ticket {short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
+mhtodo://task/{short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
 ```
 
 `{short8}` is the last 8 hex chars of the task id (same short id used elsewhere).
-Resolve with `mhtodo show {short8}` (or the full id). Keep status, progress, and
+The `mhtodo://task/{short8}` prefix is a desktop deep link: on an installed
+mhtodo it opens/raises the GUI focused on that task (`mhtodo open` / `.desktop`
+`x-scheme-handler/mhtodo`). Resolve in the CLI with `mhtodo show {short8}` (or
+the full id), or `mhtodo open mhtodo://task/{short8}`. Keep status, progress, and
 sub-tasks current while you work — that reminder is part of the paste line.
 
 **`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
