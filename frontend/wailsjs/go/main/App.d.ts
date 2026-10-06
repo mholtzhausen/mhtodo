@@ -8,17 +8,17 @@ export function ActivateTheme(arg1:string):Promise<core.Theme>;
 
 export function AddActivity(arg1:string,arg2:core.ActivityInput):Promise<core.Activity>;
 
+export function AppVersion():Promise<string>;
+
 export function Archive(arg1:string):Promise<core.Task>;
 
 export function ArchiveDone():Promise<Array<core.Task>>;
 
-export function AppVersion():Promise<string>;
-
 export function CheckBinary(arg1:string):Promise<boolean>;
 
-export function CountChildren(arg1:string):Promise<number>;
-
 export function ConsumePendingFocus():Promise<string>;
+
+export function CountChildren(arg1:string):Promise<number>;
 
 export function CreateTask(arg1:core.CreateInput):Promise<core.Task>;
 

@@ -4,8 +4,8 @@ A personal todo manager in Go. **One binary, two frontends over one shared core:
 
 - **CLI** — the scriptable, agentic interface: `--json` everywhere, stable exit codes and JSON field names.
 - **GUI** — Wails v2 webview + system tray: board (kanban) and list views, task detail editing
-  (description/feedback/activity comments are markdown-rendered outside inputs), desktop
-  notifications, live sync so CLI changes appear without a restart.
+  (description/feedback/activity comments are markdown-rendered outside inputs; links open in
+  the system browser), desktop notifications, live sync so CLI changes appear without a restart.
 
 Both frontends call the same `core.Service`; neither contains business rules or SQL of its own. Every CLI command has an exact GUI equivalent and vice versa (parity table below). All data lives in one SQLite database — safe to drive from both at once.
 
@@ -248,11 +248,12 @@ status transitions → activity → delete) using only this CLI.
   `l` / `a`; choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
-- **Detail pane:** edit fields (including working directory with folder picker, human-only / Slack
-  report checkboxes, Slack thread URL), activity composer, Add sub-task (roots only). Feedback is
-  agent/CLI-authored (read-only in the GUI). **Pin** / Float / Modal detail modes (persisted). Esc
-  closes modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch;
-  `←`/`→` move to adjacent tasks.
+- **Detail pane:** edit fields (including working directory with folder picker, Todo session /
+  Claude session UUID, human-only / Slack report checkboxes, Slack thread URL), activity composer,
+  Add sub-task (roots only). Feedback is agent/CLI-authored (read-only in the GUI). Markdown
+  http(s) links open externally. **Pin** / Float / Modal detail modes (persisted). Esc closes
+  modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch; `←`/`→`
+  move to adjacent tasks.
 - **New task dialog:** optional working directory, Slack thread, human-only, include-in-Slack-report
   (defaults from Settings), and initial status. Header icons apply a **task template** or save the
   current fields as one.

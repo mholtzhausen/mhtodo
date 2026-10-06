@@ -10,6 +10,10 @@ export function AddActivity(arg1, arg2) {
   return window['go']['main']['App']['AddActivity'](arg1, arg2);
 }
 
+export function AppVersion() {
+  return window['go']['main']['App']['AppVersion']();
+}
+
 export function Archive(arg1) {
   return window['go']['main']['App']['Archive'](arg1);
 }
@@ -18,20 +22,16 @@ export function ArchiveDone() {
   return window['go']['main']['App']['ArchiveDone']();
 }
 
-export function AppVersion() {
-  return window['go']['main']['App']['AppVersion']();
-}
-
 export function CheckBinary(arg1) {
   return window['go']['main']['App']['CheckBinary'](arg1);
 }
 
-export function CountChildren(arg1) {
-  return window['go']['main']['App']['CountChildren'](arg1);
-}
-
 export function ConsumePendingFocus() {
   return window['go']['main']['App']['ConsumePendingFocus']();
+}
+
+export function CountChildren(arg1) {
+  return window['go']['main']['App']['CountChildren'](arg1);
 }
 
 export function CreateTask(arg1) {

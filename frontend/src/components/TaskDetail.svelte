@@ -82,6 +82,8 @@
   // svelte-ignore state_referenced_locally
   let slackThread = $state(task.slack_thread ?? '')
   // svelte-ignore state_referenced_locally
+  let todoSession = $state(task.todo_session ?? '')
+  // svelte-ignore state_referenced_locally
   let humanOnly = $state(!!task.human_only)
   // svelte-ignore state_referenced_locally
   let includeInReport = $state(task.include_in_report !== false)
@@ -150,7 +152,6 @@
     activeSection = 'task'
     loadActivity()
     loadSubtasks()
-    void refreshHerdrStatus()
   })
 
   $effect(() => {
@@ -165,6 +166,7 @@
     progress = task.progress
     cwd = task.cwd ?? ''
     slackThread = task.slack_thread ?? ''
+    todoSession = task.todo_session ?? ''
     humanOnly = !!task.human_only
     includeInReport = task.include_in_report !== false
     if (!editingDesc) {
@@ -253,6 +255,16 @@
     if (v === (task.slack_thread ?? '')) return
     try {
       await api.update(task.id, { slackThread: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function saveTodoSession() {
+    const v = todoSession.trim()
+    if (v === (task.todo_session ?? '')) return
+    try {
+      await api.update(task.id, { todoSession: v })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -622,6 +634,20 @@
         </button>
       </div>
     </div>
+
+    <label class="block">
+      <span class="micro mb-1.5">Todo session</span>
+      <input
+        bind:value={todoSession}
+        onblur={saveTodoSession}
+        placeholder="Claude session UUID"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+      />
+      <p class="mt-1 text-[11px] text-ink-3">
+        Claude session UUID linked to this ticket (<code class="text-ink-2">edit --session</code>); empty
+        clears. Setting a non-empty value also posts a Claude Session activity.
+      </p>
+    </label>
 
     <label class="block">
       <span class="micro mb-1.5">Slack thread</span>

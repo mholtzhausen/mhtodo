@@ -102,8 +102,9 @@ list|search|show|create|update|rm|activate|duplicate|reset`. See
 Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
-(when not in an input/textarea). Detail-pane description & feedback grow with content
-up to 500px, then scroll.
+(when not in an input/textarea); http(s) links open in the system browser (not the
+webview). Detail pane includes **Todo session** (`todo_session` / `edit --session`).
+Detail-pane description & feedback grow with content up to 500px, then scroll.
 
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle

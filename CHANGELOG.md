@@ -3,10 +3,10 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Detail pane shows **Todo session** again (`todo_session`; same as `edit --session`)
 
 ### Bugfixes
-- (none)
+- Markdown links in description, feedback, and activity open in the system browser instead of navigating the Wails webview
 
 ### Deprecations
 - (none)
