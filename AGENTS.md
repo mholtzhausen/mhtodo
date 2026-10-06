@@ -67,7 +67,8 @@ running binary (from-source bootstrap remains `make service-install`).
 **Zed** (Settings → Integrations) opens the task working directory when enabled and copies the
 ticket reference to the clipboard on the same click; there is no direct Claude/Herdr/terminal
 spawn. Board/list cards can also copy a markdown report or a ticket reference block
-(`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`).
+(`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`,
+ clean `master`/`main` before a new branch, and ask the user if the tree is dirty).
 `todo_session` stores the linked Claude session UUID (set via `edit --session`);
 `terminal_pid` remains unused for schema stability.
 

@@ -48,6 +48,7 @@ Title: …
 Instructions: (only if you start working on this task) 
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
+ - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
 ---
 ```
 
@@ -59,7 +60,8 @@ Before substantive work:
 
 1. `mhtodo list --roots --json --search "<keywords>"` (or use a pasted id).
 2. Same job → adopt. In `review` with more work → reopen to `wip`. Nothing matches → **ask** before creating a root. Unsure → ask.
-3. Adopt:
+3. **Git hygiene (required before any code work):** checkout `master` (or `main` if that is the repo default). Working tree must be clean. If anything is dirty (uncommitted changes, untracked work you did not expect, mid-rebase, etc.), **stop and clear it up with the user** — do not stash, discard, or commit on their behalf unless they explicitly approve. Only then create a new branch for this ticket and start work.
+4. Adopt:
 
 ```bash
 mhtodo status <id> wip
@@ -68,8 +70,8 @@ mhtodo edit <id> --progress 5                      # never rewrite user title/de
 mhtodo activity add <id> --activity "Task Picked Up" --comment "<brief>"
 ```
 
-4. Re-set `--session` after `/new`, `/clear`, or a new chat.
-5. Non-trivial job → create one-level sub-tasks as the step plan (2+ steps) immediately.
+5. Re-set `--session` after `/new`, `/clear`, or a new chat.
+6. Non-trivial job → create one-level sub-tasks as the step plan (2+ steps) immediately.
 
 **Templates:** before a project-shaped root, `mhtodo template search --cwd "$PWD"`; ask which match; `add --template REF` when appropriate.
 

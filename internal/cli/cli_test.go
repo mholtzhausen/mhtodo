@@ -830,6 +830,8 @@ func TestAI(t *testing.T) {
 		"Hard rule",
 		"Ticket reference",
 		"--session",
+		"Git hygiene",
+		"clean `master`",
 		"Sync checklist",
 		"Task picker",
 		"mhtodo://task/",

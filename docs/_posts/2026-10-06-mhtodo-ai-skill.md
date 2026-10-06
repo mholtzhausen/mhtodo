@@ -24,7 +24,7 @@ After a successful `mhtodo update`, skill install runs automatically. When `clau
 The skill is a set of **named workflows** Claude loads when you mention todos, paste an MHTodo ticket block, or start work that belongs on the board. The important bits:
 
 1. **Hard rule** — read the board freely; never adopt a task just because it appeared in a list (including `human_only`). Work starts only when you ask for something or point at a ticket.
-2. **Ticket handoff** — a pasted `MHTodo Ticket` / `mhtodo://task/…` block is an explicit pointer. On adopt, record the session with `mhtodo edit ID --session <uuid>` (that also posts a Claude Session activity).
+2. **Ticket handoff** — a pasted `MHTodo Ticket` / `mhtodo://task/…` block is an explicit pointer. On adopt, record the session with `mhtodo edit ID --session <uuid>` (that also posts a Claude Session activity). Before code work: clean `master`/`main`, clear dirt with the user if needed, then a new branch.
 3. **Live signal** — keep **status → progress → sub-tasks** current. Activities are audit; feedback is a short hand-back summary, not a running log.
 4. **Ownership** — user-originated tickets hand back to `review` (you mark done). Agent-originated ones may go to `done`. Reopen `review` → `wip` with new sub-tasks when work continues.
 5. **Task picker** — when you ask “what’s next?”, list roots and present every row in the host picker (no autonomous pickup).
