@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.1.0 (pending)
+## 3.1.0 (a6aa230)
 
 ### Features and Improvements
 - When `pr_url` is set, a pull-request icon sits next to the Slack icon in card footer actions and the detail header; opens the URL in the system browser (replaces the board card link beside mark-done)

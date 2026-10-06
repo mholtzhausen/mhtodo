@@ -20,4 +20,4 @@ The old board-only control beside the mark-done checkbox is gone, so cards and d
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.1.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#310-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.1.0).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.1.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#310-a6aa230) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.1.0).
