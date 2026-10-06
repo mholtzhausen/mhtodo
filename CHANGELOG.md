@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 3.0.2 (PENDING)
+
+### Features and Improvements
+- (none)
+
+### Bugfixes
+- Open in Zed: launch in a detached systemd user scope (when available) or a new session so Zed windows stay open when mhtodo quits or the user unit stops during `mhtodo update`
+
+### Deprecations
+- (none)
+
 ## 3.0.1 (cfc4e76)
 
 ### Features and Improvements
