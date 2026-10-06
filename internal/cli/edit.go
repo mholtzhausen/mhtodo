@@ -9,7 +9,8 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback, cwd, slackThread, prURL, session string
+	var title, desc, feedback, cwd, slackThread, session string
+	var prURLs []string
 	var progress int
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -48,7 +49,7 @@ func newEditCmd() *cobra.Command {
 				in.SlackThread = &v
 			}
 			if cmd.Flags().Changed("pr-url") {
-				v := prURL
+				v := core.JoinPRURLs(prURLs)
 				in.PRURL = &v
 			}
 			if cmd.Flags().Changed("session") {
@@ -89,7 +90,7 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().IntVar(&progress, "progress", 0, "new progress 0-100")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "working directory path (empty clears)")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL (empty clears)")
-	cmd.Flags().StringVar(&prURL, "pr-url", "", "pull request URL (empty clears; setting advances status to pr)")
+	cmd.Flags().StringArrayVar(&prURLs, "pr-url", nil, "pull request URL(s); repeatable; empty clears; setting advances status to pr")
 	cmd.Flags().StringVar(&session, "session", "", "Claude session UUID linked to this ticket (empty clears)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
 	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")

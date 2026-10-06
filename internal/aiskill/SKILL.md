@@ -20,7 +20,8 @@ mhtodo list --roots [--search S] [--json]
 mhtodo show ID
 mhtodo open TARGET
 mhtodo status ID pending|wip|waiting|review|pr|done
-mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S|--pr-url URL
+mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S|--pr-url URL [--pr-url URL…]
+  # --pr-url is repeatable; each edit replaces the full PR list (not append)
 mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
 mhtodo activity add ID --activity "Label" --comment "…"
 mhtodo activity list --task ID [--json]
@@ -88,7 +89,7 @@ mhtodo activity add <id> --activity "Task Picked Up" --comment "<brief>"
 
 - User scans: ticket → status → progress → **sub-tasks**. Keep those current.
 - Activities: Title Case 2–4 word label + detail in `--comment` (audit only).
-- Feedback (`--feedback`): short post-work summary at hand-back only — not a running log.
+- Feedback (`--feedback`): short post-work summary at hand-back only — not a running log. **Never** put pull-request URLs only in feedback (or activity comments) as a substitute for `pr_url`.
 - **Ownership:** user-originated → never change title; never overwrite description; hand back to `review` (user marks done), or set `--pr-url` when you open a PR (auto-advances to `pr`). Agent-originated → may refine title/desc; may `done`.
 - Do not narrate bookkeeping (“created a task…”) unless they asked about the board.
 
@@ -100,14 +101,21 @@ One level only. Drive steps `pending → wip → done`. Blocking or hand-back us
 
 - **Blocked on user:** parent `waiting` + activity with the question.
 - **Hand back (no PR yet):** every sub-task `done` → `--progress 100` + `--feedback` → parent `review` (or `done` if agent-owned). Never leave parent on `wip` at end of turn.
-- **Opened a pull request:** after creating the PR for this ticket:
+- **Opened a pull request:** after creating one or more PRs for this ticket, put **every** PR URL on `pr_url`. Do **not** leave PR links only in `--feedback` or activity comments.
+
+  `edit --pr-url` **replaces** the whole list (it does not append). Pass every current PR in one command by repeating the flag. If a ticket already has PRs and you open another, `show --json` first, then re-set **all** URLs including the new one.
 
 ```bash
-mhtodo edit <id> --pr-url <https://…/pull/N>   # also advances status to pr
-mhtodo show <id> --json                        # confirm status is "pr" and pr_url is set
+# first PR (or set the full list at once)
+mhtodo edit <id> --pr-url <https://…/pull/N> [--pr-url <https://…/pull/M> …]   # advances status to pr
+
+# later: another PR opened — must include prior URLs too
+mhtodo show <id> --json                        # read existing pr_url (newline-separated)
+mhtodo edit <id> --pr-url <existing-1> --pr-url <existing-2> --pr-url <new>
+mhtodo show <id> --json                        # confirm status is "pr" and pr_url lists every PR
 ```
 
-  Do not skip the `show` check. Clearing `--pr-url` does not move the ticket out of `pr`.
+  Do not skip the `show` check. Clearing with `--pr-url ""` does not move the ticket out of `pr`.
 - **Reopen:** more work while in `review` or `pr` → parent `wip` + new sub-tasks; do not pile work under a review/PR card.
 
 ## 8. Task picker (“what’s next?”)

@@ -101,11 +101,11 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional pull-request URL (non-empty advances status to `pr`); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
@@ -181,8 +181,9 @@ Activity entry:
 directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
 such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
 `todo_session` holds the Claude session UUID linked when an agent adopts the ticket
-(`mhtodo edit ID --session …`). `pr_url` is an optional pull-request URL; setting it
-(empty→non-empty) advances status to `pr`. Legacy `terminal_pid` may still appear as `0` — ignore it.
+(`mhtodo edit ID --session …`). `pr_url` holds optional pull-request URL(s), one per line;
+setting the field empty→non-empty advances status to `pr`. Repeat `--pr-url` on `add`/`edit`
+to set multiple. Legacy `terminal_pid` may still appear as `0` — ignore it.
 
 ### Zed (Settings → Integrations)
 
@@ -239,8 +240,8 @@ status transitions → activity → delete) using only this CLI.
 - **Board view (default):** six kanban columns — pending / wip / waiting / review / pr / done — with live
   counts; root cards show title, progress, relative time; human-only / Slack-report flags live in the
   card footer actions (not duplicated in the title row). When `pr_url` is set, a pull-request icon
-  sits next to the Slack thread icon in those footer actions (and in the detail modal header) and
-  opens the URL in the system browser. The Pull Request column is collapsed by default. Columns collapse
+  sits next to the Slack thread icon in those footer actions (and in the detail modal header);
+  one URL opens directly, two or more open a picker dropdown. The Pull Request column is collapsed by default. Columns collapse
   via a header caret into a slim vertical strip (rotated title + count); collapsed state persists across
   restarts (`mhtodo.collapsedColumns.v2`). Sub-tasks nest under the parent card when shown (never own
   column cards), in creation order (oldest first). Drag a **root** card to change status (including onto
@@ -254,10 +255,11 @@ status transitions → activity → delete) using only this CLI.
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
 - **Detail modal:** edit fields (including working directory with fuzzy typeahead over template
   cwds and previously used ticket paths — plus folder picker / free-typed path — Todo session /
-  Claude session UUID, human-only / Slack report checkboxes, Slack thread URL), activity composer,
+  Claude session UUID, human-only / Slack report checkboxes, Slack thread URL, pull-request URLs
+  one-per-line), activity composer,
   Add sub-task (roots only). Header repeats card actions (copy markdown / ticket ref, Slack, pull
-  request when `pr_url` is set, Zed, human-only / include-in-report toggles, archive). Feedback is
-  agent/CLI-authored (read-only in the
+  request when `pr_url` is set — picker when multiple — Zed, human-only / include-in-report toggles,
+  archive). Feedback is agent/CLI-authored (read-only in the
   GUI). Markdown http(s) links open externally. Esc closes the modal, otherwise hides to tray.
   Click another task to switch; `←`/`→` move to adjacent tasks.
 - **New task dialog:** optional working directory (same typeahead + folder picker as detail), Slack
@@ -319,7 +321,7 @@ status transitions → activity → delete) using only this CLI.
 | `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, parentId (direct children), includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
 | `GetTask(id)` | `show` | prefix match allowed |
 | `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly, IncludeInReport (*bool, default true), SlackThread, TodoSession |
-| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/todo_session; empty→non-empty `pr_url` advances to `pr` |
+| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/todo_session; `pr_url` is newline-separated URL(s); empty→non-empty advances to `pr` |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | optional notify-send per Settings (wip/waiting/review/done); assigns end rank on column change |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |

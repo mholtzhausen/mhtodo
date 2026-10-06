@@ -280,14 +280,15 @@ func TestEditPRURLAdvancesToPR(t *testing.T) {
 		t.Fatalf("status = %q, want pr", got.Status)
 	}
 
-	// Changing URL while already set does not bounce status away from pr.
-	url2 := "https://github.com/org/repo/pull/43"
-	got, err = svc.Edit(ctx, "prurl", core.UpdateInput{PRURL: &url2})
+	// Multi-line replace while already set does not bounce status away from pr.
+	multi := "https://github.com/org/repo/pull/43\n\nhttps://github.com/org/repo/pull/44\nhttps://github.com/org/repo/pull/43"
+	wantMulti := "https://github.com/org/repo/pull/43\nhttps://github.com/org/repo/pull/44"
+	got, err = svc.Edit(ctx, "prurl", core.UpdateInput{PRURL: &multi})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != core.StatusPR || got.PRURL != url2 {
-		t.Fatalf("update url: status=%q url=%q", got.Status, got.PRURL)
+	if got.Status != core.StatusPR || got.PRURL != wantMulti {
+		t.Fatalf("update urls: status=%q url=%q want %q", got.Status, got.PRURL, wantMulti)
 	}
 
 	// Clearing URL leaves status on pr.
@@ -300,8 +301,11 @@ func TestEditPRURLAdvancesToPR(t *testing.T) {
 		t.Fatalf("clear url: status=%q url=%q", got.Status, got.PRURL)
 	}
 
-	// Create with pr_url lands in pr lane.
-	created, err := svc.Create(ctx, core.CreateInput{Title: "from pr", PRURL: url})
+	// Create with pr_url lands in pr lane (normalized).
+	created, err := svc.Create(ctx, core.CreateInput{
+		Title: "from pr",
+		PRURL: "  " + url + "\n\n" + url + "  ",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

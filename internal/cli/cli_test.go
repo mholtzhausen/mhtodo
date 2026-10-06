@@ -395,6 +395,7 @@ func TestSlackThread(t *testing.T) {
 func TestPRURL(t *testing.T) {
 	out, _, run := newCLI(t)
 	link := "https://github.com/org/repo/pull/7"
+	link2 := "https://github.com/org/repo/pull/8"
 
 	out.Reset()
 	if code := run("add", "WIP task", "--status", "wip", "--json"); code != 0 {
@@ -414,6 +415,19 @@ func TestPRURL(t *testing.T) {
 	}
 	if tsk.Status != core.StatusPR {
 		t.Fatalf("status = %q, want pr", tsk.Status)
+	}
+
+	out.Reset()
+	if code := run("edit", id, "--pr-url", link, "--pr-url", link2, "--json"); code != 0 {
+		t.Fatalf("edit multi --pr-url exit %d", code)
+	}
+	mustJSON(t, out.Bytes(), &tsk)
+	want := link + "\n" + link2
+	if tsk.PRURL != want {
+		t.Fatalf("multi pr_url = %q, want %q", tsk.PRURL, want)
+	}
+	if tsk.Status != core.StatusPR {
+		t.Fatalf("status after multi = %q, want pr", tsk.Status)
 	}
 
 	out.Reset()

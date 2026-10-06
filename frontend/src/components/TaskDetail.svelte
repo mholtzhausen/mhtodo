@@ -2,6 +2,7 @@
   import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import { openExternalUrl } from '../lib/openExternal'
+  import { joinPRURLs, parsePRURLs } from '../lib/prUrl'
   import type { GUISettings } from '../lib/settings'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
@@ -255,8 +256,8 @@
 
   async function savePRUrl() {
     if (archived) return
-    const v = prUrl.trim()
-    if (v === (task.pr_url ?? '')) return
+    const v = joinPRURLs(parsePRURLs(prUrl))
+    if (v === joinPRURLs(parsePRURLs(task.pr_url ?? ''))) return
     try {
       await api.update(task.id, { prUrl: v })
     } catch (e) {
@@ -643,31 +644,36 @@
     </label>
 
     <label class="block">
-      <span class="micro mb-1.5">Pull request</span>
-      <input
+      <span class="micro mb-1.5">Pull requests</span>
+      <textarea
         bind:value={prUrl}
         disabled={archived}
         onblur={savePRUrl}
-        placeholder="https://… (optional PR link)"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
-      />
+        rows="2"
+        placeholder={"https://…/pull/1\nhttps://…/pull/2"}
+        class="w-full resize-y rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
+      ></textarea>
       <p class="mt-1 text-[11px] text-ink-3">
-        Setting a URL advances the ticket to the Pull Request lane.
+        One URL per line. Setting the first URL advances the ticket to the Pull Request lane.
       </p>
-      {#if prUrl.trim()}
-        <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
-          Linked PR:
-          <a
-            href={prUrl.trim()}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-accent hover:underline"
-            onclick={(e) => {
-              e.preventDefault()
-              void openExternalUrl(prUrl.trim())
-            }}>{prUrl.trim()}</a
-          >
-        </p>
+      {#if parsePRURLs(prUrl).length > 0}
+        <ul class="mt-1.5 space-y-1 text-xs leading-relaxed text-ink-3">
+          {#each parsePRURLs(prUrl) as url (url)}
+            <li>
+              Linked PR:
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="break-all text-accent hover:underline"
+                onclick={(e) => {
+                  e.preventDefault()
+                  void openExternalUrl(url)
+                }}>{url}</a
+              >
+            </li>
+          {/each}
+        </ul>
       {/if}
     </label>
 

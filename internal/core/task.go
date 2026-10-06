@@ -52,7 +52,7 @@ type Task struct {
 	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
 	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
 	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
-	PRURL           string `json:"pr_url"`            // optional pull-request URL; setting empty→non-empty advances status to pr
+	PRURL           string `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
 	TodoSession     string `json:"todo_session"` // Claude session UUID linked to this ticket (set via edit --session)
 	TerminalPID     int    `json:"terminal_pid"` // legacy column (unused; kept for schema stability)
 
@@ -80,7 +80,7 @@ type CreateInput struct {
 	// value always wins.
 	IncludeInReport *bool
 	SlackThread     string // optional Slack thread URL
-	PRURL           string // optional pull-request URL; non-empty forces status pr
+	PRURL           string // optional PR URL(s), one per line; non-empty forces status pr
 	TodoSession     string // optional; left empty on create unless set (prefer edit --session on adopt)
 }
 

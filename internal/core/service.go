@@ -121,9 +121,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		includeInReport = *in.IncludeInReport
 	}
 	idStr := id.String()
-	prURL := strings.TrimSpace(in.PRURL)
+	prURL := NormalizePRURL(in.PRURL)
 	if prURL != "" {
-		// Non-empty PR URL advances (or creates) in the Pull Request lane.
+		// Non-empty PR URL list advances (or creates) in the Pull Request lane.
 		st = StatusPR
 	}
 	t := Task{
@@ -256,8 +256,8 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	advanceToPR := false
 	if in.PRURL != nil {
-		prev := strings.TrimSpace(t.PRURL)
-		next := strings.TrimSpace(*in.PRURL)
+		prev := NormalizePRURL(t.PRURL)
+		next := NormalizePRURL(*in.PRURL)
 		t.PRURL = next
 		if prev == "" && next != "" && t.Status != StatusPR {
 			advanceToPR = true

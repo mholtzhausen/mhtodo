@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { api, errMsg } from '../lib/api'
   import { shortId } from '../lib/format'
   import { type GUISettings } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
+  import { parsePRURLs, prURLLabel } from '../lib/prUrl'
   import HumanIcon from './HumanIcon.svelte'
   import PullRequestIcon from './PullRequestIcon.svelte'
   import SlackIcon from './SlackIcon.svelte'
@@ -40,6 +42,10 @@
   let copiedRef = $state(false)
   let openingSlack = $state(false)
   let openingPR = $state(false)
+  let prMenuOpen = $state(false)
+  let prMenuRoot = $state<HTMLDivElement | null>(null)
+  let prMenuBtn = $state<HTMLButtonElement | null>(null)
+  let prMenuStyle = $state('')
   let openingZed = $state(false)
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
@@ -56,7 +62,7 @@
     `${zedCommand || 'Open in Zed'} — also copies ticket reference`
   )
   const slackURL = $derived((task.slack_thread ?? '').trim())
-  const prURL = $derived((task.pr_url ?? '').trim())
+  const prURLs = $derived(parsePRURLs(task.pr_url))
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
   const isArchived = $derived(!!task.archived_at)
@@ -185,17 +191,84 @@
     }
   }
 
+  function positionPRMenu() {
+    const btn = prMenuBtn
+    if (!btn) {
+      prMenuStyle = ''
+      return
+    }
+    const r = btn.getBoundingClientRect()
+    const gap = 4
+    const menuW = 224 // ~min-w-[14rem]
+    // Prefer below the button; flip above if near the bottom of the viewport.
+    const spaceBelow = window.innerHeight - r.bottom
+    const openUp = spaceBelow < 160 && r.top > spaceBelow
+    const top = openUp ? undefined : r.bottom + gap
+    const bottom = openUp ? window.innerHeight - r.top + gap : undefined
+    // Right-align to the button; clamp so it stays on-screen.
+    let right = window.innerWidth - r.right
+    right = Math.max(8, Math.min(right, window.innerWidth - menuW - 8))
+    const parts = [`right:${right}px`, `width:${menuW}px`]
+    if (top != null) parts.push(`top:${top}px`)
+    if (bottom != null) parts.push(`bottom:${bottom}px`)
+    prMenuStyle = parts.join(';')
+  }
+
   async function openPR(e: MouseEvent) {
     stop(e)
-    if (openingPR || !prURL) return
+    if (openingPR || prURLs.length === 0) return
+    if (prURLs.length > 1) {
+      if (!prMenuOpen) positionPRMenu()
+      prMenuOpen = !prMenuOpen
+      return
+    }
     openingPR = true
     try {
-      const ok = await openExternalUrl(prURL)
+      const ok = await openExternalUrl(prURLs[0])
       if (!ok) reportError('Invalid pull request URL')
     } finally {
       openingPR = false
     }
   }
+
+  async function openPRChoice(e: MouseEvent, url: string) {
+    stop(e)
+    prMenuOpen = false
+    if (openingPR) return
+    openingPR = true
+    try {
+      const ok = await openExternalUrl(url)
+      if (!ok) reportError('Invalid pull request URL')
+    } finally {
+      openingPR = false
+    }
+  }
+
+  function onPRMenuPointerDown(e: PointerEvent) {
+    if (!prMenuOpen || !prMenuRoot) return
+    if (!prMenuRoot.contains(e.target as Node)) prMenuOpen = false
+  }
+
+  function onPRMenuKeydown(e: KeyboardEvent) {
+    if (prMenuOpen && e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      prMenuOpen = false
+    }
+  }
+
+  function onPRMenuScrollOrResize() {
+    if (prMenuOpen) prMenuOpen = false
+  }
+
+  // Lane overflow scrolls don't bubble to window — capture so the fixed menu closes.
+  onMount(() => {
+    const close = () => {
+      if (prMenuOpen) prMenuOpen = false
+    }
+    document.addEventListener('scroll', close, true)
+    return () => document.removeEventListener('scroll', close, true)
+  })
 
   async function openZed(e: MouseEvent) {
     stop(e)
@@ -276,6 +349,13 @@
   }
 </script>
 
+<svelte:window
+  onpointerdown={onPRMenuPointerDown}
+  onkeydown={onPRMenuKeydown}
+  onscroll={onPRMenuScrollOrResize}
+  onresize={onPRMenuScrollOrResize}
+/>
+
 <div
   class="flex items-center gap-0.5"
   role="group"
@@ -337,17 +417,43 @@
     </button>
   {/if}
 
-  {#if prURL}
-    <button
-      type="button"
-      onclick={openPR}
-      disabled={openingPR}
-      title="Open pull request"
-      aria-label="Open pull request"
-      class="{actionBtn} text-ink-3 hover:text-ink"
-    >
-      <PullRequestIcon class="h-3 w-3" title="" />
-    </button>
+  {#if prURLs.length > 0}
+    <div class="relative" bind:this={prMenuRoot} data-pr-menu>
+      <button
+        type="button"
+        bind:this={prMenuBtn}
+        onclick={openPR}
+        disabled={openingPR}
+        title={prURLs.length > 1 ? 'Choose pull request' : 'Open pull request'}
+        aria-label={prURLs.length > 1 ? 'Choose pull request' : 'Open pull request'}
+        aria-expanded={prURLs.length > 1 ? prMenuOpen : undefined}
+        aria-haspopup={prURLs.length > 1 ? 'menu' : undefined}
+        class="{actionBtn} text-ink-3 hover:text-ink {prMenuOpen ? 'bg-white/8 text-ink' : ''}"
+      >
+        <PullRequestIcon class="h-3 w-3" title="" />
+      </button>
+      {#if prMenuOpen && prURLs.length > 1}
+        <div
+          role="menu"
+          style={prMenuStyle}
+          class="fixed z-50 max-h-[min(240px,40vh)] overflow-y-auto rounded-control border border-line bg-col py-0 shadow-md ring-1 ring-black/25"
+        >
+          {#each prURLs as url, i (url)}
+            <button
+              type="button"
+              role="menuitem"
+              title={url}
+              onclick={(e) => void openPRChoice(e, url)}
+              class="flex w-full items-center gap-2 truncate px-2.5 py-2 text-left font-mono text-[11px] text-ink-2 transition-colors hover:bg-accent/20 hover:text-ink
+                {i > 0 ? 'border-t border-line-soft' : ''}"
+            >
+              <PullRequestIcon class="h-3 w-3 flex-none text-ink-3" title="" />
+              <span class="min-w-0 truncate">{prURLLabel(url)}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   {/if}
 
   {#if showZed}
