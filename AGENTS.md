@@ -63,7 +63,7 @@ running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
 **Zed** (Settings → Integrations) opens the task working directory when enabled; there is no
 direct Claude/Herdr/terminal spawn. Board/list cards can copy a markdown report or a
-ticket reference line (`mhtodo://task/{short8} - {status} - {title} …`). Legacy DB columns
+ticket reference block (`MHTodo Ticket: mhtodo://task/{short8}` plus Status/Title). Legacy DB columns
 `todo_session` / `terminal_pid` remain for schema stability but are unused.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default

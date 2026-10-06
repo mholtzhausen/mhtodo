@@ -14,12 +14,14 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 14
+const IntegrationVersion = 15
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v14 Ticket deep links: GUI copy uses mhtodo://task/{short8} - {status} - {title} …
-    (opens via mhtodo open / desktop x-scheme-handler). mhtodo open TARGET raises
-    the GUI on that task (TARGET = id/prefix or URI).
+const integrationChangelog = `v15 Ticket reference (GUI copy) is a fenced block:
+    --- / MHTodo Ticket: mhtodo://task/{short8} / Status: / Title: / reminder / ---
+v14 Ticket deep links: GUI copy uses mhtodo://task/{short8}; mhtodo open TARGET
+    raises the GUI on that task (TARGET = id/prefix or URI); desktop
+    x-scheme-handler/mhtodo.
 v13 Removed direct Claude/Herdr/terminal spawn from the app. No mhtodo
     integration / claude.todo shell helper; no --session on add/edit. Zed opens
     the task working directory only (no MHTODO_SESSION). Agent skill/hooks for

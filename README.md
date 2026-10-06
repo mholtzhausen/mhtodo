@@ -187,11 +187,16 @@ have a working directory. It runs the configured binary with the task `cwd` (opt
 prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts still install via
 `mhtodo ai` (Claude Code skill/hooks remain the reference mapping).
 
-Card actions also copy a paste-ready **markdown report** or a **ticket reference** line
+Card actions also copy a paste-ready **markdown report** or a **ticket reference** block
 (deep link + status/title reminder):
 
 ```
-mhtodo://task/{short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
+---
+MHTodo Ticket: mhtodo://task/{short8}
+Status: {status}
+Title: {title}
+ *remember to update subtasks and activity comments if you do work on this*
+---
 ```
 
 Clicking `mhtodo://task/…` (or running `mhtodo open mhtodo://task/{short8}`) raises the

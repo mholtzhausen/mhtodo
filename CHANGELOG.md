@@ -4,7 +4,8 @@
 
 ### Features and Improvements
 - Deep links: `mhtodo open TARGET` and `mhtodo://task/{id}` (desktop `x-scheme-handler/mhtodo`) raise the GUI on a task
-- Board/list ticket reference copy uses `mhtodo://task/{short8} - {status} - {title} …`
+- Board/list ticket reference copy is a `---` block: MHTodo Ticket URI, Status, Title, reminder
+- `mhtodo ai` contract v15: multi-line ticket reference block
 - Zed integration opens the task working directory only (no `MHTODO_SESSION`)
 - Board/list: copy ticket reference next to the markdown report action
 - `mhtodo ai` contract v14: deep-link ticket reference + `mhtodo open`; v13 kept Claude Code skill/hooks and dropped spawn/session/`claude.todo` surface

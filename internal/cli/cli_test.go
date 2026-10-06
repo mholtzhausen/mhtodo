@@ -771,15 +771,17 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 14",
+		"Integration contract version: 15",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
 		"board|created|updated|status|progress|title",
+		"MHTodo Ticket:",
 		"mhtodo://task/",
 		"mhtodo open",
 		"mhtodo template search",
+		"v15 Ticket reference",
 		"v14 Ticket deep links",
 		"v13 Removed direct Claude",
 		"v12 Full task-template CLI",
@@ -816,7 +818,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 14 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 15 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

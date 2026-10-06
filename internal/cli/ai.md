@@ -121,19 +121,24 @@ checkout. The GUI folder picker sets the same field. When Zed integration is ena
 the GUI opens Zed at that folder.
 
 **Ticket reference (GUI copy):** the board/list card action “Copy ticket reference”
-puts a one-line handoff on the clipboard. Treat a user paste like this as pointing
+puts a handoff block on the clipboard. Treat a user paste like this as pointing
 at that ticket:
 
 ```
-mhtodo://task/{short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
+---
+MHTodo Ticket: mhtodo://task/{short8}
+Status: {status}
+Title: {title}
+ *remember to update subtasks and activity comments if you do work on this*
+---
 ```
 
 `{short8}` is the last 8 hex chars of the task id (same short id used elsewhere).
-The `mhtodo://task/{short8}` prefix is a desktop deep link: on an installed
-mhtodo it opens/raises the GUI focused on that task (`mhtodo open` / `.desktop`
+`mhtodo://task/{short8}` is a desktop deep link: on an installed mhtodo it
+opens/raises the GUI focused on that task (`mhtodo open` / `.desktop`
 `x-scheme-handler/mhtodo`). Resolve in the CLI with `mhtodo show {short8}` (or
 the full id), or `mhtodo open mhtodo://task/{short8}`. Keep status, progress, and
-sub-tasks current while you work — that reminder is part of the paste line.
+sub-tasks current while you work — that reminder is part of the paste block.
 
 **`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
 `show --markdown`, and `slack report` include the reminder:
