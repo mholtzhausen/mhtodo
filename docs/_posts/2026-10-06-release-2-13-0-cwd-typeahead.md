@@ -27,4 +27,4 @@ Selecting a suggestion **only sets cwd** — it does not apply the rest of the t
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 2.13.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2130-17c4872) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.13.0).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 2.13.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2130-5aca2cd) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.13.0).
