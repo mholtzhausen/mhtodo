@@ -24,6 +24,12 @@ func LookPathForTest(f func(string) (string, error)) (restore func()) {
 	return func() { lookPath = prev }
 }
 
+// ClaudeAvailable reports whether the claude binary is on PATH (uses the LookPath test seam).
+func ClaudeAvailable() bool {
+	_, err := lookPath("claude")
+	return err == nil
+}
+
 // commandContext is a test seam for exec.CommandContext.
 var commandContext = exec.CommandContext
 

@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 2.11.1 (PENDING)
+
+### Features and Improvements
+- `mhtodo update` prints console progress before Claude skill install and before the optional `claude -p` refresh (which can take up to a few minutes), so a quiet wait is less confusing
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 2.11.0 (e61b54c)
 
 ### Features and Improvements

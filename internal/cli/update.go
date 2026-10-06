@@ -43,6 +43,8 @@ present, stop it, rewrite the unit, and enable --now after the swap.
 
 After a successful binary update, installs/updates the Claude mhtodo skill
 (mhtodo ai) and, when claude is on PATH, runs a non-interactive skill refresh.
+Progress for the skill steps is printed to the console before they start
+(human output only); the Claude refresh can take up to a few minutes.
 Skill refresh failures are warnings only.
 
 Auth: set GH_TOKEN or GITHUB_TOKEN for private-repo / rate-limit headroom.
@@ -64,7 +66,23 @@ Flags: --check reports only; --force reinstalls even when already current;
 			}
 
 			env := updateJSON{Result: res}
+			human := !o.json && !o.quiet
+			notify := func(msg string) {
+				if !human {
+					return
+				}
+				_, _ = fmt.Fprintln(o.out, msg)
+			}
+
 			if res.Updated && !checkOnly {
+				// Print binary result first so skill steps are visibly after it.
+				if human {
+					if _, err = fmt.Fprintln(o.out, res.Message); err != nil {
+						return err
+					}
+				}
+
+				notify("Updating Claude skill…")
 				skillRes, skillErr := aiskill.Install()
 				if skillErr != nil {
 					env.SkillRefreshError = skillErr.Error()
@@ -75,9 +93,13 @@ Flags: --check reports only; --force reinstalls even when already current;
 					skipClaude := noSkillRefresh ||
 						os.Getenv("MHTODO_SKIP_SKILL_REFRESH") == "1" ||
 						os.Getenv("MHTODO_SKIP_SKILL_REFRESH") == "true"
-					if skipClaude {
+					if skipClaude || !aiskill.ClaudeAvailable() {
 						env.SkillRefreshSkipped = true
 					} else {
+						notify(fmt.Sprintf(
+							"Refreshing Claude skill via claude (may take up to %s)…",
+							aiskill.DefaultRefreshTimeout,
+						))
 						_, skipped, refreshErr := aiskill.RefreshClaude(aiskill.DefaultRefreshTimeout)
 						env.SkillRefreshSkipped = skipped
 						if refreshErr != nil {
@@ -96,8 +118,11 @@ Flags: --check reports only; --force reinstalls even when already current;
 				}
 				return err
 			}
-			if _, err = fmt.Fprintln(o.out, res.Message); err != nil {
-				return err
+			// Binary message already printed when Updated; print it for check/no-op.
+			if !(res.Updated && !checkOnly) {
+				if _, err = fmt.Fprintln(o.out, res.Message); err != nil {
+					return err
+				}
 			}
 			if res.Updated && !checkOnly {
 				if env.SkillPath != "" {
@@ -115,6 +140,8 @@ Flags: --check reports only; --force reinstalls even when already current;
 					_, _ = fmt.Fprintln(o.out, formatSkillRefreshWarn(env.SkillRefreshError))
 				} else if env.SkillPath != "" && !env.SkillRefreshSkipped && env.SkillRefreshError == "" {
 					_, _ = fmt.Fprintln(o.out, "skill refresh via claude: ok")
+				} else if env.SkillPath != "" && env.SkillRefreshSkipped {
+					_, _ = fmt.Fprintln(o.out, "skill refresh via claude: skipped")
 				}
 			}
 			return nil

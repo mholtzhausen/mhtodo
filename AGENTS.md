@@ -13,7 +13,8 @@
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
  systemd unit (prompts on a TTY; flags for non-interactive).
  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when
- present); after a successful binary update it runs skill install and optionally `claude -p` refresh.
+ present); after a successful binary update it runs skill install and optionally `claude -p` refresh
+ (console announces each skill step first — refresh can take minutes).
  `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install.
  `mhtodo template list|search|show|create|update|rm` manages task templates
  (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.

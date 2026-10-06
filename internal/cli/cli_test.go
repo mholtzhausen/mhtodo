@@ -938,6 +938,26 @@ func TestUpdateInstallsSkill(t *testing.T) {
 	if _, err := os.Stat(wantSkill); err != nil {
 		t.Fatal(err)
 	}
+
+	out.Reset()
+	errb.Reset()
+	if code := run("update"); code != 0 {
+		t.Fatalf("human: exit %d (%s)", code, errb.String())
+	}
+	got := out.String()
+	for _, want := range []string{
+		"updated to v9.9.9",
+		"Updating Claude skill…",
+		"skill updated at " + wantSkill,
+		"skill refresh via claude: skipped",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("human missing %q in %q", want, got)
+		}
+	}
+	if strings.Contains(got, "Refreshing Claude skill via claude") {
+		t.Errorf("human should not announce Claude refresh when claude is missing: %q", got)
+	}
 }
 
 func TestInstallCommandJSON(t *testing.T) {
