@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.0.1 (PENDING)
+## 3.0.1 (cfc4e76)
 
 ### Features and Improvements
 - Docs / GitHub Pages blog: Minima skin with Paper reading surface, Slate header, Sora + Source Serif typography, and release/guide category chips (`docs/assets/main.scss`)
