@@ -143,3 +143,5 @@ for how this file and the plan folder are structured.
   temp-dir DBs via `MHTODO_DB_PATH`.
 - The repo is empty until M1 — do not scaffold ahead of the milestone you are on.
 - Keep this file updated when scope, constraints, or the plan location changes.
+- Public blog (Jekyll / GitHub Pages) lives in `docs/` — posts in `docs/_posts/`; do not treat
+  `docs/` as empty API stubs. Site: https://mholtzhausen.github.io/mhtodo/

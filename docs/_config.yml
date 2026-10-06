@@ -1,0 +1,16 @@
+title: mhtodo
+description: Release notes and guides for mhtodo — a personal todo manager with CLI and GUI.
+url: "https://mholtzhausen.github.io"
+baseurl: "/mhtodo"
+
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+show_excerpts: true
+
+github_username: mholtzhausen
+
+header_pages:
+  - about.md

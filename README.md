@@ -9,6 +9,8 @@ A personal todo manager in Go. **One binary, two frontends over one shared core:
 
 Both frontends call the same `core.Service`; neither contains business rules or SQL of its own. Every CLI command has an exact GUI equivalent and vice versa (parity table below). All data lives in one SQLite database — safe to drive from both at once.
 
+**Blog:** [mholtzhausen.github.io/mhtodo](https://mholtzhausen.github.io/mhtodo/) (release notes and guides) · [posts as Markdown](https://github.com/mholtzhausen/mhtodo/tree/main/docs/_posts)
+
 ## Install
 
 ### From source
