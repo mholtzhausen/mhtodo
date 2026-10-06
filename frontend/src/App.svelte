@@ -169,6 +169,8 @@
   )
   const dialogDefaultSlackThread = $derived(dialogParent?.slack_thread ?? '')
 
+  let appVersion = $state('')
+
   const installUpdateAvailable = $derived(!!installStatus && !installStatus.up_to_date)
   /** Enabled when a newer release exists, or Ctrl is held while hovering (force). */
   const installEnabled = $derived(installUpdateAvailable || (ctrlHeld && installHover))
@@ -731,6 +733,12 @@
     window.addEventListener('keyup', onCtrlKeyup)
     window.addEventListener('blur', onCtrlBlur)
     window.addEventListener('resize', onWindowResize)
+    try {
+      const v = (await api.appVersion()).trim()
+      if (v) appVersion = v
+    } catch {
+      /* ignore */
+    }
     await load()
     // Cold-start deep links: Go may have emitted focus-task before EventsOn.
     try {
@@ -780,12 +788,17 @@
       >
         M
       </span>
-      <h1
-        class="text-[15px] font-semibold tracking-tight text-ink
+      <div
+        class="flex min-w-0 flex-col justify-center leading-none
           {narrowChrome ? 'sr-only' : ''}"
       >
-        mhtodo
-      </h1>
+        <h1 class="text-[15px] font-semibold tracking-tight text-ink">mhtodo</h1>
+        {#if appVersion}
+          <span class="mt-0.5 text-[9px] font-normal tracking-wide text-ink-3/35"
+            >{appVersion}</span
+          >
+        {/if}
+      </div>
     </div>
 
     <div

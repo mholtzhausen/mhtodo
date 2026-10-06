@@ -271,6 +271,11 @@ export const api = {
     return App.ResetTheme(ref) as Promise<Theme>
   },
 
+  /** Binary version stamped at build time (e.g. "2.10.0", or "dev"). */
+  appVersion(): Promise<string> {
+    return App.AppVersion()
+  },
+
   // --- install / update (header Install control) ---
   getInstallStatus(force = false): Promise<InstallStatus> {
     return App.GetInstallStatus(force).then((raw: any) => ({

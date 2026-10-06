@@ -456,6 +456,9 @@ func (a *App) ResetTheme(ref string) (core.Theme, error) {
 // DBPath maps to CLI `path`; shown in the GUI footer.
 func (a *App) DBPath() string { return store.DBPath() }
 
+// AppVersion returns the binary version stamped at build time (Makefile -ldflags).
+func (a *App) AppVersion() string { return version }
+
 // SlackReport maps to CLI `slack report`: a paste-ready board summary.
 func (a *App) SlackReport() (string, error) {
 	return a.svc.SlackReport(a.ctx)

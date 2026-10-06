@@ -12,6 +12,8 @@ export function Archive(arg1:string):Promise<core.Task>;
 
 export function ArchiveDone():Promise<Array<core.Task>>;
 
+export function AppVersion():Promise<string>;
+
 export function CheckBinary(arg1:string):Promise<boolean>;
 
 export function CountChildren(arg1:string):Promise<number>;

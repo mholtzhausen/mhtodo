@@ -18,6 +18,10 @@ export function ArchiveDone() {
   return window['go']['main']['App']['ArchiveDone']();
 }
 
+export function AppVersion() {
+  return window['go']['main']['App']['AppVersion']();
+}
+
 export function CheckBinary(arg1) {
   return window['go']['main']['App']['CheckBinary'](arg1);
 }

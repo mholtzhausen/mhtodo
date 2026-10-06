@@ -3,15 +3,26 @@
 ## Unreleased
 
 ### Features and Improvements
-- Deep links: `mhtodo open TARGET` and `mhtodo://task/{id}` (desktop `x-scheme-handler/mhtodo`) raise the GUI on a task
-- Board/list ticket reference copy is a `---` block: MHTodo Ticket URI, Status, Title, reminder
-- `mhtodo ai` contract v15: multi-line ticket reference block
-- Zed integration opens the task working directory only (no `MHTODO_SESSION`)
-- Board/list: copy ticket reference next to the markdown report action
-- `mhtodo ai` contract v14: deep-link ticket reference + `mhtodo open`; v13 kept Claude Code skill/hooks and dropped spawn/session/`claude.todo` surface
+- (none)
 
 ### Bugfixes
-- Deep link / `mhtodo open`: open the task detail modal (keep pending focus across instance-lock races; drain pending focus after frontend ready)
+- (none)
+
+### Deprecations
+- (none)
+
+## 2.10.0
+
+### Features and Improvements
+- Deep links: `mhtodo open TARGET` and `mhtodo://task/{id}` (desktop `x-scheme-handler/mhtodo`) raise the GUI on a task and open its detail modal
+- Board/list ticket reference copy is a `---` block: MHTodo Ticket URI, Status, Title, reminder
+- Header brand shows a light build-version subtext
+- `mhtodo ai` contract v15: multi-line ticket reference block (v14 deep links / `mhtodo open`)
+- Zed integration opens the task working directory only (no `MHTODO_SESSION`)
+- Board/list: copy ticket reference next to the markdown report action
+
+### Bugfixes
+- Deep link / `mhtodo open`: keep pending focus across instance-lock races; drain pending focus after frontend ready
 
 ### Deprecations
 - Removed direct Claude/Herdr/terminal spawn from Settings and GUI
