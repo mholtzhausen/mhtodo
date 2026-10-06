@@ -7,6 +7,7 @@
   import StatusPicker from './StatusPicker.svelte'
   import TemplatePicker from './TemplatePicker.svelte'
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
+  import CwdField from './CwdField.svelte'
 
   let {
     open,
@@ -95,15 +96,6 @@
       const at = Math.min(titlePrefix.length, title.length)
       titleEl?.setSelectionRange(at, at)
     })
-  }
-
-  async function pickCwd() {
-    try {
-      const path = await api.pickDirectory(cwd.trim())
-      if (path) cwd = path
-    } catch (err) {
-      onError?.(errMsg(err))
-    }
   }
 
   async function submit(e: Event) {
@@ -263,32 +255,7 @@
 
         <div class="block">
           <span class="micro mb-1.5">Working directory</span>
-          <div class="flex gap-2">
-            <input
-              bind:value={cwd}
-              placeholder="Optional project path…"
-              class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-            />
-            <button
-              type="button"
-              onclick={pickCwd}
-              title="Pick folder"
-              class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
-            >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-              </svg>
-            </button>
-          </div>
+          <CwdField bind:value={cwd} onError={onError} inputClass="text-sm" />
         </div>
 
         <label class="block">

@@ -21,6 +21,7 @@
     refreshBinaryReadiness,
     setIntegrationSettings
   } from './lib/integrationStatus'
+  import { refreshCwdSuggestions } from './lib/cwdSuggestions'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
@@ -527,11 +528,22 @@
   }
 
   let unbindChanged: (() => void) | undefined
+  let unbindTemplatesChanged: (() => void) | undefined
   let unbindThemesChanged: (() => void) | undefined
   let unbindTrayNewTask: (() => void) | undefined
   let unbindTrayNewTaskTemplate: (() => void) | undefined
   let unbindTrayOpenSettings: (() => void) | undefined
   let unbindFocusTask: (() => void) | undefined
+  let cwdSuggestTimer: ReturnType<typeof setTimeout> | undefined
+
+  function scheduleCwdSuggestionsRefresh(delay = 150) {
+    clearTimeout(cwdSuggestTimer)
+    cwdSuggestTimer = setTimeout(() => {
+      void refreshCwdSuggestions().catch(() => {
+        /* ignore — typeahead stays on last warm list */
+      })
+    }, delay)
+  }
 
   /** Single entry point for every "create a task" affordance. */
   function openNewTask(opts: { status?: Status | ''; parentId?: string; template?: boolean } = {}) {
@@ -576,6 +588,7 @@
     if (e.key === 'Escape') {
       if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"]')) return
       if (document.querySelector('[data-ticket-filter][data-open="true"]')) return
+      if (document.querySelector('[data-cwd-field] [role="combobox"][aria-expanded="true"]')) return
       e.preventDefault()
       if (confirmTask) confirmTask = null
       else if (installOpen && !installBusy) installOpen = false
@@ -713,6 +726,10 @@
     unbindChanged = EventsOn('tasks:changed', (...data: unknown[]) => {
       const payload = data[0] as { id?: string; op?: string } | undefined
       onTasksChanged(payload)
+      scheduleCwdSuggestionsRefresh()
+    })
+    unbindTemplatesChanged = EventsOn('templates:changed', () => {
+      scheduleCwdSuggestionsRefresh(0)
     })
     unbindThemesChanged = EventsOn('themes:changed', async () => {
       try {
@@ -743,6 +760,10 @@
     } catch {
       /* ignore */
     }
+    // Warm cwd typeahead candidates in the background (no focus lag later).
+    void refreshCwdSuggestions().catch(() => {
+      /* ignore */
+    })
     await load()
     // Cold-start deep links: Go may have emitted focus-task before EventsOn.
     try {
@@ -757,9 +778,11 @@
     clearTimeout(toastTimer)
     clearTimeout(loadTimer)
     clearTimeout(searchTimer)
+    clearTimeout(cwdSuggestTimer)
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
     if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
     unbindChanged?.()
+    unbindTemplatesChanged?.()
     unbindThemesChanged?.()
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()

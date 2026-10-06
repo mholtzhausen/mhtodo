@@ -251,15 +251,16 @@ status transitions → activity → delete) using only this CLI.
   `l` / `a`; choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
-- **Detail pane:** edit fields (including working directory with folder picker, Todo session /
+- **Detail pane:** edit fields (including working directory with fuzzy typeahead over template
+  cwds and previously used ticket paths — plus folder picker / free-typed path — Todo session /
   Claude session UUID, human-only / Slack report checkboxes, Slack thread URL), activity composer,
   Add sub-task (roots only). Feedback is agent/CLI-authored (read-only in the GUI). Markdown
   http(s) links open externally. **Pin** / Float / Modal detail modes (persisted). Esc closes
   modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch; `←`/`→`
   move to adjacent tasks.
-- **New task dialog:** optional working directory, Slack thread, human-only, include-in-Slack-report
-  (defaults from Settings), and initial status. Header icons apply a **task template** or save the
-  current fields as one.
+- **New task dialog:** optional working directory (same typeahead + folder picker as detail), Slack
+  thread, human-only, include-in-Slack-report (defaults from Settings), and initial status. Header
+  icons apply a **task template** or save the current fields as one.
 - **Task templates:** named sets of presets — title prefix, description, status, working directory,
   Slack thread, human-only, include-in-report. Authored under **Settings → Task Templates**, where
   each template is its own sub-nav item. Only the fields you set are applied; anything left unset

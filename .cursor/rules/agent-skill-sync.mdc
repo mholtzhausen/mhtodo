@@ -1,0 +1,15 @@
+---
+description: Keep the embedded agent skill accurate when CLI or workflows change
+alwaysApply: true
+---
+
+# Agent skill sync (mhtodo)
+
+Whenever a change affects **how the software works for agents** — CLI commands/flags/JSON fields/exit codes, status workflows, templates, ticket handoff, or documented agent procedures — **check and update** the embedded Claude skill before considering the work done:
+
+- Source of truth: [`internal/aiskill/SKILL.md`](internal/aiskill/SKILL.md)
+- Installed copy: `~/.claude/skills/mhtodo/SKILL.md` (via `mhtodo ai`)
+
+Do this even when README/AGENTS.md were already updated. GUI-only UX that does not change CLI contracts or agent workflows does not require a skill edit — still verify that nothing in the skill became stale.
+
+If the skill changes, keep the cheat-sheet and workflow sections aligned with the real CLI; do not invent commands.

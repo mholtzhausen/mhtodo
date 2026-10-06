@@ -106,7 +106,10 @@ Windows/macOS support, tags/labels/projects, due dates/reminders.
 (when not in an input/textarea); http(s) links open in the system browser (not the
 webview). Detail pane includes **Todo session** (`todo_session` / `edit --session`) and
 **Pull request** (`pr_url` / `edit --pr-url`; setting a URL advances to the `pr` lane).
-Detail-pane description & feedback grow with content up to 500px, then scroll.
+Working directory fields (detail + new task) use a warm typeahead: template name + cwd rows
+and previously used ticket cwds, fuzzy-ranked (template names preferred), with folder picker
+and free-typed path still available. Detail-pane description & feedback grow with content up
+to 500px, then scroll.
 
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle
@@ -150,6 +153,10 @@ for how this file and the plan folder are structured.
 
 - Run `make test` after touching `internal/core`, `internal/store`, or `internal/cli`; golden tests use
   temp-dir DBs via `MHTODO_DB_PATH`.
+- When a change affects agent workflows or the CLI surface (commands, flags, JSON fields, exit codes,
+  status/template/ticket handoff), update [`internal/aiskill/SKILL.md`](internal/aiskill/SKILL.md)
+  so the installed `mhtodo ai` skill stays accurate — not only README/AGENTS.md. GUI-only UX that
+  leaves the CLI/agent contract untouched does not require a skill edit; still confirm nothing stale.
 - The repo is empty until M1 — do not scaffold ahead of the milestone you are on.
 - Keep this file updated when scope, constraints, or the plan location changes.
 - Public blog (Jekyll / GitHub Pages) lives in `docs/` — posts in `docs/_posts/`; do not treat
