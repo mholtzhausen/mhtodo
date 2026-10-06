@@ -135,7 +135,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,
 		SlackThread:     strings.TrimSpace(in.SlackThread),
-		TodoSession:     strings.TrimSpace(in.TodoSession), // inert legacy column; not seeded
+		TodoSession:     strings.TrimSpace(in.TodoSession), // not auto-seeded; agents set via edit --session
 	}
 	if st == StatusDone {
 		t.Progress = 100

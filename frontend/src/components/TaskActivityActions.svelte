@@ -72,7 +72,9 @@
       `MHTodo Ticket: mhtodo://task/${id}`,
       `Status: ${status}`,
       `Title: ${title}`,
-      ' *remember to update subtasks and activity comments if you do work on this*',
+      'Instructions: (only if you start working on this task) ',
+      ` - record your current claude session against the ticket: \`mhtodo edit ${id} --session <claude-session-uuid>\``,
+      ' - remember to update subtasks and activity comments if you do work on this',
       '---',
       ''
     ].join('\n')

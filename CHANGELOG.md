@@ -3,7 +3,9 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Restore `mhtodo edit ID --session` to link a Claude session UUID on the ticket (`todo_session`; empty clears)
+- Ticket reference copy Instructions: record `--session` on adopt, plus sub-task/activity reminder
+- `mhtodo ai` contract **v16**: adopt must set `--session`; updated ticket-reference block
 
 ### Bugfixes
 - (none)

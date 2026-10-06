@@ -49,11 +49,13 @@ On a board or list card, use **Copy ticket reference**. You get a handoff block 
 MHTodo Ticket: mhtodo://task/{short8}
 Status: {status}
 Title: {title}
- *remember to update subtasks and activity comments if you do work on this*
+Instructions: (only if you start working on this task) 
+ - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
+ - remember to update subtasks and activity comments if you do work on this
 ---
 ```
 
-Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. The agent should resolve it with `mhtodo show` and keep **status, progress, and sub-tasks** current while working.
+Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current.
 
 You can also say “work on the foo ticket” and let the agent search — still no autonomous pickup from a silent board scan.
 

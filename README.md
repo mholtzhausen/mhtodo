@@ -105,7 +105,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--slack-thread ""` clear those fields |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--slack-thread ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
@@ -179,8 +179,8 @@ Activity entry:
 (lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
 directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
 such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
-Legacy JSON fields `todo_session` / `terminal_pid` may still appear (empty/0) for schema stability —
-ignore them.
+`todo_session` holds the Claude session UUID linked when an agent adopts the ticket
+(`mhtodo edit ID --session …`). Legacy `terminal_pid` may still appear as `0` — ignore it.
 
 ### Zed (Settings → Integrations)
 
@@ -190,14 +190,16 @@ prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts 
 `mhtodo ai` (Claude Code skill/hooks remain the reference mapping).
 
 Card actions also copy a paste-ready **markdown report** or a **ticket reference** block
-(deep link + status/title reminder):
+(deep link + status/title + agent Instructions):
 
 ```
 ---
 MHTodo Ticket: mhtodo://task/{short8}
 Status: {status}
 Title: {title}
- *remember to update subtasks and activity comments if you do work on this*
+Instructions: (only if you start working on this task) 
+ - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
+ - remember to update subtasks and activity comments if you do work on this
 ---
 ```
 

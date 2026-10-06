@@ -125,6 +125,7 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
+    todoSession?: string
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -135,7 +136,7 @@ export const api = {
       HumanOnly: patch.humanOnly ?? null,
       IncludeInReport: patch.includeInReport ?? null,
       SlackThread: patch.slackThread ?? null,
-      TodoSession: null
+      TodoSession: patch.todoSession !== undefined ? patch.todoSession : null
     })
   },
   setStatus(id: string, status: Status) {

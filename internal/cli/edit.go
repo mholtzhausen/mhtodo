@@ -9,13 +9,13 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback, cwd, slackThread string
+	var title, desc, feedback, cwd, slackThread, session string
 	var progress int
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
 	cmd := &cobra.Command{
 		Use:   "edit ID",
-		Short: "Update a task's title/description/feedback/progress (at least one flag)",
+		Short: "Update a task's title/description/feedback/progress/session (at least one flag)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o, err := o(cmd)
@@ -35,34 +35,38 @@ func newEditCmd() *cobra.Command {
 				v := feedback
 				in.Feedback = &v
 			}
-		if cmd.Flags().Changed("progress") {
-			v := progress
-			in.Progress = &v
-		}
-		if cmd.Flags().Changed("cwd") {
-			v := cwd
-			in.Cwd = &v
-		}
-		if cmd.Flags().Changed("slack-thread") {
-			v := slackThread
-			in.SlackThread = &v
-		}
-		switch {
-		case cmd.Flags().Changed("human-only"):
-			v := humanOnly
-			in.HumanOnly = &v
-		case cmd.Flags().Changed("no-human-only"):
-			v := false
-			in.HumanOnly = &v
-		case cmd.Flags().Changed("include-in-report"):
-			v := includeInReport
-			in.IncludeInReport = &v
-		case cmd.Flags().Changed("no-include-in-report"):
-			v := false
-			in.IncludeInReport = &v
-		}
+			if cmd.Flags().Changed("progress") {
+				v := progress
+				in.Progress = &v
+			}
+			if cmd.Flags().Changed("cwd") {
+				v := cwd
+				in.Cwd = &v
+			}
+			if cmd.Flags().Changed("slack-thread") {
+				v := slackThread
+				in.SlackThread = &v
+			}
+			if cmd.Flags().Changed("session") {
+				v := session
+				in.TodoSession = &v
+			}
+			switch {
+			case cmd.Flags().Changed("human-only"):
+				v := humanOnly
+				in.HumanOnly = &v
+			case cmd.Flags().Changed("no-human-only"):
+				v := false
+				in.HumanOnly = &v
+			case cmd.Flags().Changed("include-in-report"):
+				v := includeInReport
+				in.IncludeInReport = &v
+			case cmd.Flags().Changed("no-include-in-report"):
+				v := false
+				in.IncludeInReport = &v
+			}
 
-		svc, closeDB, err := openService()
+			svc, closeDB, err := openService()
 			if err != nil {
 				return err
 			}
@@ -81,6 +85,7 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().IntVar(&progress, "progress", 0, "new progress 0-100")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "working directory path (empty clears)")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL (empty clears)")
+	cmd.Flags().StringVar(&session, "session", "", "Claude session UUID linked to this ticket (empty clears)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
 	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report")

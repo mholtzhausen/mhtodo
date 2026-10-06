@@ -14,18 +14,24 @@ import (
 // IntegrationVersion is the agent-integration contract version emitted by
 // `mhtodo ai`. Bump when §3/§4 behavioural rules change in a way that
 // upgrades must notice — independent of the binary version.
-const IntegrationVersion = 15
+const IntegrationVersion = 16
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
-const integrationChangelog = `v15 Ticket reference (GUI copy) is a fenced block:
+const integrationChangelog = `v16 On adopt, record the current Claude session on the ticket with
+    mhtodo edit ID --session <claude-session-uuid> (empty clears). Ticket
+    reference Instructions block requires that plus sub-task/activity updates.
+    todo_session is again the agent-facing link from ticket → session (not used
+    for in-app Claude spawn). terminal_pid remains inert.
+v15 Ticket reference (GUI copy) is a fenced block:
     --- / MHTodo Ticket: mhtodo://task/{short8} / Status: / Title: / reminder / ---
 v14 Ticket deep links: GUI copy uses mhtodo://task/{short8}; mhtodo open TARGET
     raises the GUI on that task (TARGET = id/prefix or URI); desktop
     x-scheme-handler/mhtodo.
 v13 Removed direct Claude/Herdr/terminal spawn from the app. No mhtodo
-    integration / claude.todo shell helper; no --session on add/edit. Zed opens
-    the task working directory only (no MHTODO_SESSION). Agent skill/hooks for
-    Claude Code remain the host-mapping reference.
+    integration / claude.todo shell helper; --session removed from add/edit
+    (restored in v16 for ticket↔session linking only). Zed opens the task
+    working directory only (no MHTODO_SESSION). Agent skill/hooks for Claude
+    Code remain the host-mapping reference.
 v12 Full task-template CLI: mhtodo template list|search|show|create|update|rm
     and add --template REF (CLI flags override presets). Search supports
     --mode fuzzy|regex and --cwd (exact path). Agents should probe with

@@ -299,7 +299,39 @@ func TestTodoSessionNotSeeded(t *testing.T) {
 	var tsk core.Task
 	mustJSON(t, out.Bytes(), &tsk)
 	if tsk.TodoSession != "" {
-		t.Fatalf("todo_session = %q, want empty (legacy inert)", tsk.TodoSession)
+		t.Fatalf("todo_session = %q, want empty on create", tsk.TodoSession)
+	}
+}
+
+func TestEditSession(t *testing.T) {
+	out, _, run := newCLI(t)
+
+	out.Reset()
+	if code := run("add", "Session link", "--json"); code != 0 {
+		t.Fatalf("add exit %d", code)
+	}
+	var created core.Task
+	mustJSON(t, out.Bytes(), &created)
+
+	const sid = "01958b2e-1111-7222-8333-444455556666"
+	out.Reset()
+	if code := run("edit", created.ID, "--session", sid, "--json"); code != 0 {
+		t.Fatalf("edit --session exit %d", code)
+	}
+	var edited core.Task
+	mustJSON(t, out.Bytes(), &edited)
+	if edited.TodoSession != sid {
+		t.Fatalf("todo_session = %q, want %q", edited.TodoSession, sid)
+	}
+
+	out.Reset()
+	if code := run("edit", created.ID, "--session", "", "--json"); code != 0 {
+		t.Fatalf("edit --session clear exit %d", code)
+	}
+	var cleared core.Task
+	mustJSON(t, out.Bytes(), &cleared)
+	if cleared.TodoSession != "" {
+		t.Fatalf("todo_session after clear = %q, want empty", cleared.TodoSession)
 	}
 }
 
@@ -771,7 +803,7 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 15",
+		"Integration contract version: 16",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
@@ -779,8 +811,11 @@ func TestAI(t *testing.T) {
 		"board|created|updated|status|progress|title",
 		"MHTodo Ticket:",
 		"mhtodo://task/",
+		"Instructions:",
+		"--session",
 		"mhtodo open",
 		"mhtodo template search",
+		"v16 On adopt, record the current Claude session",
 		"v15 Ticket reference",
 		"v14 Ticket deep links",
 		"v13 Removed direct Claude",
@@ -818,7 +853,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 15 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 16 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}

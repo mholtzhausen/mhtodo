@@ -55,7 +55,7 @@ every upgrade; commands and flags change between versions.
 
 ```
 mhtodo add TITLE [--template REF] [--desc S] [--feedback S] [--status S] [--progress N] [--parent ID] [--cwd S] [--slack-thread URL] [--human-only] [--include-in-report | --no-include-in-report]
-mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
+mhtodo edit ID [--title S] [--desc S] [--feedback S] [--progress N] [--cwd S] [--slack-thread URL] [--session S] [--human-only | --no-human-only] [--include-in-report | --no-include-in-report]  # at least one flag
 mhtodo status ID {{STATUS_ENUM}}
 mhtodo done ID [--notify]
 mhtodo show ID
@@ -110,15 +110,21 @@ mhtodo service install|stop|start|restart|uninstall       # user systemd unit fo
 | `done` | Complete and verified. |
 
 **Task fields:** `id`, `title`, `description`, `feedback`, `status`, `progress` (0–100),
-`parent_id`, `board_rank`, `cwd`, `human_only`, `slack_thread`,
+`parent_id`, `board_rank`, `cwd`, `human_only`, `slack_thread`, `todo_session`,
 `created_at`, `updated_at`, `completed_at`, `archived_at`.
-(JSON may still include legacy inert fields `todo_session` / `terminal_pid` — ignore them.)
+(`terminal_pid` may still appear in JSON as `0` — ignore it.)
 **Activity fields:** `id`, `task_id`, `activity`, `comment`, `created_at`.
 
 **`cwd`** is an optional absolute path to the project or working directory the task
 belongs to. Set it with `--cwd` on `add`/`edit` when the job is tied to a specific
 checkout. The GUI folder picker sets the same field. When Zed integration is enabled,
 the GUI opens Zed at that folder.
+
+**`todo_session`** links the ticket to the Claude (or host) session currently working
+it. Set with `mhtodo edit ID --session <claude-session-uuid>` when you adopt or
+resume work; empty string clears. Prefer the host’s real session id (hooks expose
+`session_id` on Claude Code). This is how the user later finds which session worked
+a ticket — keep it current if the session id changes (`/new`, `/clear`, new chat).
 
 **Ticket reference (GUI copy):** the board/list card action “Copy ticket reference”
 puts a handoff block on the clipboard. Treat a user paste like this as pointing
@@ -129,7 +135,9 @@ at that ticket:
 MHTodo Ticket: mhtodo://task/{short8}
 Status: {status}
 Title: {title}
- *remember to update subtasks and activity comments if you do work on this*
+Instructions: (only if you start working on this task) 
+ - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
+ - remember to update subtasks and activity comments if you do work on this
 ---
 ```
 
@@ -137,8 +145,9 @@ Title: {title}
 `mhtodo://task/{short8}` is a desktop deep link: on an installed mhtodo it
 opens/raises the GUI focused on that task (`mhtodo open` / `.desktop`
 `x-scheme-handler/mhtodo`). Resolve in the CLI with `mhtodo show {short8}` (or
-the full id), or `mhtodo open mhtodo://task/{short8}`. Keep status, progress, and
-sub-tasks current while you work — that reminder is part of the paste block.
+the full id), or `mhtodo open mhtodo://task/{short8}`. When you start work, follow
+the Instructions: set `--session`, and keep status, progress, sub-tasks, and
+activity comments current.
 
 **`slack_thread`** is an optional Slack thread URL for this ticket. When set, `show`,
 `show --markdown`, and `slack report` include the reminder:
@@ -252,6 +261,7 @@ Adopt (including reopen from `review` / `waiting`):
 
 ```bash
 mhtodo status <id> wip
+mhtodo edit <id> --session <claude-session-uuid>   # ticket → this session (required)
 mhtodo edit <id> --progress 5          # progress only — never --desc, never --title
                                        # on reopen, set progress to reflect remaining work
 mhtodo activity add <id> --activity "Task Picked Up" \
@@ -270,6 +280,7 @@ do **not** need a separate ask — they are the step plan (§3.5).
 mhtodo add "[<context>] <short imperative title>" \
   --desc "<one-line goal>" --status wip --progress 5 \
   [--cwd "<absolute path>"] --json
+mhtodo edit <id> --session <claude-session-uuid>
 printf '%s\norigin=agent\n' <id> > "$pointer"
 ```
 
