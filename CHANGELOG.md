@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 2.11.2 (PENDING)
+## 2.11.2 (1d554c8)
 
 ### Features and Improvements
 - Ticket reference Instructions and Claude skill adopt flow: start from a clean `master`/`main`, clear a dirty tree with the user first, then create a new branch before work
