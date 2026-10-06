@@ -26,6 +26,10 @@ export function CountChildren(arg1) {
   return window['go']['main']['App']['CountChildren'](arg1);
 }
 
+export function ConsumePendingFocus() {
+  return window['go']['main']['App']['ConsumePendingFocus']();
+}
+
 export function CreateTask(arg1) {
   return window['go']['main']['App']['CreateTask'](arg1);
 }
@@ -61,8 +65,6 @@ export function DeleteTheme(arg1) {
 export function DuplicateTheme(arg1, arg2) {
   return window['go']['main']['App']['DuplicateTheme'](arg1, arg2);
 }
-
-
 
 export function GetActiveTheme() {
   return window['go']['main']['App']['GetActiveTheme']();
@@ -111,7 +113,6 @@ export function ListTemplates() {
 export function ListThemes() {
   return window['go']['main']['App']['ListThemes']();
 }
-
 
 export function OpenZedTicket(arg1) {
   return window['go']['main']['App']['OpenZedTicket'](arg1);

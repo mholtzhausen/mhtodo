@@ -51,6 +51,10 @@ type App struct {
 	posOK bool // true once we have a captured or loaded position
 
 	posStop chan struct{} // stops periodic position capture
+
+	// pendingFocusID holds a deep-link / tray focus target until the frontend
+	// consumes it (EventsEmit can race ahead of EventsOn on cold start).
+	pendingFocusID atomic.Value // string
 }
 
 var app = &App{}
@@ -658,10 +662,36 @@ func (a *App) openFocusTaskFromTray(id string) {
 	if id == "" {
 		return
 	}
+	a.pendingFocusID.Store(id)
 	a.showWindow()
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "focus-task", id)
+	a.emitFocusTask(id)
+	// Cold start: OnDomReady can fire before the Svelte EventsOn listener is
+	// registered. Re-emit a few times; ConsumePendingFocus is the reliable drain.
+	go func(target string) {
+		for _, d := range []time.Duration{100 * time.Millisecond, 300 * time.Millisecond, 800 * time.Millisecond} {
+			time.Sleep(d)
+			cur, _ := a.pendingFocusID.Load().(string)
+			if cur != target {
+				return
+			}
+			a.emitFocusTask(target)
+		}
+	}(id)
+}
+
+func (a *App) emitFocusTask(id string) {
+	if a.ctx == nil || id == "" {
+		return
 	}
+	wruntime.EventsEmit(a.ctx, "focus-task", id)
+}
+
+// ConsumePendingFocus returns and clears a queued focus-task id (deep link / tray).
+// The frontend calls this after registering its EventsOn listener.
+func (a *App) ConsumePendingFocus() string {
+	cur, _ := a.pendingFocusID.Load().(string)
+	a.pendingFocusID.Store("")
+	return strings.TrimSpace(cur)
 }
 
 // --- window lifecycle ---------------------------------------------------------

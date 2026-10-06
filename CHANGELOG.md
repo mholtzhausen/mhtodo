@@ -10,7 +10,7 @@
 - `mhtodo ai` contract v14: deep-link ticket reference + `mhtodo open`; v13 kept Claude Code skill/hooks and dropped spawn/session/`claude.todo` surface
 
 ### Bugfixes
-- (none)
+- Deep link / `mhtodo open`: open the task detail modal (keep pending focus across instance-lock races; drain pending focus after frontend ready)
 
 ### Deprecations
 - Removed direct Claude/Herdr/terminal spawn from Settings and GUI

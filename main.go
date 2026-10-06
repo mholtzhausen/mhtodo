@@ -134,8 +134,9 @@ func runGUI(args []string) {
 				log.Printf("mhtodo is already running (pid %d); exiting quietly (dev)", ar.PID)
 			} else {
 				log.Printf("mhtodo is already running (pid %d); focusing existing window", ar.PID)
-				// Empty focus request = show window only (also clears a stale deep link).
-				_ = instance.WriteFocusRequest("")
+				// Do NOT clear mhtodo.focus here: `mhtodo open` may have just written a
+				// task id and then launched us; wiping would drop the deep link.
+				// Stale requests expire in TakeFocusRequest (mtime TTL).
 				_ = instance.SignalFocus(ar.PID) // best-effort; never SIGUSR1 — see SignalFocus
 			}
 			return

@@ -353,12 +353,38 @@
     selectedId = id
   }
 
-  /** Tray status-submenu click: raise already happened in Go; select the task here. */
-  function focusTaskFromTray(id: string) {
+  /**
+   * Tray / deep-link focus: raise already happened in Go. Open the task detail
+   * modal (fetching the task if it is not in the current list filter).
+   */
+  async function focusTaskFromTray(id: string) {
     const tid = String(id ?? '').trim()
     if (!tid) return
-    if (view === 'activity') view = 'board'
-    selectedId = tid
+    if (view === 'activity') {
+      view = 'board'
+      await load()
+    }
+    setDetailMode('modal')
+    let task = tasks.find((t) => t.id === tid)
+    if (!task) {
+      try {
+        const fetched = (await api.get(tid)) as Task
+        task = fetched
+        if (!tasks.some((t) => t.id === fetched.id)) {
+          tasks = [...tasks, fetched]
+        }
+      } catch (e) {
+        showToast(errMsg(e))
+        return
+      }
+    }
+    selectedId = task.id
+    // Stop Go-side re-emit retries once the UI has applied the focus.
+    try {
+      await api.consumePendingFocus()
+    } catch {
+      /* ignore */
+    }
   }
 
   function navigateModalTask(dir: -1 | 1) {
@@ -698,7 +724,7 @@
       settingsOpen = true
     })
     unbindFocusTask = EventsOn('focus-task', (...data: unknown[]) => {
-      focusTaskFromTray(String(data[0] ?? ''))
+      void focusTaskFromTray(String(data[0] ?? ''))
     })
     window.addEventListener('keydown', onKeydown)
     window.addEventListener('keydown', onCtrlKeydown)
@@ -706,6 +732,13 @@
     window.addEventListener('blur', onCtrlBlur)
     window.addEventListener('resize', onWindowResize)
     await load()
+    // Cold-start deep links: Go may have emitted focus-task before EventsOn.
+    try {
+      const pending = await api.consumePendingFocus()
+      if (pending) await focusTaskFromTray(pending)
+    } catch {
+      /* ignore */
+    }
   })
 
   onDestroy(() => {

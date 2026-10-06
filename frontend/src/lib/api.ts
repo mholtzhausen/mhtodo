@@ -86,6 +86,10 @@ export const api = {
   get(ref: string) {
     return App.GetTask(ref)
   },
+  /** Drain a deep-link / tray focus id queued before the frontend listener was ready. */
+  consumePendingFocus(): Promise<string> {
+    return App.ConsumePendingFocus()
+  },
   create(input: {
     title: string
     description?: string

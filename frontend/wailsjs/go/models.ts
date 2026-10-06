@@ -518,8 +518,6 @@ export namespace settings {
 		}
 	}
 	
-	
-	
 
 }
 

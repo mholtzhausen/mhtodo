@@ -16,6 +16,8 @@ export function CheckBinary(arg1:string):Promise<boolean>;
 
 export function CountChildren(arg1:string):Promise<number>;
 
+export function ConsumePendingFocus():Promise<string>;
+
 export function CreateTask(arg1:core.CreateInput):Promise<core.Task>;
 
 export function CreateTemplate(arg1:core.TemplateInput):Promise<core.Template>;

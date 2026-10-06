@@ -6,7 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
+
+// focusRequestTTL drops deep-link requests that were never consumed (crash,
+// abandoned launch). Wall-clock mtime is acceptable for this soft expiry.
+const focusRequestTTL = 60 * time.Second
 
 // focusRequestPath sits next to the lock file so both share XDG_RUNTIME_DIR.
 func focusRequestPath() string {
@@ -44,9 +49,17 @@ func WriteFocusRequest(ref string) error {
 }
 
 // TakeFocusRequest reads and removes the pending focus request.
-// ok is false when no file exists.
+// ok is false when no file exists or the request is older than focusRequestTTL.
 func TakeFocusRequest() (ref string, ok bool) {
 	path := focusRequestPath()
+	fi, err := os.Stat(path)
+	if err != nil {
+		return "", false
+	}
+	if time.Since(fi.ModTime()) > focusRequestTTL {
+		os.Remove(path)
+		return "", false
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", false

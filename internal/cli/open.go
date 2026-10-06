@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -113,6 +114,12 @@ func openTaskInGUI(t core.Task) (action string, err error) {
 	}
 	if err := launchGUIFn(); err != nil {
 		return "", err
+	}
+	// If a GUI was already running, the child exits after signaling — nudge again
+	// so a lost race still delivers the focus file we just wrote.
+	time.Sleep(150 * time.Millisecond)
+	if pid, ok := instance.RunningPID(); ok {
+		_ = instance.SignalFocus(pid)
 	}
 	return "launched", nil
 }
