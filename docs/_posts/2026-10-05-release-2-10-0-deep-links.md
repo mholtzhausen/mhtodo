@@ -18,4 +18,4 @@ Point agents (and yourself) at a ticket with a pasteable reference block and des
 
 Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.10.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2100-4f7c458) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.10.0).
 
-For how Claude (or any agent) is expected to use the board, see [Claude and mhtodo]({{ site.baseurl }}/guide/2026/10/06/claude-and-mhtodo-primer.html).
+For how Claude (or any agent) is expected to use the board, see [Claude and mhtodo]({{ site.baseurl }}/guide/2026/10/06/claude-and-mhtodo-primer.html). Skill install model (2.11.0+): [How the mhtodo Claude skill works]({{ site.baseurl }}/guide/2026/10/06/mhtodo-ai-skill.html).

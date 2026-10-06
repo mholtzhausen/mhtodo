@@ -186,8 +186,9 @@ such tasks; default `list` hides them unless `--human-only` is passed. IDs are U
 
 When Zed is enabled and found on PATH, board/list cards show an Open-in-Zed action for tasks that
 have a working directory. It runs the configured binary with the task `cwd` (optional `env_start`
-prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts still install via
-`mhtodo ai` (installs/updates the Claude skill under `~/.claude/skills/mhtodo/`; no hooks).
+prefix) and copies the same **ticket reference** block to the clipboard. There is no direct
+Claude/Herdr/terminal spawn in the app; agent hosts still install via `mhtodo ai`
+(installs/updates the Claude skill under `~/.claude/skills/mhtodo/`; no hooks).
 
 Card actions also copy a paste-ready **markdown report** or a **ticket reference** block
 (deep link + status/title + agent Instructions):

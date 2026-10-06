@@ -710,7 +710,7 @@
                   </label>
                   <p class="text-xs italic text-ink-3/75">
                     Shown on cards when enabled, binary found, and the task has a working directory.
-                    Opens Zed at the task working folder.
+                    Opens Zed at the task working folder and copies the ticket reference.
                   </p>
                 </div>
               </div>

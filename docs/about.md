@@ -13,4 +13,4 @@ Both call the same `core.Service`. Data lives in one SQLite database (`$XDG_DATA
 
 - [GitHub repository](https://github.com/mholtzhausen/mhtodo)
 - [Install from source or release](https://github.com/mholtzhausen/mhtodo#install)
-- Agent skill: run `mhtodo ai` to install/update `~/.claude/skills/mhtodo/`
+- Agent skill: run `mhtodo ai` to install/update `~/.claude/skills/mhtodo/` — [how it works]({{ site.baseurl }}/guide/2026/10/06/mhtodo-ai-skill.html)

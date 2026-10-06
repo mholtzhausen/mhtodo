@@ -3,11 +3,23 @@
 ## Unreleased
 
 ### Features and Improvements
+- (none)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
+## 2.11.0 (pending)
+
+### Features and Improvements
+- **`mhtodo ai` reworked:** installs/updates `~/.claude/skills/mhtodo/SKILL.md` (named workflows) and strips legacy hooks, settings entries, `integration.json`, session pointer files, and `claude.todo`; `--check` reports only (no IntegrationVersion / printed contract / hook install)
+- `mhtodo update` after a successful binary swap runs skill install and optional `claude -p` refresh (`--no-skill-refresh` / `MHTODO_SKIP_SKILL_REFRESH=1`; failures warn only)
 - Restore `mhtodo edit ID --session` to link a Claude session UUID on the ticket (`todo_session`; empty clears)
 - Setting a non-empty `--session` auto-posts an activity: label `Claude Session`, comment `Claude Session: <uuid>`
 - Ticket reference copy Instructions: record `--session` on adopt, plus sub-task/activity reminder
-- **`mhtodo ai` reworked:** installs/updates `~/.claude/skills/mhtodo/SKILL.md` (named workflows) and strips legacy hooks, settings entries, `integration.json`, session pointer files, and `claude.todo`; `--check` reports only (no IntegrationVersion / printed contract / hook install)
-- `mhtodo update` after a successful binary swap runs skill install and optional `claude -p` refresh (`--no-skill-refresh` / `MHTODO_SKIP_SKILL_REFRESH=1`; failures warn only)
+- Open-in-Zed on board/list cards also copies the ticket reference block to the clipboard
 
 ### Bugfixes
 - (none)

@@ -63,11 +63,12 @@ before creating root tasks and reopen `review` → `wip` with new sub-tasks when
 `mhtodo service …` installs/controls/removes `~/.config/systemd/user/mhtodo.service` for the
 running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
-**Zed** (Settings → Integrations) opens the task working directory when enabled; there is no
-direct Claude/Herdr/terminal spawn. Board/list cards can copy a markdown report or a
-ticket reference block (`MHTodo Ticket` / Status / Title / Instructions including
-`mhtodo edit … --session`). `todo_session` stores the linked Claude session UUID
-(set via `edit --session`); `terminal_pid` remains unused for schema stability.
+**Zed** (Settings → Integrations) opens the task working directory when enabled and copies the
+ticket reference to the clipboard on the same click; there is no direct Claude/Herdr/terminal
+spawn. Board/list cards can also copy a markdown report or a ticket reference block
+(`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`).
+`todo_session` stores the linked Claude session UUID (set via `edit --session`);
+`terminal_pid` remains unused for schema stability.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to

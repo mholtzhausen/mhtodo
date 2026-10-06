@@ -61,7 +61,7 @@ Instructions: (only if you start working on this task)
 ---
 ```
 
-Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current.
+Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. **Open in Zed** (when enabled) opens the task working directory and copies the same ticket reference block so you can paste it straight into the session. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current.
 
 ## Starting and continuing work
 
@@ -78,4 +78,4 @@ Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or 
 - When you are done reviewing, mark **done** yourself on user-originated tickets (agents take those to `review`).
 - Re-run `mhtodo ai` after upgrades if you want to force-refresh the skill (or rely on `mhtodo update`).
 
-For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/release/2026/10/05/release-2-10-0-deep-links.html).
+For how the installed skill is structured, see [How the mhtodo Claude skill works]({{ site.baseurl }}/guide/2026/10/06/mhtodo-ai-skill.html). Release notes: [2.11.0 — Claude skill installer]({{ site.baseurl }}/release/2026/10/06/release-2-11-0-claude-skill.html) · [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/release/2026/10/05/release-2-10-0-deep-links.html).

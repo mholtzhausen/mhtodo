@@ -49,7 +49,9 @@
   const showZed = $derived(
     !!settings?.zed.enabled && zedBinaryOk && !!(task.cwd ?? '').trim()
   )
-  const zedTitle = $derived(zedCommand || 'Open in Zed')
+  const zedTitle = $derived(
+    `${zedCommand || 'Open in Zed'} — also copies ticket reference`
+  )
   const slackURL = $derived((task.slack_thread ?? '').trim())
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
@@ -130,6 +132,19 @@
     }
   }
 
+  async function copyTicketReference(): Promise<boolean> {
+    if (!inWails) return false
+    const ok = await clipboardSet(ticketReference())
+    if (ok) {
+      copiedRef = true
+      clearTimeout(copyRefTimer)
+      copyRefTimer = setTimeout(() => {
+        copiedRef = false
+      }, 1500)
+    }
+    return ok
+  }
+
   async function copyTicketRef(e: MouseEvent) {
     stop(e)
     if (copyingRef) return
@@ -139,14 +154,9 @@
     }
     copyingRef = true
     try {
-      const ok = await clipboardSet(ticketReference())
+      const ok = await copyTicketReference()
       if (ok) {
-        copiedRef = true
         toast('Ticket reference copied', 'info')
-        clearTimeout(copyRefTimer)
-        copyRefTimer = setTimeout(() => {
-          copiedRef = false
-        }, 1500)
       } else {
         reportError('Could not copy to clipboard')
       }
@@ -175,7 +185,17 @@
     openingZed = true
     try {
       await ensureZedCommand()
+      // Copy first so the handoff block is ready before Zed (or tray-hide) takes focus.
+      let refCopied = false
+      try {
+        refCopied = await copyTicketReference()
+      } catch {
+        refCopied = false
+      }
       await api.openZedTicket(task.id)
+      if (refCopied) {
+        toast('Ticket reference copied', 'info')
+      }
     } catch (err) {
       reportError(errMsg(err))
     } finally {
@@ -306,7 +326,7 @@
       onmouseenter={() => void ensureZedCommand()}
       disabled={openingZed}
       title={zedTitle}
-      aria-label="Open in Zed"
+      aria-label="Open in Zed and copy ticket reference"
       class="{actionBtn} text-ink-3 hover:text-ink"
     >
       <ZedIcon class="h-3 w-3" title="" />
