@@ -11,6 +11,21 @@
 ### Deprecations
 - (none)
 
+## 3.0.0 (a0b290b)
+
+### Features and Improvements
+- Task detail is always a modal: card actions (markdown / ticket ref / Slack / Zed / human-only / include-in-report / archive) live in the detail header; human-only and include-in-report checkboxes remain in the form
+- **Archived** view replaces the old list view (tabs: Board | Activity | Archived, floated right); `r` / `7` open it; legacy `mhtodo.view=list` migrates to archive
+- Archived detail uses a distinct header/footer, an ox-red **Archived** chip beside the ID, and read-only fields until unarchive
+- Archived list rows use thin separators and a clear hover wash
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- Removed Pin / Float / Modal detail display modes (and resizable pin/float panes); detail is modal-only
+- Removed the GUI List view; archived browsing is the Archived tab (CLI `mhtodo list` unchanged)
+
 ## 2.13.0 (5aca2cd)
 
 ### Features and Improvements
