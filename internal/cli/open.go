@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"mhtodo/internal/core"
 	"mhtodo/internal/instance"
+	"mhtodo/internal/platform"
 )
 
 // launchGUIFn starts a detached GUI process (bare mhtodo). Tests replace it.
@@ -38,11 +38,9 @@ func defaultLaunchGUI() error {
 	cmd.Stdin = nil
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	if err := cmd.Start(); err != nil {
+	if err := platform.StartDetached(cmd); err != nil {
 		return fmt.Errorf("launch gui: %w", err)
 	}
-	_ = cmd.Process.Release()
 	return nil
 }
 

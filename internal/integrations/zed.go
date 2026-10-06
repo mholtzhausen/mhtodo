@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"mhtodo/internal/platform"
 	"mhtodo/internal/settings"
 )
 
@@ -30,12 +31,12 @@ func (c ZedClient) OpenTicket(cwd string) error {
 	bin, args, env := c.ticketInvocation(cwd)
 	cmd := exec.Command(bin, args...)
 	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdin = nil
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	if err := cmd.Start(); err != nil {
+	if err := platform.StartDetached(cmd); err != nil {
 		return fmt.Errorf("start zed: %w", err)
 	}
-	_ = cmd.Process.Release()
 	return nil
 }
 
@@ -52,7 +53,7 @@ func (c ZedClient) TicketCommand(cwd string) string {
 	for _, a := range args {
 		parts = append(parts, shellWord(a))
 	}
-	return strings.Join(parts, " ")
+	return platform.DetachedCommandPrefix() + strings.Join(parts, " ")
 }
 
 // shellEnvAssign formats KEY=value for a POSIX shell, quoting the value.
