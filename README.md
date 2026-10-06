@@ -117,9 +117,9 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
-| `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; live signal is status/progress/sub-tasks; ask before creating root tasks; reopen `review` when more work lands) |
+| `ai` | `mhtodo ai [--check]` | install/update `~/.claude/skills/mhtodo/SKILL.md` (embedded workflows) and strip legacy Claude hooks/settings/integration artifacts; `--check` reports skill freshness + leftovers without writing |
 | `install` | `mhtodo install [--prefix DIR] [--service \| --no-service]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service; flags skip prompts (non-TTY skips optionals unless flagged) |
-| `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
+| `update` | `mhtodo update [--check] [--force] [--no-skill-refresh]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. After a successful binary update, runs `mhtodo ai` and (when `claude` is on PATH) a non-interactive skill refresh; refresh failures warn only. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current; `--no-skill-refresh` / `MHTODO_SKIP_SKILL_REFRESH=1` skip the Claude pass |
 | `service` | `mhtodo service install\|stop\|start\|restart\|uninstall` | manage the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `install` writes `ExecStart=<this binary> gui` and enables it; `uninstall` removes the unit (binary stays). From-source bootstrap remains `make service-install` |
 | `template list` | `mhtodo template list` | all templates, name order |
 | `template search` | `mhtodo template search [QUERY] [--mode fuzzy\|regex] [--cwd PATH]` | fuzzy (default) or regex over name/title_prefix/description/cwd; `--cwd` exact path match; query and/or `--cwd` required |
@@ -187,7 +187,7 @@ such tasks; default `list` hides them unless `--human-only` is passed. IDs are U
 When Zed is enabled and found on PATH, board/list cards show an Open-in-Zed action for tasks that
 have a working directory. It runs the configured binary with the task `cwd` (optional `env_start`
 prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts still install via
-`mhtodo ai` (Claude Code skill/hooks remain the reference mapping).
+`mhtodo ai` (installs/updates the Claude skill under `~/.claude/skills/mhtodo/`; no hooks).
 
 Card actions also copy a paste-ready **markdown report** or a **ticket reference** block
 (deep link + status/title + agent Instructions):

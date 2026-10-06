@@ -6,12 +6,14 @@
 
 - **CLI** (`mhtodo add|list|show|open|edit|status|done|reorder|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
- `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host (including Claude Code skill/hooks).
+ `mhtodo ai` installs/updates `~/.claude/skills/mhtodo/SKILL.md` (workflow skill) and strips
+ legacy hooks/settings/integration manifests; `--check` reports only.
  `mhtodo open` raises the GUI on a task (id/prefix or `mhtodo://task/…`); the desktop entry registers
  `x-scheme-handler/mhtodo`.
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
  systemd unit (prompts on a TTY; flags for non-interactive).
- `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
+ `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when
+ present); after a successful binary update it runs skill install and optionally `claude -p` refresh.
  `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install.
  `mhtodo template list|search|show|create|update|rm` manages task templates
  (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.
@@ -53,10 +55,10 @@ Activity view, detail-pane pin, `review` status (after waiting), rebalanced list
 thread, and human-only from the parent; `include_in_report` defaults to false (CLI `add --parent`
 likewise).
 
-**Also:** `mhtodo ai` prints the agent-integration contract (embedded `internal/cli/ai.md`,
-interpolated at emit time). The live board signal for agents is status → progress →
-sub-tasks (activities are audit); agents must ask before creating root tasks and
-reopen `review` → `wip` with new sub-tasks when more work continues.
+**Also:** `mhtodo ai` installs the Claude skill from embedded
+[`internal/aiskill/SKILL.md`](internal/aiskill/SKILL.md) (named workflows; no hooks). The live
+board signal for agents is status → progress → sub-tasks (activities are audit); agents must ask
+before creating root tasks and reopen `review` → `wip` with new sub-tasks when more work continues.
 `mhtodo update` self-updates from GitHub Releases (see README).
 `mhtodo service …` installs/controls/removes `~/.config/systemd/user/mhtodo.service` for the
 running binary (from-source bootstrap remains `make service-install`).

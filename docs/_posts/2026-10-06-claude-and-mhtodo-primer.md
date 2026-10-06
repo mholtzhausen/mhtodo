@@ -8,7 +8,13 @@ tags: [agents, claude, cli]
 
 mhtodo is a **two-way channel** between you and your coding agents — not a log file. The GUI stays open while Claude (or any agent) works; you steer by pointing at tickets, and the agent reports through the board.
 
-The authoritative install/upgrade contract is whatever `mhtodo ai` prints on your machine (from the embedded skill). This post is the human-facing summary of how that relationship is meant to work.
+Install the Claude skill with:
+
+```sh
+mhtodo ai
+```
+
+That writes `~/.claude/skills/mhtodo/SKILL.md` (workflow instructions) and removes legacy hooks/settings/integration leftovers. Use `mhtodo ai --check` to verify without writing. After `mhtodo update`, skill install runs automatically; when `claude` is on PATH a non-interactive refresh may also run.
 
 ## What you watch on the board
 
@@ -57,8 +63,6 @@ Instructions: (only if you start working on this task)
 
 Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current.
 
-You can also say “work on the foo ticket” and let the agent search — still no autonomous pickup from a silent board scan.
-
 ## Starting and continuing work
 
 - **Before creating a root task**, the agent should search (`mhtodo list --roots …`) and **ask you** if nothing matches. Unprompted root tickets clutter the board.
@@ -66,23 +70,12 @@ You can also say “work on the foo ticket” and let the agent search — still
 - If a card is in **`review`** and more work continues, the agent should reopen it to **`wip`**, add new sub-tasks, and continue — not leave new work stranded under a review card.
 - For work you will handle yourself, mark the task **human-only** so agents never adopt it.
 
-## Wiring Claude (install / upgrade)
-
-On a machine with mhtodo installed, ask Claude to run:
-
-```sh
-mhtodo ai
-```
-
-That emits the full agent-integration contract for the installed binary version. Claude’s job is to install or upgrade the host wiring (skill, hooks, always-on instructions) from that document — not to invent a parallel protocol.
-
-Re-run `mhtodo ai` after upgrades when the contract version bumps (release notes call this out).
-
 ## Practical habits that help
 
 - Keep the GUI visible; treat columns and progress as the live signal.
 - Hand off with the ticket reference block when switching chats or sessions.
 - Prefer clear titles and a brief description on root tasks you create for agents.
 - When you are done reviewing, mark **done** yourself on user-originated tickets (agents take those to `review`).
+- Re-run `mhtodo ai` after upgrades if you want to force-refresh the skill (or rely on `mhtodo update`).
 
 For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/release/2026/10/05/release-2-10-0-deep-links.html).

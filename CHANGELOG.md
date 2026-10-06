@@ -6,13 +6,14 @@
 - Restore `mhtodo edit ID --session` to link a Claude session UUID on the ticket (`todo_session`; empty clears)
 - Setting a non-empty `--session` auto-posts an activity: label `Claude Session`, comment `Claude Session: <uuid>`
 - Ticket reference copy Instructions: record `--session` on adopt, plus sub-task/activity reminder
-- `mhtodo ai` contract **v16**: adopt must set `--session`; updated ticket-reference block
+- **`mhtodo ai` reworked:** installs/updates `~/.claude/skills/mhtodo/SKILL.md` (named workflows) and strips legacy hooks, settings entries, `integration.json`, session pointer files, and `claude.todo`; `--check` reports only (no IntegrationVersion / printed contract / hook install)
+- `mhtodo update` after a successful binary swap runs skill install and optional `claude -p` refresh (`--no-skill-refresh` / `MHTODO_SKIP_SKILL_REFRESH=1`; failures warn only)
 
 ### Bugfixes
 - (none)
 
 ### Deprecations
-- (none)
+- Removed the versioned agent-integration contract document and Claude Code hook install path from `mhtodo ai` (skill-only)
 
 ## 2.10.0 (4f7c458)
 

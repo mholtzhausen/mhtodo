@@ -13,12 +13,18 @@ import (
 	"testing"
 	"time"
 
+	"mhtodo/internal/aiskill"
 	"mhtodo/internal/cli"
 	"mhtodo/internal/core"
 	"mhtodo/internal/instance"
 	"mhtodo/internal/store"
 	"mhtodo/internal/update"
 )
+
+func aiskillHomeForCLITest(t *testing.T, home string) func() {
+	t.Helper()
+	return aiskill.HomeDirForTest(func() (string, error) { return home, nil })
+}
 
 // newCLI points MHTODO_DB_PATH at a temp DB and returns (stdout, stderr, run).
 func newCLI(t *testing.T) (*bytes.Buffer, *bytes.Buffer, func(args ...string) int) {
@@ -800,55 +806,37 @@ func TestPath(t *testing.T) {
 }
 
 func TestAI(t *testing.T) {
-	fixed := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
-	prev := cli.AINowForTest(func() time.Time { return fixed })
-	t.Cleanup(prev)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
+	restoreHome := aiskillHomeForCLITest(t, home)
+	t.Cleanup(restoreHome)
 
 	out, _, run := newCLI(t)
-	db := os.Getenv("MHTODO_DB_PATH")
 
 	if code := run("ai"); code != 0 {
-		t.Fatalf("ai: exit %d", code)
+		t.Fatalf("ai: exit %d out=%s", code, out.String())
 	}
 	body := out.String()
-	for _, want := range []string{
-		"mhtodo — agent integration instructions",
-		"Integration contract version: 16",
-		"mhtodo binary version:        test",
-		"Database:                     " + db,
-		"Generated:                    2026-08-27T12:00:00Z",
-		"pending|wip|waiting|review|done",
-		"board|created|updated|status|progress|title",
-		"MHTodo Ticket:",
-		"mhtodo://task/",
-		"Instructions:",
-		"--session",
-		"mhtodo open",
-		"mhtodo template search",
-		"v16 On adopt, record the current Claude session",
-		"v15 Ticket reference",
-		"v14 Ticket deep links",
-		"v13 Removed direct Claude",
-		"v12 Full task-template CLI",
-		"v11 User scan order",
-		"v7  Task-picker options show status",
-		"AskUserQuestion",
-		"ask the user",
-		"Reopen, do not pile onto `review`",
-		"mid-session-nudge",
-		"v5  Sub-tasks are a mandatory step plan",
-		"v4  Activity labels",
-		"--feedback",
-		"Markdown fields",
-		"Task Picked Up",
-		"mhtodo ai", // listed in §2 CLI surface
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("ai output missing %q", want)
-		}
+	if !strings.Contains(body, "skill") || !strings.Contains(body, "SKILL.md") {
+		t.Fatalf("ai output unexpected: %q", body)
 	}
-	if strings.Contains(body, "{{") {
-		t.Errorf("uninterpolated placeholder left in output")
+	skillPath := filepath.Join(home, ".claude", "skills", "mhtodo", "SKILL.md")
+	raw, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Hard rule",
+		"Ticket reference",
+		"--session",
+		"Sync checklist",
+		"Task picker",
+		"mhtodo://task/",
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("installed skill missing %q", want)
+		}
 	}
 
 	out.Reset()
@@ -856,16 +844,22 @@ func TestAI(t *testing.T) {
 		t.Fatalf("ai --json: exit %d", code)
 	}
 	var doc struct {
-		IntegrationVersion int    `json:"integration_version"`
-		MhtodoVersion      string `json:"mhtodo_version"`
-		DBPath             string `json:"db_path"`
-		Generated          string `json:"generated"`
-		Content            string `json:"content"`
+		Path   string   `json:"path"`
+		Action string   `json:"action"`
+		Hash   string   `json:"hash"`
+		Removed []string `json:"removed"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 16 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
-		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
+	if doc.Path != skillPath || doc.Action != "updated" || doc.Hash == "" {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
+	}
+
+	out.Reset()
+	if code := run("ai", "--check"); code != 0 {
+		t.Fatalf("ai --check: exit %d", code)
+	}
+	if !strings.Contains(out.String(), "skill current") {
+		t.Errorf("ai --check: %q", out.String())
 	}
 }
 
@@ -902,6 +896,47 @@ func TestUpdateCheckJSON(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "update available") {
 		t.Errorf("human: %q", out.String())
+	}
+}
+
+func TestUpdateInstallsSkill(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
+	t.Cleanup(aiskillHomeForCLITest(t, home))
+	t.Cleanup(aiskill.LookPathForTest(func(string) (string, error) {
+		return "", os.ErrNotExist
+	}))
+
+	prev := cli.UpdateRunForTest(func(opts update.Options) (update.Result, error) {
+		return update.Result{
+			CurrentVersion: "9.9.9",
+			LatestVersion:  "9.9.9",
+			UpToDate:       true,
+			Updated:        true,
+			InstallPath:    "/tmp/mhtodo",
+			Message:        "updated to v9.9.9",
+		}, nil
+	})
+	defer prev()
+
+	out, errb, run := newCLI(t)
+	if code := run("update", "--json"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	var env struct {
+		Updated             bool   `json:"updated"`
+		SkillPath           string `json:"skill_path"`
+		SkillAction         string `json:"skill_action"`
+		SkillRefreshSkipped bool   `json:"skill_refresh_skipped"`
+	}
+	mustJSON(t, out.Bytes(), &env)
+	wantSkill := filepath.Join(home, ".claude", "skills", "mhtodo", "SKILL.md")
+	if !env.Updated || env.SkillPath != wantSkill || env.SkillAction != "installed" || !env.SkillRefreshSkipped {
+		t.Fatalf("update json: %+v", env)
+	}
+	if _, err := os.Stat(wantSkill); err != nil {
+		t.Fatal(err)
 	}
 }
 
