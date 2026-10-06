@@ -29,4 +29,4 @@ The detail pane uses a multi-line Pull requests field. The PR icon next to Slack
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.1.1](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#311-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.1.1).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.1.1](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#311-89887b4) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.1.1).
