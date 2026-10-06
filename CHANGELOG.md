@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 2.13.0 (17c4872)
+
+### Features and Improvements
+- Working directory typeahead on new-task and detail: fuzzy suggestions from task-template cwds (template name + path) and previously used ticket paths; warm list at startup, refreshed on `tasks:changed` / `templates:changed`; folder picker and free-typed path unchanged
+- Agent working agreement / Cursor rule: when CLI or agent workflows change, keep `internal/aiskill/SKILL.md` accurate
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 2.12.0 (0670a5a)
 
 ### Features and Improvements
