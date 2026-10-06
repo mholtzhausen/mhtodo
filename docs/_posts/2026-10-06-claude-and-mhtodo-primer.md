@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Claude and mhtodo — a short primer"
-date: 2026-10-06 12:00:00 +0000
+date: 2026-10-06 00:00:00 +0000
 categories: [guide]
 tags: [agents, claude, cli]
 ---
@@ -83,4 +83,4 @@ Re-run `mhtodo ai` after upgrades when the contract version bumps (release notes
 - Prefer clear titles and a brief description on root tasks you create for agents.
 - When you are done reviewing, mark **done** yourself on user-originated tickets (agents take those to `review`).
 
-For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({% post_url 2026-10-05-release-2-10-0-deep-links %}).
+For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/2026/10/05/release-2-10-0-deep-links.html).

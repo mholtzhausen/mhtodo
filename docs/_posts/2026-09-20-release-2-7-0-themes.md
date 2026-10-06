@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "2.7.0 — GUI themes"
-date: 2026-09-20 12:00:00 +0000
+date: 2026-09-20 00:00:00 +0000
 categories: [release]
 tags: [gui, themes, cli]
 ---

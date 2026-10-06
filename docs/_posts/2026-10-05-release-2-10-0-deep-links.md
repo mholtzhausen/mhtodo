@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "2.10.0 — Deep links and ticket handoff"
-date: 2026-10-05 12:00:00 +0000
+date: 2026-10-05 00:00:00 +0000
 categories: [release]
 tags: [cli, gui, deep-links, agents]
 ---
@@ -18,4 +18,4 @@ Point agents (and yourself) at a ticket with a pasteable reference block and des
 
 Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.10.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2100-4f7c458) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.10.0).
 
-For how Claude (or any agent) is expected to use the board, see [Claude and mhtodo]({% post_url 2026-10-06-claude-and-mhtodo-primer %}).
+For how Claude (or any agent) is expected to use the board, see [Claude and mhtodo]({{ site.baseurl }}/2026/10/06/claude-and-mhtodo-primer.html).

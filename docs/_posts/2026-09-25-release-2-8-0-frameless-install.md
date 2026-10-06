@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "2.8.0 — Frameless window and in-app install"
-date: 2026-09-25 12:00:00 +0000
+date: 2026-09-25 00:00:00 +0000
 categories: [release]
 tags: [gui, install, subtasks]
 ---

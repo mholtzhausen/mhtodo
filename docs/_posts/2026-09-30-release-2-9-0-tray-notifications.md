@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "2.9.0 — Tray attention and notifications"
-date: 2026-09-30 12:00:00 +0000
+date: 2026-09-30 00:00:00 +0000
 categories: [release]
 tags: [gui, tray, notifications]
 ---
