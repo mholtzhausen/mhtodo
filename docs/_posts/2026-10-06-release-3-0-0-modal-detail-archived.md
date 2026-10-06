@@ -28,4 +28,4 @@ Shortcuts: `b` board · `a` activity · `r` or `7` archived.
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.0.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#300-a0b290b) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.0.0).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.0.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#300-6cf9d71) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.0.0).

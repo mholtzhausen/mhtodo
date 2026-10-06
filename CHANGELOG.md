@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.0.0 (a0b290b)
+## 3.0.0 (6cf9d71)
 
 ### Features and Improvements
 - Task detail is always a modal: card actions (markdown / ticket ref / Slack / Zed / human-only / include-in-report / archive) live in the detail header; human-only and include-in-report checkboxes remain in the form
