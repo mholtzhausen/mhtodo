@@ -238,8 +238,9 @@ status transitions → activity → delete) using only this CLI.
 
 - **Board view (default):** six kanban columns — pending / wip / waiting / review / pr / done — with live
   counts; root cards show title, progress, relative time; human-only / Slack-report flags live in the
-  card footer actions (not duplicated in the title row). When `pr_url` is set, a PR link sits just left
-  of the top-right mark-done checkbox. The Pull Request column is collapsed by default. Columns collapse
+  card footer actions (not duplicated in the title row). When `pr_url` is set, a pull-request icon
+  sits next to the Slack thread icon in those footer actions (and in the detail modal header) and
+  opens the URL in the system browser. The Pull Request column is collapsed by default. Columns collapse
   via a header caret into a slim vertical strip (rotated title + count); collapsed state persists across
   restarts (`mhtodo.collapsedColumns.v2`). Sub-tasks nest under the parent card when shown (never own
   column cards), in creation order (oldest first). Drag a **root** card to change status (including onto
@@ -254,8 +255,9 @@ status transitions → activity → delete) using only this CLI.
 - **Detail modal:** edit fields (including working directory with fuzzy typeahead over template
   cwds and previously used ticket paths — plus folder picker / free-typed path — Todo session /
   Claude session UUID, human-only / Slack report checkboxes, Slack thread URL), activity composer,
-  Add sub-task (roots only). Header repeats card actions (copy markdown / ticket ref, Slack, Zed,
-  human-only / include-in-report toggles, archive). Feedback is agent/CLI-authored (read-only in the
+  Add sub-task (roots only). Header repeats card actions (copy markdown / ticket ref, Slack, pull
+  request when `pr_url` is set, Zed, human-only / include-in-report toggles, archive). Feedback is
+  agent/CLI-authored (read-only in the
   GUI). Markdown http(s) links open externally. Esc closes the modal, otherwise hides to tray.
   Click another task to switch; `←`/`→` move to adjacent tasks.
 - **New task dialog:** optional working directory (same typeahead + folder picker as detail), Slack

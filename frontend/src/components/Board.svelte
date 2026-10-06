@@ -4,7 +4,6 @@
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
-  import { openExternalUrl } from '../lib/openExternal'
 
   let {
     tasks,
@@ -586,26 +585,6 @@
                   class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1"
                   onmousedown={(e) => e.stopPropagation()}
                 >
-                  {#if (t.pr_url ?? '').trim()}
-                    <button
-                      type="button"
-                      title="Open pull request"
-                      aria-label={`Open pull request for “${t.title}”`}
-                      onclick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        void openExternalUrl(String(t.pr_url).trim())
-                      }}
-                      ondragstart={(e) => e.preventDefault()}
-                      class="flex h-3.5 w-3.5 items-center justify-center rounded-chip border border-st-pr/50 bg-card/80 text-st-pr transition-colors hover:border-st-pr hover:bg-st-pr/20"
-                    >
-                      <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                        <path d="M6 3.5h6.5V10" stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M12.5 3.5 6.5 9.5" stroke-linecap="round" />
-                        <path d="M3.5 6.5v6h6" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                  {/if}
                   <button
                     type="button"
                     tabindex={t.status === 'done' ? -1 : 0}
@@ -629,7 +608,7 @@
                   type="button"
                   onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 text-left focus:outline-none {(t.pr_url ?? '').trim() ? 'pr-10' : 'pr-6'}"
+                  class="w-full cursor-grab p-2.5 pr-6 text-left focus:outline-none"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">

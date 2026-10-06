@@ -4,6 +4,7 @@
   import { type GUISettings } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
   import HumanIcon from './HumanIcon.svelte'
+  import PullRequestIcon from './PullRequestIcon.svelte'
   import SlackIcon from './SlackIcon.svelte'
   import ZedIcon from './ZedIcon.svelte'
 
@@ -23,6 +24,7 @@
       include_in_report?: boolean
       archived_at?: string | null
       slack_thread?: string
+      pr_url?: string
     }
     settings?: GUISettings | null
     zedBinaryOk?: boolean
@@ -37,6 +39,7 @@
   let copyingRef = $state(false)
   let copiedRef = $state(false)
   let openingSlack = $state(false)
+  let openingPR = $state(false)
   let openingZed = $state(false)
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
@@ -53,6 +56,7 @@
     `${zedCommand || 'Open in Zed'} — also copies ticket reference`
   )
   const slackURL = $derived((task.slack_thread ?? '').trim())
+  const prURL = $derived((task.pr_url ?? '').trim())
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
   const isArchived = $derived(!!task.archived_at)
@@ -178,6 +182,18 @@
       if (!ok) reportError('Invalid Slack thread URL')
     } finally {
       openingSlack = false
+    }
+  }
+
+  async function openPR(e: MouseEvent) {
+    stop(e)
+    if (openingPR || !prURL) return
+    openingPR = true
+    try {
+      const ok = await openExternalUrl(prURL)
+      if (!ok) reportError('Invalid pull request URL')
+    } finally {
+      openingPR = false
     }
   }
 
@@ -318,6 +334,19 @@
       class="{actionBtn} text-ink-3 hover:text-ink"
     >
       <SlackIcon class="h-3 w-3" />
+    </button>
+  {/if}
+
+  {#if prURL}
+    <button
+      type="button"
+      onclick={openPR}
+      disabled={openingPR}
+      title="Open pull request"
+      aria-label="Open pull request"
+      class="{actionBtn} text-ink-3 hover:text-ink"
+    >
+      <PullRequestIcon class="h-3 w-3" title="" />
     </button>
   {/if}
 

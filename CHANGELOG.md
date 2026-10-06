@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- When `pr_url` is set, a pull-request icon sits next to the Slack icon in card footer actions and the detail header; opens the URL in the system browser (replaces the board card link beside mark-done)
 
 ### Bugfixes
 - (none)
