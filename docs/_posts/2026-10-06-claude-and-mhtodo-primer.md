@@ -83,4 +83,4 @@ Re-run `mhtodo ai` after upgrades when the contract version bumps (release notes
 - Prefer clear titles and a brief description on root tasks you create for agents.
 - When you are done reviewing, mark **done** yourself on user-originated tickets (agents take those to `review`).
 
-For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/2026/10/05/release-2-10-0-deep-links.html).
+For releases that shaped this handoff model, see [2.10.0 — Deep links and ticket handoff]({{ site.baseurl }}/release/2026/10/05/release-2-10-0-deep-links.html).
