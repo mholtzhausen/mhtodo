@@ -99,3 +99,16 @@ func ShellDoubleQuote(s string) string {
 	b.WriteByte('"')
 	return b.String()
 }
+
+// shellWord quotes s for a POSIX shell when it contains spaces or metacharacters.
+func shellWord(s string) string {
+	if s == "" {
+		return `""`
+	}
+	for _, r := range s {
+		if unicode.IsSpace(r) || strings.ContainsRune(`"'\$`+"`!*?;&|()<>[]{}", r) {
+			return ShellDoubleQuote(s)
+		}
+	}
+	return s
+}

@@ -93,7 +93,6 @@
   let viewportWidth = $state(
     typeof window !== 'undefined' ? window.innerWidth : 1100
   )
-  let claudeBinaryOk = $state(false)
   let zedBinaryOk = $state(false)
 
   let tasks = $state<any[]>([])
@@ -169,7 +168,6 @@
     dialogParentId ? false : guiSettings.default_include_in_report
   )
   const dialogDefaultSlackThread = $derived(dialogParent?.slack_thread ?? '')
-  const dialogDefaultTodoSession = $derived(dialogParent?.todo_session ?? '')
 
   const installUpdateAvailable = $derived(!!installStatus && !installStatus.up_to_date)
   /** Enabled when a newer release exists, or Ctrl is held while hovering (force). */
@@ -217,8 +215,6 @@
   async function runInstallActions(opts: {
     updateApp: boolean
     installService: boolean
-    integrationZsh: boolean
-    integrationBash: boolean
   }) {
     if (installBusy) return
     installBusy = true
@@ -302,10 +298,8 @@
     invalidateBinaryCache()
     try {
       const ready = await refreshBinaryReadiness(s)
-      claudeBinaryOk = ready.claude
       zedBinaryOk = ready.zed
     } catch {
-      claudeBinaryOk = false
       zedBinaryOk = false
     }
   }
@@ -1069,7 +1063,6 @@
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           settings={guiSettings}
-          {claudeBinaryOk}
           {zedBinaryOk}
           onSelect={selectTask}
           onQuickAdd={(s: Status) => openNewTask({ status: s })}
@@ -1086,7 +1079,6 @@
           {showSubtasks}
           showUpdated={!narrowChrome}
           settings={guiSettings}
-          {claudeBinaryOk}
           {zedBinaryOk}
           onSelect={selectTask}
           onError={showToast}
@@ -1189,7 +1181,6 @@
     defaultHumanOnly={dialogDefaultHumanOnly}
     defaultIncludeInReport={dialogDefaultIncludeInReport}
     defaultSlackThread={dialogDefaultSlackThread}
-    defaultTodoSession={dialogDefaultTodoSession}
     openWithTemplatePicker={dialogTemplatePicker}
     onClose={() => {
       dialogOpen = false

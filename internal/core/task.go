@@ -50,8 +50,9 @@ type Task struct {
 	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
 	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
 	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
-	TodoSession     string `json:"todo_session"`      // Claude session UUID (--session-id/--resume); --name uses DefaultTodoSession
-	TerminalPID     int    `json:"terminal_pid"`      // OS PID of mhtodo-managed Claude terminal (spawn=terminal); 0 = none
+	TodoSession     string `json:"todo_session"` // legacy column (unused; kept for schema stability)
+	TerminalPID     int    `json:"terminal_pid"` // legacy column (unused; kept for schema stability)
+
 }
 
 // SlackThreadNotice returns the agent-facing reminder when SlackThread is set.
@@ -76,7 +77,7 @@ type CreateInput struct {
 	// value always wins.
 	IncludeInReport *bool
 	SlackThread     string // optional Slack thread URL
-	TodoSession     string // optional; empty → NewTodoSessionID() (UUIDv7) on create
+	TodoSession     string // optional legacy; left empty on create unless set
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;

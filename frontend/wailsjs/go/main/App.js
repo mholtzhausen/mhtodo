@@ -62,13 +62,7 @@ export function DuplicateTheme(arg1, arg2) {
   return window['go']['main']['App']['DuplicateTheme'](arg1, arg2);
 }
 
-export function EnsureHerdrReady() {
-  return window['go']['main']['App']['EnsureHerdrReady']();
-}
 
-export function EnsureHerdrWorkspaceForTask(arg1) {
-  return window['go']['main']['App']['EnsureHerdrWorkspaceForTask'](arg1);
-}
 
 export function GetActiveTheme() {
   return window['go']['main']['App']['GetActiveTheme']();
@@ -118,9 +112,6 @@ export function ListThemes() {
   return window['go']['main']['App']['ListThemes']();
 }
 
-export function OpenHerdrTicket(arg1) {
-  return window['go']['main']['App']['OpenHerdrTicket'](arg1);
-}
 
 export function OpenZedTicket(arg1) {
   return window['go']['main']['App']['OpenZedTicket'](arg1);

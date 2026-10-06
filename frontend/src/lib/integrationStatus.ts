@@ -1,7 +1,7 @@
-// Shared Claude/Zed readiness for board cards + detail. Avoids per-card
+// Shared Zed readiness for board cards + detail. Avoids per-card
 // getSettings/checkBinary storms when many TaskActivityActions mount.
 import { api, type GUISettings } from './api'
-import { defaultSettings, claudeSpawnEnabled } from './settings'
+import { defaultSettings } from './settings'
 
 let settings: GUISettings = defaultSettings()
 const binaryOk = new Map<string, boolean>()
@@ -50,13 +50,10 @@ export async function checkBinaryCached(path: string): Promise<boolean> {
   }
 }
 
-export type BinaryReadiness = { claude: boolean; zed: boolean }
+export type BinaryReadiness = { zed: boolean }
 
 export async function refreshBinaryReadiness(s: GUISettings = settings): Promise<BinaryReadiness> {
-  const out: BinaryReadiness = { claude: false, zed: false }
-  if (claudeSpawnEnabled(s)) {
-    out.claude = await checkBinaryCached(s.claude.binary)
-  }
+  const out: BinaryReadiness = { zed: false }
   if (s.zed.enabled) {
     out.zed = await checkBinaryCached(s.zed.binary)
   }

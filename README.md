@@ -98,10 +98,10 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--session` optional Claude/Zed session (default `{short8}-{slugified-title}`, no spaces); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--session S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--session ""` / `--slack-thread ""` clear those fields |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; never changes status; `--cwd ""` / `--slack-thread ""` clear those fields |
 | `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
@@ -113,9 +113,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
-| `integration bash\|zsh` | `mhtodo integration bash\|zsh [--remove]` | install/update (or remove) a managed `claude.todo` function in `~/.bashrc` / `~/.zshrc` that runs `claude --session-id "$MHTODO_SESSION"` then `--resume` (optional `--name` from `MHTODO_SESSION_NAME`) |
 | `ai` | `mhtodo ai` | print agent integration instructions (install/upgrade contract; interpolates version, DB path, status/sort enums; live signal is status/progress/sub-tasks; ask before creating root tasks; reopen `review` when more work lands) |
-| `install` | `mhtodo install [--prefix DIR] [--service \| --no-service] [--integration bash\|zsh\|none]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service and `claude.todo` shell helper; flags skip prompts (non-TTY skips optionals unless flagged) |
+| `install` | `mhtodo install [--prefix DIR] [--service \| --no-service]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service; flags skip prompts (non-TTY skips optionals unless flagged) |
 | `update` | `mhtodo update [--check] [--force]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current |
 | `service` | `mhtodo service install\|stop\|start\|restart\|uninstall` | manage the user systemd unit for this install (`~/.config/systemd/user/mhtodo.service`); `install` writes `ExecStart=<this binary> gui` and enables it; `uninstall` removes the unit (binary stays). From-source bootstrap remains `make service-install` |
 | `template list` | `mhtodo template list` | all templates, name order |
@@ -154,9 +153,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "cwd": "/home/me/projects/mhtodo",
   "human_only": false,
   "include_in_report": true,
-  "slack_thread": "",
-  "todo_session": "019be00a-5f3a-7abc-8000-abc123456789",
-  "terminal_pid": 0
+  "slack_thread": ""
 }
 ```
 
@@ -176,24 +173,23 @@ Activity entry:
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
 `parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
 (lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
-directory. `todo_session` is the Claude session UUID (auto-seeded UUIDv7 on create; used with
-`--session-id` / `--resume`; display slug `{short8}-{slugified-title}` goes to `--name` /
-`MHTODO_SESSION_NAME` — update with `--session` after Claude `/new` or `/clear`). `terminal_pid` is the OS
-PID of an mhtodo-managed Claude terminal when Claude spawn mode is `terminal` (0 when unused). `human_only` marks a task the
-user handles themselves — agents must not adopt or update such tasks; default `list` hides them
-unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
+directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
+such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
+Legacy JSON fields `todo_session` / `terminal_pid` may still appear (empty/0) for schema stability —
+ignore them.
 
-### Claude spawn (Settings → Integrations)
+### Zed (Settings → Integrations)
 
-Claude sessions open via a **spawn** mode in config (`~/.config/mhtodo/config.yml`):
+When Zed is enabled and found on PATH, board/list cards show an Open-in-Zed action for tasks that
+have a working directory. It runs the configured binary with the task `cwd` (optional `env_start`
+prefix). There is no direct Claude/Herdr/terminal spawn in the app; agent hosts still install via
+`mhtodo ai` (Claude Code skill/hooks remain the reference mapping).
 
-| Spawn | Behavior |
-|-------|----------|
-| `herdr` | Open/focus a Herdr workspace tab and run Claude in the pane (default when Herdr + Claude are on PATH) |
-| `terminal` | Open Claude in a system terminal window; store `terminal_pid` and raise/focus that window on reopen (by session PID or `mhtodo:<session>` title) when still alive |
-| `disabled` | Hide Claude actions |
+Card actions also copy a paste-ready **markdown report** or a **ticket reference** line:
 
-When a task moves to done and “Close session when done” is enabled, Herdr closes the tab; Terminal kills the managed terminal process.
+```
+mhtodo ticket {short8} - {status} - {title} *remember to update subtasks and activity comments if you do work on this*
+```
 
 ### Agent usage examples
 
@@ -261,12 +257,12 @@ status transitions → activity → delete) using only this CLI.
   variables. CLI: `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset`.
 - **Sub-tasks toggle:** header control (persisted).
 - **Always on top:** pin icon in the header; preference stored in the SQLite `meta` table.
-  When on, opening Claude or Zed for a task hides mhtodo to the tray so the activated
+  When on, opening Zed for a task hides mhtodo to the tray so the activated
   terminal/IDE is not covered.
 - **Install / update:** download icon left of Settings. Enabled when a newer release is
   available; hold **Ctrl** while hovering to force-enable. Hover refreshes the GitHub
   version check when the 60-minute cache is stale; the dialog shows current/target versions
-  with a manual refresh control (`install` vs `upgrade`, optional service + shell integration).
+  with a manual refresh control (`install` vs `upgrade`, optional service).
 - **Window:** frameless; drag the app header to move, double-click header (outside tabs/actions) to toggle maximize. Header Close / Esc hide to tray; hold **Ctrl** while hovering Close to reveal Exit, then Ctrl+click (or `Ctrl+Q`) to quit.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
 - **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–5` status filter · `6` archived
@@ -284,7 +280,7 @@ status transitions → activity → delete) using only this CLI.
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
 - **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; pinned detail auto-falls back to floating when the main pane would be under ~640px; footer shortcut legend hides below ~900px width.
-- **GUI refresh:** `tasks:changed` is debounced/coalesced; single-task updates patch in place when possible. Search input is debounced (~200ms). Claude/Zed binary readiness is cached app-wide (not per board card).
+- **GUI refresh:** `tasks:changed` is debounced/coalesced; single-task updates patch in place when possible. Search input is debounced (~200ms). Zed binary readiness is cached app-wide (not per board card).
 
 ## Data & concurrency
 
@@ -313,7 +309,7 @@ status transitions → activity → delete) using only this CLI.
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
 | `GetInstallStatus(force)` | `update --check` (+ detect) | 60m cache; `force` bypasses; `show` when update available; GUI Ctrl+hover force |
-| `RunInstallActions(in)` | `update` / `service install` / `integration zsh\|bash` | GUI confirmation; execs this binary’s CLI |
+| `RunInstallActions(in)` | `update` / `service install` | GUI confirmation; execs this binary’s CLI |
 | `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | `template list\|search\|show\|create\|update\|rm`; `add --template` | task templates (v0.5); CLI `search` uses core `SearchTemplates` (fuzzy/regex + cwd); update is full replace in core (CLI patches then replace); `add --template` applies then lets changed flags override |
 | `ListThemes` / `GetTheme` / `GetActiveTheme` / `CreateTheme` / `UpdateTheme` / `DeleteTheme` / `ActivateTheme` / `DuplicateTheme` / `ResetTheme` | `theme list\|search\|show\|create\|update\|rm\|activate\|duplicate\|reset` | GUI themes (v0.6); tokens JSON map; active id in `meta.active_theme_id`; built-ins Slate/Paper/Ember |
 

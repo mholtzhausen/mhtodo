@@ -366,32 +366,11 @@ export namespace core {
 
 }
 
-export namespace integrations {
-	
-	export class HerdrTaskStatus {
-	    ready: boolean;
-	    error?: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new HerdrTaskStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ready = source["ready"];
-	        this.error = source["error"];
-	    }
-	}
-
-}
-
 export namespace main {
 	
 	export class InstallActionsInput {
 	    UpdateApp: boolean;
 	    InstallService: boolean;
-	    IntegrationZsh: boolean;
-	    IntegrationBash: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new InstallActionsInput(source);
@@ -401,15 +380,12 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.UpdateApp = source["UpdateApp"];
 	        this.InstallService = source["InstallService"];
-	        this.IntegrationZsh = source["IntegrationZsh"];
-	        this.IntegrationBash = source["IntegrationBash"];
 	    }
 	}
 	export class InstallActionsResult {
 	    message: string;
 	    updated: boolean;
 	    service: boolean;
-	    integration: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new InstallActionsResult(source);
@@ -420,7 +396,6 @@ export namespace main {
 	        this.message = source["message"];
 	        this.updated = source["updated"];
 	        this.service = source["service"];
-	        this.integration = source["integration"];
 	    }
 	}
 	export class InstallStatus {
@@ -460,30 +435,6 @@ export namespace main {
 
 export namespace settings {
 	
-	export class ClaudeConfig {
-	    enabled: boolean;
-	    binary: string;
-	    env_start: string;
-	    spawn: string;
-	    ticket_prompt: string;
-	    close_tab_on_done: boolean;
-	    require_cwd: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new ClaudeConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.enabled = source["enabled"];
-	        this.binary = source["binary"];
-	        this.env_start = source["env_start"];
-	        this.spawn = source["spawn"];
-	        this.ticket_prompt = source["ticket_prompt"];
-	        this.close_tab_on_done = source["close_tab_on_done"];
-	        this.require_cwd = source["require_cwd"];
-	    }
-	}
 	export class IntegrationConfig {
 	    enabled: boolean;
 	    binary: string;
@@ -498,38 +449,6 @@ export namespace settings {
 	        this.enabled = source["enabled"];
 	        this.binary = source["binary"];
 	        this.env_start = source["env_start"];
-	    }
-	}
-	export class TerminalConfig {
-	    binary: string;
-	    env_start: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new TerminalConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.binary = source["binary"];
-	        this.env_start = source["env_start"];
-	    }
-	}
-	export class HerdrConfig {
-	    enabled: boolean;
-	    binary: string;
-	    env_start: string;
-	    space_name: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new HerdrConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.enabled = source["enabled"];
-	        this.binary = source["binary"];
-	        this.env_start = source["env_start"];
-	        this.space_name = source["space_name"];
 	    }
 	}
 	export class NotificationsConfig {
@@ -563,9 +482,6 @@ export namespace settings {
 	    archive_done_subtasks: boolean;
 	    start_hidden: boolean;
 	    notifications: NotificationsConfig;
-	    claude: ClaudeConfig;
-	    herdr: HerdrConfig;
-	    terminal: TerminalConfig;
 	    zed: IntegrationConfig;
 	
 	    static createFrom(source: any = {}) {
@@ -580,9 +496,6 @@ export namespace settings {
 	        this.archive_done_subtasks = source["archive_done_subtasks"];
 	        this.start_hidden = source["start_hidden"];
 	        this.notifications = this.convertValues(source["notifications"], NotificationsConfig);
-	        this.claude = this.convertValues(source["claude"], ClaudeConfig);
-	        this.herdr = this.convertValues(source["herdr"], HerdrConfig);
-	        this.terminal = this.convertValues(source["terminal"], TerminalConfig);
 	        this.zed = this.convertValues(source["zed"], IntegrationConfig);
 	    }
 	

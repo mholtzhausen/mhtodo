@@ -13,7 +13,6 @@
     showSubtasks,
     showUpdated = true,
     settings = null,
-    claudeBinaryOk = false,
     zedBinaryOk = false,
     onSelect,
     onError,
@@ -26,7 +25,6 @@
     showSubtasks: boolean
     showUpdated?: boolean
     settings?: GUISettings | null
-    claudeBinaryOk?: boolean
     zedBinaryOk?: boolean
     onSelect: (id: string) => void
     onError?: (msg: string) => void
@@ -149,7 +147,6 @@
               <TaskActivityActions
                 task={t}
                 {settings}
-                {claudeBinaryOk}
                 {zedBinaryOk}
                 {onError}
                 {onToast}

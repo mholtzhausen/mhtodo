@@ -14,7 +14,6 @@
     humanFilterEmpty = false,
     archiveDoneSubtasks = false,
     settings = null,
-    claudeBinaryOk = false,
     zedBinaryOk = false,
     onSelect,
     onQuickAdd,
@@ -30,7 +29,6 @@
     humanFilterEmpty?: boolean
     archiveDoneSubtasks?: boolean
     settings?: GUISettings | null
-    claudeBinaryOk?: boolean
     zedBinaryOk?: boolean
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
@@ -625,7 +623,6 @@
                   <TaskActivityActions
                     task={t}
                     {settings}
-                    {claudeBinaryOk}
                     {zedBinaryOk}
                     {onError}
                     {onToast}

@@ -3,13 +3,17 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Zed integration opens the task working directory only (no `MHTODO_SESSION`)
+- Board/list: copy ticket reference next to the markdown report action
+- `mhtodo ai` contract v13: keep Claude Code skill/hooks; drop spawn/session/`claude.todo` surface
 
 ### Bugfixes
 - (none)
 
 ### Deprecations
-- (none)
+- Removed direct Claude/Herdr/terminal spawn from Settings and GUI
+- Removed `mhtodo integration` and `install --integration` / `claude.todo` shell helper
+- Removed `--session` on `add`/`edit` (legacy `todo_session` / `terminal_pid` columns kept inert)
 
 ## 2.9.0 (0d24c03)
 

@@ -121,13 +121,6 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		includeInReport = *in.IncludeInReport
 	}
 	idStr := id.String()
-	session := strings.TrimSpace(in.TodoSession)
-	if session == "" {
-		session, err = NewTodoSessionID()
-		if err != nil {
-			return Task{}, err
-		}
-	}
 	t := Task{
 		ID:              idStr,
 		Title:           title,
@@ -142,7 +135,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,
 		SlackThread:     strings.TrimSpace(in.SlackThread),
-		TodoSession:     session,
+		TodoSession:     strings.TrimSpace(in.TodoSession), // inert legacy column; not seeded
 	}
 	if st == StatusDone {
 		t.Progress = 100

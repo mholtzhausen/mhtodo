@@ -2,8 +2,6 @@
   import { fly } from 'svelte/transition'
   import { focusOnOpen } from '../lib/focusFirstField'
   import type { InstallStatus } from '../lib/api'
-  import ZedIcon from './ZedIcon.svelte'
-
   let {
     open,
     status = null,
@@ -21,16 +19,12 @@
     onConfirm: (opts: {
       updateApp: boolean
       installService: boolean
-      integrationZsh: boolean
-      integrationBash: boolean
     }) => void
     onRefresh?: () => void
   } = $props()
 
   let updateApp = $state(true)
   let installService = $state(false)
-  let integrationZsh = $state(false)
-  let integrationBash = $state(false)
   let seeded = false
 
   $effect(() => {
@@ -42,13 +36,9 @@
     seeded = true
     updateApp = true
     installService = status ? !status.has_service : false
-    integrationZsh = false
-    integrationBash = false
   })
 
-  const canConfirm = $derived(
-    (updateApp || installService || integrationZsh || integrationBash) && !busy
-  )
+  const canConfirm = $derived((updateApp || installService) && !busy)
 
   /** "upgrade" when a newer release is known; otherwise "install". */
   const actionVerb = $derived(
@@ -72,14 +62,12 @@
     const bits: string[] = []
     if (updateApp) bits.push(targetVersion ? `${actionVerb} ${targetVersion}` : actionVerb)
     if (installService) bits.push(status?.has_service ? 'refresh service' : 'install service')
-    if (integrationZsh) bits.push('zsh')
-    if (integrationBash) bits.push('bash')
     return bits
   })
 
   function submit() {
     if (!canConfirm) return
-    onConfirm({ updateApp, installService, integrationZsh, integrationBash })
+    onConfirm({ updateApp, installService })
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -287,81 +275,6 @@
                 >
               {/if}
             </label>
-          </div>
-        </div>
-
-        <!-- Shell / Zed integration tiles -->
-        <div>
-          <p class="micro mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span>Shell helper</span>
-            <span class="text-ink-3/50" aria-hidden="true">/</span>
-            <span class="inline-flex items-center gap-1">
-              <ZedIcon class="h-3 w-3" />
-              Zed integration
-            </span>
-          </p>
-          <p class="mb-2.5 text-xs leading-relaxed text-ink-3">
-            Optional
-            <span
-              class="mx-0.5 inline-flex align-middle rounded-chip border border-line-soft bg-white/5 px-1.5 py-[2px] font-mono text-[10px] leading-none text-ink-2"
-              >claude.todo</span
-            >
-            helper for
-            <span class="font-mono font-semibold text-ink-2">$MHTODO_SESSION</span>.
-          </p>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              aria-pressed={integrationZsh}
-              onclick={() => (integrationZsh = !integrationZsh)}
-              class="relative flex items-center gap-2 rounded-card border px-2.5 py-2 text-left transition-colors disabled:opacity-40
-                {integrationZsh
-                ? 'border-accent/45 bg-accent/10 shadow-[inset_3px_0_0_0_var(--color-accent)]'
-                : 'border-line-soft bg-field/40 hover:border-line hover:bg-field/70'}"
-            >
-              <span class="font-mono text-[11px] text-ink-3">%</span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold leading-tight text-ink">zsh</span>
-                <span class="block font-mono text-[10px] leading-tight text-ink-3">~/.zshrc</span>
-              </span>
-              {#if integrationZsh}
-                <span
-                  class="grid h-4 w-4 flex-none place-items-center rounded-full bg-accent text-accent-ink"
-                  aria-hidden="true"
-                >
-                  <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </span>
-              {/if}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              aria-pressed={integrationBash}
-              onclick={() => (integrationBash = !integrationBash)}
-              class="relative flex items-center gap-2 rounded-card border px-2.5 py-2 text-left transition-colors disabled:opacity-40
-                {integrationBash
-                ? 'border-accent/45 bg-accent/10 shadow-[inset_3px_0_0_0_var(--color-accent)]'
-                : 'border-line-soft bg-field/40 hover:border-line hover:bg-field/70'}"
-            >
-              <span class="font-mono text-[11px] text-ink-3">$</span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold leading-tight text-ink">bash</span>
-                <span class="block font-mono text-[10px] leading-tight text-ink-3">~/.bashrc</span>
-              </span>
-              {#if integrationBash}
-                <span
-                  class="grid h-4 w-4 flex-none place-items-center rounded-full bg-accent text-accent-ink"
-                  aria-hidden="true"
-                >
-                  <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </span>
-              {/if}
-            </button>
           </div>
         </div>
       </div>

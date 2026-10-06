@@ -3,17 +3,10 @@
   import { api, errMsg } from '../lib/api'
   import {
     defaultSettings,
-    DEFAULT_CLAUDE_TICKET_PROMPT,
-    DEFAULT_HERDR_SPACE_NAME,
-    normalizeSpawn,
     STATUS_OPTIONS,
     toggleStatusInOrder,
-    type ClaudeConfig,
-    type ClaudeSpawn,
     type GUISettings,
-    type HerdrConfig,
-    type IntegrationConfig,
-    type TerminalConfig
+    type IntegrationConfig
   } from '../lib/settings'
   import { emptyValues, type TaskTemplate } from '../lib/templates'
   import { SLATE_FACTORY_TOKENS, type Theme } from '../lib/themes'
@@ -40,9 +33,6 @@
   let persisting = $state(false)
   let lastSaved = $state('')
 
-  let claudeFound = $state(false)
-  let herdrFound = $state(false)
-  let terminalFound = $state(false)
   let zedFound = $state(false)
 
   type SettingsPage = 'general' | 'notifications' | 'integrations' | 'templates' | 'themes'
@@ -258,25 +248,9 @@
   async function refreshBinaryStatus() {
     if (!open) return
     try {
-      const checks: Promise<boolean>[] = [
-        api.checkBinary(settings.claude.binary),
-        api.checkBinary(settings.herdr.binary),
-        api.checkBinary(settings.zed.binary)
-      ]
-      const termBin = settings.terminal.binary.trim()
-      if (termBin) {
-        checks.push(api.checkBinary(termBin))
-      }
-      const [c, h, z, t] = await Promise.all(checks)
-      claudeFound = c
-      herdrFound = h
-      zedFound = z
-      terminalFound = termBin ? !!t : true
+      zedFound = await api.checkBinary(settings.zed.binary)
     } catch {
-      claudeFound = false
-      herdrFound = false
       zedFound = false
-      terminalFound = false
     }
   }
 
@@ -329,9 +303,6 @@
       archive_done_subtasks,
       start_hidden,
       notifications,
-      claude,
-      herdr,
-      terminal,
       zed
     } = settings
     void default_cwd
@@ -346,18 +317,6 @@
     void notifications.notify_send_waiting
     void notifications.notify_send_review
     void notifications.notify_send_done
-    void claude.spawn
-    void claude.enabled
-    void claude.binary
-    void claude.env_start
-    void claude.ticket_prompt
-    void claude.close_tab_on_done
-    void claude.require_cwd
-    void herdr.binary
-    void herdr.env_start
-    void herdr.space_name
-    void terminal.binary
-    void terminal.env_start
     void zed.enabled
     void zed.binary
     void zed.env_start
@@ -366,9 +325,6 @@
 
   $effect(() => {
     if (!open) return
-    settings.claude.binary
-    settings.herdr.binary
-    settings.terminal.binary
     settings.zed.binary
     const t = setTimeout(() => {
       void refreshBinaryStatus()
@@ -385,37 +341,10 @@
     }
   }
 
-  function patchIntegration(key: 'claude', patch: Partial<ClaudeConfig>): void
-  function patchIntegration(key: 'herdr', patch: Partial<HerdrConfig>): void
-  function patchIntegration(key: 'terminal', patch: Partial<TerminalConfig>): void
-  function patchIntegration(key: 'zed', patch: Partial<IntegrationConfig>): void
-  function patchIntegration(
-    key: 'claude' | 'herdr' | 'terminal' | 'zed',
-    patch:
-      | Partial<ClaudeConfig>
-      | Partial<HerdrConfig>
-      | Partial<TerminalConfig>
-      | Partial<IntegrationConfig>
-  ) {
+  function patchIntegration(key: 'zed', patch: Partial<IntegrationConfig>): void {
     settings = {
       ...settings,
       [key]: { ...settings[key], ...patch }
-    }
-  }
-
-  function setClaudeSpawn(spawn: ClaudeSpawn) {
-    const next = normalizeSpawn(spawn)
-    settings = {
-      ...settings,
-      claude: {
-        ...settings.claude,
-        spawn: next,
-        enabled: next !== 'disabled'
-      },
-      herdr: {
-        ...settings.herdr,
-        enabled: next === 'herdr'
-      }
     }
   }
 </script>
@@ -737,212 +666,6 @@
               <h3 class="mb-4 text-sm font-semibold text-ink">Integrations</h3>
               <div class="flex flex-col gap-4">
               <div class="rounded-control border border-line-soft bg-field/30 p-3.5">
-                <div class="text-sm font-medium text-ink">Claude</div>
-                <div class="mt-3 flex flex-col gap-gap-md">
-                  <div>
-                    <span class="micro mb-1.5 block">Spawn</span>
-                    <div class="flex flex-wrap gap-1 rounded-control border border-line-soft bg-field p-0.5" role="group" aria-label="Claude spawn mode">
-                      {#each [
-                        { id: 'herdr' as ClaudeSpawn, label: 'Herdr' },
-                        { id: 'terminal' as ClaudeSpawn, label: 'Terminal' },
-                        { id: 'disabled' as ClaudeSpawn, label: 'Disabled' }
-                      ] as opt (opt.id)}
-                        <button
-                          type="button"
-                          onclick={() => setClaudeSpawn(opt.id)}
-                          class="rounded-control px-3 py-1.5 text-xs font-medium transition-colors
-                            {normalizeSpawn(settings.claude.spawn) === opt.id
-                              ? 'bg-accent text-white'
-                              : 'text-ink-2 hover:bg-white/5 hover:text-ink'}"
-                        >
-                          {opt.label}
-                        </button>
-                      {/each}
-                    </div>
-                  </div>
-
-                  {#if normalizeSpawn(settings.claude.spawn) !== 'disabled'}
-                    <label class="block">
-                      <span class="micro mb-1">Binary</span>
-                      <div class="flex items-center gap-2">
-                        <input
-                          value={settings.claude.binary}
-                          oninput={(e) =>
-                            patchIntegration('claude', {
-                              binary: (e.currentTarget as HTMLInputElement).value
-                            })}
-                          placeholder="/usr/bin/claude"
-                          class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-                        />
-                        <span
-                          title={claudeFound ? 'Binary found' : 'Binary not found'}
-                          class="h-2.5 w-2.5 shrink-0 rounded-full {claudeFound
-                            ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.55)]'
-                            : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}"
-                          aria-label={claudeFound ? 'Binary found' : 'Binary not found'}
-                        ></span>
-                      </div>
-                    </label>
-                    <label class="block">
-                      <span class="micro mb-1">Env start string</span>
-                      <ClearableField
-                        value={settings.claude.env_start}
-                        placeholder="e.g. ANTHROPIC_API_KEY=… command args"
-                        onChange={(env_start) => patchIntegration('claude', { env_start })}
-                      />
-                    </label>
-                    <label class="block">
-                      <span class="mb-1.5 flex flex-col gap-0.5">
-                        <span class="micro">Ticket prompt</span>
-                        <span class="text-xs italic text-ink-3/75">
-                          Sent when opening a new Claude session. Use <code
-                            class="font-mono not-italic text-ink-3/90">{'{{todo-hash}}'}</code
-                          > for the short task ID.
-                        </span>
-                      </span>
-                      <ClearableField
-                        multiline
-                        rows={4}
-                        mono
-                        value={settings.claude.ticket_prompt}
-                        placeholder={DEFAULT_CLAUDE_TICKET_PROMPT}
-                        onChange={(ticket_prompt) => patchIntegration('claude', { ticket_prompt })}
-                      />
-                    </label>
-                    <label class="flex cursor-pointer items-start gap-gap-md">
-                      <input
-                        type="checkbox"
-                        checked={settings.claude.require_cwd}
-                        onchange={(e) =>
-                          patchIntegration('claude', {
-                            require_cwd: (e.currentTarget as HTMLInputElement).checked
-                          })}
-                        class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
-                      />
-                      <span class="flex flex-col gap-0.5">
-                        <span class="text-sm text-ink-2">Require working directory</span>
-                        <span class="text-xs italic text-ink-3/75">Hide Claude button when task has no cwd</span>
-                      </span>
-                    </label>
-                    <label class="flex cursor-pointer items-start gap-gap-md">
-                      <input
-                        type="checkbox"
-                        checked={settings.claude.close_tab_on_done}
-                        onchange={(e) =>
-                          patchIntegration('claude', {
-                            close_tab_on_done: (e.currentTarget as HTMLInputElement).checked
-                          })}
-                        class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
-                      />
-                      <span class="flex flex-col gap-0.5">
-                        <span class="text-sm text-ink-2">Close session when done</span>
-                        <span class="text-xs italic text-ink-3/75">
-                          {normalizeSpawn(settings.claude.spawn) === 'herdr'
-                            ? 'Close the Herdr ticket tab when the task moves to done'
-                            : 'Kill the managed terminal when the task moves to done'}
-                        </span>
-                      </span>
-                    </label>
-
-                    {#if normalizeSpawn(settings.claude.spawn) === 'herdr'}
-                      <div class="mt-1 border-t border-line-soft pt-3">
-                        <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">Herdr</div>
-                        <div class="flex flex-col gap-gap-md">
-                          <label class="block">
-                            <span class="micro mb-1">Binary</span>
-                            <div class="flex items-center gap-2">
-                              <input
-                                value={settings.herdr.binary}
-                                oninput={(e) =>
-                                  patchIntegration('herdr', {
-                                    binary: (e.currentTarget as HTMLInputElement).value
-                                  })}
-                                placeholder="/usr/local/bin/herdr"
-                                class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-                              />
-                              <span
-                                title={herdrFound ? 'Binary found' : 'Binary not found'}
-                                class="h-2.5 w-2.5 shrink-0 rounded-full {herdrFound
-                                  ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.55)]'
-                                  : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}"
-                                aria-label={herdrFound ? 'Binary found' : 'Binary not found'}
-                              ></span>
-                            </div>
-                          </label>
-                          <label class="block">
-                            <span class="micro mb-1">Env start string</span>
-                            <ClearableField
-                              value={settings.herdr.env_start}
-                              placeholder="e.g. HERDR_CONFIG=… command args"
-                              onChange={(env_start) => patchIntegration('herdr', { env_start })}
-                            />
-                          </label>
-                          <label class="block">
-                            <span class="micro mb-1">Space name</span>
-                            <ClearableField
-                              value={settings.herdr.space_name}
-                              placeholder={DEFAULT_HERDR_SPACE_NAME}
-                              onChange={(space_name) => patchIntegration('herdr', { space_name })}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    {:else if normalizeSpawn(settings.claude.spawn) === 'terminal'}
-                      <div class="mt-1 border-t border-line-soft pt-3">
-                        <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">Terminal</div>
-                        <p class="mb-2 text-xs italic text-ink-3/75">
-                          Claude opens in a system terminal window. Leave binary empty to auto-pick an emulator.
-                        </p>
-                        <div class="flex flex-col gap-gap-md">
-                          <label class="block">
-                            <span class="micro mb-1">Preferred emulator</span>
-                            <div class="flex items-center gap-2">
-                              <input
-                                value={settings.terminal.binary}
-                                oninput={(e) =>
-                                  patchIntegration('terminal', {
-                                    binary: (e.currentTarget as HTMLInputElement).value
-                                  })}
-                                placeholder="gnome-terminal, kitty, … (empty = auto)"
-                                class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-                              />
-                              <span
-                                title={
-                                  settings.terminal.binary.trim()
-                                    ? terminalFound
-                                      ? 'Binary found'
-                                      : 'Binary not found'
-                                    : 'Auto-pick emulator'
-                                }
-                                class="h-2.5 w-2.5 shrink-0 rounded-full {terminalFound
-                                  ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.55)]'
-                                  : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}"
-                                aria-label={
-                                  settings.terminal.binary.trim()
-                                    ? terminalFound
-                                      ? 'Binary found'
-                                      : 'Binary not found'
-                                    : 'Auto-pick emulator'
-                                }
-                              ></span>
-                            </div>
-                          </label>
-                          <label class="block">
-                            <span class="micro mb-1">Env start string</span>
-                            <ClearableField
-                              value={settings.terminal.env_start}
-                              placeholder="e.g. EXTRA_VAR=1"
-                              onChange={(env_start) => patchIntegration('terminal', { env_start })}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    {/if}
-                  {/if}
-                </div>
-              </div>
-
-              <div class="rounded-control border border-line-soft bg-field/30 p-3.5">
                 <label class="flex cursor-pointer items-center gap-gap-md">
                   <input
                     type="checkbox"
@@ -987,7 +710,7 @@
                   </label>
                   <p class="text-xs italic text-ink-3/75">
                     Shown on cards when enabled, binary found, and the task has a working directory.
-                    Launches with <code class="font-mono not-italic text-ink-3/90">MHTODO_SESSION</code> from the task session.
+                    Opens Zed at the task working folder.
                   </p>
                 </div>
               </div>

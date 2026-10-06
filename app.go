@@ -201,7 +201,6 @@ func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 				if ncfg.NotifySendDone {
 					a.notifier.TaskDone(t.ID, t.Title)
 				}
-				a.maybeCloseHerdrTabOnDone(t)
 			}
 		}
 	}
@@ -499,133 +498,7 @@ func (a *App) CheckBinary(path string) bool {
 	return settings.BinaryFound(path)
 }
 
-func (a *App) herdrClient() (integrations.Client, error) {
-	s, err := settings.Load(a.repo)
-	if err != nil {
-		return integrations.Client{}, err
-	}
-	return integrations.Client{Herdr: s.Herdr, Claude: s.Claude, Terminal: s.Terminal}, nil
-}
-
-func (a *App) maybeCloseHerdrTabOnDone(t core.Task) {
-	client, err := a.herdrClient()
-	if err != nil {
-		return
-	}
-	client.MaybeCloseSessionOnDone(t.ID, core.ShortID(t.ID), t.Title, t.TerminalPID, func() {
-		if _, err := a.svc.SetTerminalPID(a.ctx, t.ID, 0); err == nil {
-			a.emitChanged(t.ID, "edit")
-		}
-	})
-}
-
-// EnsureHerdrReady ensures the configured Herdr workspace exists when Herdr
-// integration is enabled and the binary is found (no task required).
-func (a *App) EnsureHerdrReady() (integrations.HerdrTaskStatus, error) {
-	client, err := a.herdrClient()
-	if err != nil {
-		return integrations.HerdrTaskStatus{}, err
-	}
-	if !client.Herdr.Enabled || !client.HerdrFound() {
-		return integrations.HerdrTaskStatus{}, nil
-	}
-	ready, err := client.EnsureWorkspace()
-	if err != nil {
-		return integrations.HerdrTaskStatus{Error: err.Error()}, nil
-	}
-	return integrations.HerdrTaskStatus{Ready: ready}, nil
-}
-
-// EnsureHerdrWorkspaceForTask ensures the configured Herdr workspace exists when
-// the task is eligible (Herdr enabled, cwd set, not human-only).
-func (a *App) EnsureHerdrWorkspaceForTask(ref string) (integrations.HerdrTaskStatus, error) {
-	client, err := a.herdrClient()
-	if err != nil {
-		return integrations.HerdrTaskStatus{}, err
-	}
-	if !client.Herdr.Enabled || !client.HerdrFound() {
-		return integrations.HerdrTaskStatus{}, nil
-	}
-	t, err := a.svc.Get(a.ctx, ref)
-	if err != nil {
-		return integrations.HerdrTaskStatus{}, err
-	}
-	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, client.Claude.RequireCwd) {
-		return integrations.HerdrTaskStatus{}, nil
-	}
-	ready, err := client.EnsureWorkspace()
-	if err != nil {
-		return integrations.HerdrTaskStatus{Error: err.Error()}, nil
-	}
-	return integrations.HerdrTaskStatus{Ready: ready}, nil
-}
-
-// OpenHerdrTicket opens or focuses a Claude session for the task (Herdr tab or
-// system terminal window), depending on Claude spawn mode.
-func (a *App) OpenHerdrTicket(ref string) error {
-	s, err := settings.Load(a.repo)
-	if err != nil {
-		return err
-	}
-	t, err := a.svc.Get(a.ctx, ref)
-	if err != nil {
-		return err
-	}
-	if !integrations.TaskEligible(t.HumanOnly, t.Cwd, s.Claude.RequireCwd) {
-		if s.Claude.RequireCwd {
-			return fmt.Errorf("task is not eligible for Claude (needs cwd and must not be human-only)")
-		}
-		return fmt.Errorf("task is not eligible for Claude (must not be human-only)")
-	}
-	shortID := core.ShortID(t.ID)
-	sessionUUID, displayName, err := a.ensureClaudeSession(&t)
-	if err != nil {
-		return err
-	}
-	client := integrations.Client{Herdr: s.Herdr, Claude: s.Claude, Terminal: s.Terminal}
-	spawn := settings.NormalizeSpawn(s.Claude.Spawn)
-	switch spawn {
-	case settings.SpawnHerdr:
-		if err := client.OpenTicketTab(t.ID, shortID, t.Title, t.Cwd, sessionUUID, displayName); err != nil {
-			return err
-		}
-	case settings.SpawnTerminal:
-		pid, err := client.OpenTerminalSession(t.Cwd, shortID, t.Title, sessionUUID, t.TerminalPID)
-		if err != nil {
-			return err
-		}
-		if pid != t.TerminalPID {
-			if _, err := a.svc.SetTerminalPID(a.ctx, t.ID, pid); err != nil {
-				return err
-			}
-			a.emitChanged(t.ID, "edit")
-		}
-	default:
-		return fmt.Errorf("Claude spawn is disabled")
-	}
-	a.hideIfAlwaysOnTop()
-	return nil
-}
-
-// ensureClaudeSession returns a Claude session UUID and --name, minting and
-// persisting a UUID when todo_session is still a legacy slug or empty.
-func (a *App) ensureClaudeSession(t *core.Task) (sessionUUID, displayName string, err error) {
-	sessionUUID, displayName, generated, err := integrations.ResolveClaudeSession(core.ShortID(t.ID), t.Title, t.TodoSession)
-	if err != nil {
-		return "", "", err
-	}
-	if !generated {
-		return sessionUUID, displayName, nil
-	}
-	if _, err := a.svc.Edit(a.ctx, t.ID, core.UpdateInput{TodoSession: &sessionUUID}); err != nil {
-		return "", "", err
-	}
-	t.TodoSession = sessionUUID
-	a.emitChanged(t.ID, "edit")
-	return sessionUUID, displayName, nil
-}
-
-// OpenZedTicket opens Zed at the task cwd with MHTODO_SESSION set from todo_session.
+// OpenZedTicket opens Zed at the task working directory.
 func (a *App) OpenZedTicket(ref string) error {
 	s, err := settings.Load(a.repo)
 	if err != nil {
@@ -635,12 +508,8 @@ func (a *App) OpenZedTicket(ref string) error {
 	if err != nil {
 		return err
 	}
-	sessionUUID, displayName, err := a.ensureClaudeSession(&t)
-	if err != nil {
-		return err
-	}
 	client := integrations.ZedClient{Zed: s.Zed}
-	if err := client.OpenTicket(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName); err != nil {
+	if err := client.OpenTicket(t.Cwd); err != nil {
 		return err
 	}
 	a.hideIfAlwaysOnTop()
@@ -657,20 +526,8 @@ func (a *App) ZedTicketCommand(ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Tooltip only — do not mint/persist a UUID here.
-	sessionUUID, displayName, _, err := integrations.ResolveClaudeSession(core.ShortID(t.ID), t.Title, t.TodoSession)
-	if err != nil {
-		return "", err
-	}
-	if !core.LooksLikeSessionUUID(strings.TrimSpace(t.TodoSession)) {
-		// Show the stored value until OpenZedTicket persists a UUID.
-		sessionUUID = strings.TrimSpace(t.TodoSession)
-		if sessionUUID == "" {
-			sessionUUID = displayName
-		}
-	}
 	client := integrations.ZedClient{Zed: s.Zed}
-	return client.TicketCommand(t.Cwd, core.ShortID(t.ID), t.Title, sessionUUID, displayName), nil
+	return client.TicketCommand(t.Cwd), nil
 }
 
 // emitChanged is the single refresh path for the frontend: every local

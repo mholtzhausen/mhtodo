@@ -4,14 +4,13 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|integration|ai|install|update|service|template|theme`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|edit|status|done|reorder|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
- `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host.
+ `mhtodo ai` emits the install/upgrade contract for wiring this app into an agent host (including Claude Code skill/hooks).
  `mhtodo install` copies this binary into `~/.local` (desktop + icon), then can install the user
- systemd unit and/or `claude.todo` shell helper (prompts on a TTY; flags for non-interactive).
+ systemd unit (prompts on a TTY; flags for non-interactive).
  `mhtodo update` checks GitHub Releases and installs in place (restarts the user systemd unit when present).
  `mhtodo service install|stop|start|restart|uninstall` manages the user systemd unit for this install.
- `mhtodo integration bash|zsh` installs a managed `claude.todo` shell helper for `$MHTODO_SESSION`.
  `mhtodo template list|search|show|create|update|rm` manages task templates
  (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.
  `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset` manages GUI themes.
@@ -34,9 +33,7 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   Exit and Ctrl+click (or Ctrl+Q) to quit. Also
   supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
-  With always-on-top on, a successful Claude or Zed open hides the window to tray.
-  Terminal spawn raises an existing Claude window by session PID / `mhtodo:<session>` title
-  instead of opening a duplicate.
+  With always-on-top on, a successful Zed open hides the window to tray.
   Tray label shows attention summaries (configurable statuses); status submenus list root tasks
   and focus them on click (Settings → Notifications).
 - Desktop notifications (`notify-send`) on status transitions, toggleable in Settings → Notifications
@@ -49,7 +46,7 @@ Single-task archive: `mhtodo archive ID` and the card archive action (done tasks
 
 **v0.3 (shipped):** one-level sub-tasks (`parent_id`), agent-authored activity/comment entries +
 Activity view, detail-pane pin, `review` status (after waiting), rebalanced list columns. See
-[`.agent/plan/`](.agent/plan/README.md). New sub-tasks in the GUI seed cwd, todo session, Slack
+[`.agent/plan/`](.agent/plan/README.md). New sub-tasks in the GUI seed cwd, Slack
 thread, and human-only from the parent; `include_in_report` defaults to false (CLI `add --parent`
 likewise).
 
@@ -60,17 +57,11 @@ reopen `review` → `wip` with new sub-tasks when more work continues.
 `mhtodo update` self-updates from GitHub Releases (see README).
 `mhtodo service …` installs/controls/removes `~/.config/systemd/user/mhtodo.service` for the
 running binary (from-source bootstrap remains `make service-install`).
-`mhtodo install` is the user-facing folder install (`~/.local`) with optional service + shell
-integration prompts.
-Per-task `todo_session` (migration v10–v11) is a Claude session UUID (UUIDv7 on
-create). Launch uses `claude --session-id <uuid> --name <slug> || claude --resume
-<uuid> --name <slug>` (Herdr, system terminal, `claude.todo`). Display slug remains
-`{short8}-{slug}` via `--name` / `MHTODO_SESSION_NAME`. Zed sets `MHTODO_SESSION`.
-Empty or legacy spaced auto-seeds are backfilled on open; non-UUID values are
-minted to a UUID on first Claude/Zed open. Claude spawn mode in Settings is `herdr` | `terminal` | `disabled`
-(Herdr fields or terminal binary/env_start show conditionally). Terminal spawn opens Claude
-in a system terminal emulator window (raise existing by `terminal_pid` when alive). Migration v12 adds `terminal_pid`
-for the managed process. Zed remains a separate integration.
+`mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
+**Zed** (Settings → Integrations) opens the task working directory when enabled; there is no
+direct Claude/Herdr/terminal spawn. Board/list cards can copy a markdown report or a
+ticket reference line (`mhtodo ticket {short8} - {status} - {title} …`). Legacy DB columns
+`todo_session` / `terminal_pid` remain for schema stability but are unused.
 
 **Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to
@@ -110,12 +101,11 @@ up to 500px, then scroll.
 maximize. The board uses `minmax(200px, 1fr)` columns with horizontal scroll instead of
 crushing five columns. Pinned detail auto-renders as floating when the main pane would be
 under ~640px (preference unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/
-`tasks:changed` debounce; search is debounced; Claude/Zed readiness is cached once per
+`tasks:changed` debounce; search is debounced; Zed binary readiness is cached once per
 settings change (not per card).
 Header Install icon (left of Settings) is enabled when a release update is available; hold
 Ctrl while hovering to force-enable. Latest version is cached 60 minutes (hover refreshes when
-stale; dialog has a manual refresh). Confirmation offers install/upgrade (+ as service) and
-optional `mhtodo integration zsh|bash`.
+stale; dialog has a manual refresh). Confirmation offers install/upgrade (+ as service).
 
 ## Hard constraints
 

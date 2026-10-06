@@ -97,7 +97,6 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
-    todoSession?: string
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -110,7 +109,7 @@ export const api = {
       HumanOnly: !!input.humanOnly,
       IncludeInReport: input.includeInReport,
       SlackThread: input.slackThread ?? '',
-      TodoSession: input.todoSession ?? ''
+      TodoSession: ''
     }) as Promise<Task>
   },
   update(id: string, patch: {
@@ -122,7 +121,6 @@ export const api = {
     humanOnly?: boolean
     includeInReport?: boolean
     slackThread?: string
-    todoSession?: string
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -133,7 +131,7 @@ export const api = {
       HumanOnly: patch.humanOnly ?? null,
       IncludeInReport: patch.includeInReport ?? null,
       SlackThread: patch.slackThread ?? null,
-      TodoSession: patch.todoSession ?? null
+      TodoSession: null
     })
   },
   setStatus(id: string, status: Status) {
@@ -201,15 +199,6 @@ export const api = {
   },
   checkBinary(path: string): Promise<boolean> {
     return App.CheckBinary(path)
-  },
-  ensureHerdrReady(): Promise<{ ready: boolean; error?: string }> {
-    return App.EnsureHerdrReady()
-  },
-  ensureHerdrWorkspace(taskId: string): Promise<{ ready: boolean; error?: string }> {
-    return App.EnsureHerdrWorkspaceForTask(taskId)
-  },
-  openHerdrTicket(taskId: string): Promise<void> {
-    return App.OpenHerdrTicket(taskId)
   },
   openZedTicket(taskId: string): Promise<void> {
     return App.OpenZedTicket(taskId)
@@ -297,19 +286,14 @@ export const api = {
   runInstallActions(opts: {
     updateApp: boolean
     installService: boolean
-    integrationZsh: boolean
-    integrationBash: boolean
   }): Promise<InstallActionsResult> {
     return App.RunInstallActions({
       UpdateApp: opts.updateApp,
-      InstallService: opts.installService,
-      IntegrationZsh: opts.integrationZsh,
-      IntegrationBash: opts.integrationBash
+      InstallService: opts.installService
     }).then((raw: any) => ({
       message: String(raw?.message ?? raw?.Message ?? ''),
       updated: !!(raw?.updated ?? raw?.Updated),
-      service: !!(raw?.service ?? raw?.Service),
-      integration: !!(raw?.integration ?? raw?.Integration)
+      service: !!(raw?.service ?? raw?.Service)
     }))
   }
 }
@@ -332,7 +316,6 @@ export interface InstallActionsResult {
   message: string
   updated: boolean
   service: boolean
-  integration: boolean
 }
 
 export type { GUISettings } from './settings'

@@ -10,7 +10,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var desc, feedback, status, parent, cwd, slackThread, todoSession, template string
+	var desc, feedback, status, parent, cwd, slackThread, template string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -30,11 +30,10 @@ func newAddCmd() *cobra.Command {
 			defer closeDB()
 
 			in := core.CreateInput{
-				Title:       args[0],
-				Feedback:    feedback,
-				Progress:    progress,
-				ParentID:    parent,
-				TodoSession: todoSession,
+				Title:    args[0],
+				Feedback: feedback,
+				Progress: progress,
+				ParentID: parent,
 			}
 
 			if template != "" {
@@ -106,7 +105,6 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
-	cmd.Flags().StringVar(&todoSession, "session", "", "todo session id/name (default: shortid-slugified-title)")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")

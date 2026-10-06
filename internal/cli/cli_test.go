@@ -286,35 +286,17 @@ func TestAddNoIncludeInReport(t *testing.T) {
 	}
 }
 
-func TestTodoSession(t *testing.T) {
+func TestTodoSessionNotSeeded(t *testing.T) {
 	out, _, run := newCLI(t)
 
 	out.Reset()
-	if code := run("add", "Session seed", "--json"); code != 0 {
+	if code := run("add", "No session", "--json"); code != 0 {
 		t.Fatalf("add exit %d", code)
 	}
 	var tsk core.Task
 	mustJSON(t, out.Bytes(), &tsk)
-	if !core.LooksLikeSessionUUID(tsk.TodoSession) {
-		t.Fatalf("seeded todo_session = %q, want UUID", tsk.TodoSession)
-	}
-
-	out.Reset()
-	if code := run("edit", tsk.ID, "--session", "custom-session", "--json"); code != 0 {
-		t.Fatalf("edit exit %d", code)
-	}
-	mustJSON(t, out.Bytes(), &tsk)
-	if tsk.TodoSession != "custom-session" {
-		t.Fatalf("edited todo_session = %q", tsk.TodoSession)
-	}
-
-	out.Reset()
-	if code := run("add", "Explicit", "--session", "given", "--json"); code != 0 {
-		t.Fatalf("add --session exit %d", code)
-	}
-	mustJSON(t, out.Bytes(), &tsk)
-	if tsk.TodoSession != "given" {
-		t.Fatalf("explicit todo_session = %q", tsk.TodoSession)
+	if tsk.TodoSession != "" {
+		t.Fatalf("todo_session = %q, want empty (legacy inert)", tsk.TodoSession)
 	}
 }
 
@@ -714,19 +696,17 @@ func TestAI(t *testing.T) {
 	body := out.String()
 	for _, want := range []string{
 		"mhtodo — agent integration instructions",
-		"Integration contract version: 12",
+		"Integration contract version: 13",
 		"mhtodo binary version:        test",
 		"Database:                     " + db,
 		"Generated:                    2026-08-27T12:00:00Z",
 		"pending|wip|waiting|review|done",
 		"board|created|updated|status|progress|title",
-		"todo_session",
-		"terminal_pid",
+		"mhtodo ticket",
 		"mhtodo template search",
+		"v13 Removed direct Claude",
 		"v12 Full task-template CLI",
 		"v11 User scan order",
-		"v10 todo_session is a Claude session UUID",
-		"v9  Per-task todo_session",
 		"v7  Task-picker options show status",
 		"AskUserQuestion",
 		"ask the user",
@@ -759,7 +739,7 @@ func TestAI(t *testing.T) {
 		Content            string `json:"content"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
-	if doc.IntegrationVersion != 12 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
+	if doc.IntegrationVersion != 13 || doc.MhtodoVersion != "test" || doc.DBPath != db ||
 		doc.Generated != "2026-08-27T12:00:00Z" || !strings.Contains(doc.Content, "agent integration") {
 		t.Errorf("ai --json envelope wrong: %+v", doc)
 	}
@@ -840,7 +820,7 @@ func TestInstallCommandJSON(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	out, errb, run := newCLI(t)
-	if code := run("install", "--prefix", "/tmp/prefix", "--service", "--integration", "zsh", "--json"); code != 0 {
+	if code := run("install", "--prefix", "/tmp/prefix", "--service", "--json"); code != 0 {
 		t.Fatalf("exit %d (%s)", code, errb.String())
 	}
 	if gotAction != update.ServiceInstall {
@@ -851,14 +831,7 @@ func TestInstallCommandJSON(t *testing.T) {
 	if res["executable"] != "/tmp/prefix/bin/mhtodo" || res["service"] != true {
 		t.Fatalf("json: %v", res)
 	}
-	if res["integration"] != "zsh" {
-		t.Fatalf("integration: %v", res["integration"])
-	}
-	rc := filepath.Join(home, ".zshrc")
-	body, err := os.ReadFile(rc)
-	if err != nil || !strings.Contains(string(body), "claude.todo") {
-		t.Fatalf("zshrc: %s err=%v", body, err)
-	}
+	_ = home
 }
 
 func TestInstallCommandSkipsOptionalsNonTTY(t *testing.T) {
@@ -877,7 +850,7 @@ func TestInstallCommandSkipsOptionalsNonTTY(t *testing.T) {
 	defer restoreSvc()
 
 	out, errb, run := newCLI(t) // Stdin is not a TTY in tests
-	if code := run("install", "--no-service", "--integration", "none"); code != 0 {
+	if code := run("install", "--no-service"); code != 0 {
 		t.Fatalf("exit %d (%s)", code, errb.String())
 	}
 	if !strings.Contains(out.String(), "installed mhtodo into /x") {

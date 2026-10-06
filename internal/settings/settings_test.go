@@ -28,19 +28,9 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.Notifications.NotifySendWaiting = false
 	want.Notifications.NotifySendReview = false
 	want.Notifications.NotifySendDone = true
-	want.Claude.Enabled = true
-	want.Claude.Spawn = SpawnHerdr
-	want.Claude.Binary = "/usr/bin/claude"
-	want.Claude.EnvStart = "ANTHROPIC_API_KEY=..."
-	want.Claude.TicketPrompt = "read todo {{todo-hash}}"
-	want.Herdr.Enabled = true
-	want.Herdr.Binary = "/usr/bin/herdr"
-	want.Herdr.EnvStart = "HERDR=1"
-	want.Herdr.SpaceName = "my-space"
-	want.Terminal.Binary = "/usr/bin/kitty"
-	want.Terminal.EnvStart = "TERM_PROG=1"
 	want.Zed.Enabled = false
 	want.Zed.Binary = "/usr/bin/zed"
+	want.Zed.EnvStart = "FOO=1"
 
 	if err := Save(want); err != nil {
 		t.Fatal(err)
@@ -66,7 +56,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 
 func TestNotificationsDefaultsWhenAbsent(t *testing.T) {
 	path := configPathIn(t, "config.yml")
-	if err := os.WriteFile(path, []byte("start_hidden: false\nclaude:\n  binary: claude\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("start_hidden: false\nzed:\n  binary: zed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Load(nil)
@@ -94,8 +84,8 @@ func TestLoadMissingAutodetectsAndWritesConfig(t *testing.T) {
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	claude := filepath.Join(bin, "claude")
-	if err := os.WriteFile(claude, []byte("#!/bin/sh\n"), 0o755); err != nil {
+	zed := filepath.Join(bin, "zed")
+	if err := os.WriteFile(zed, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -107,17 +97,11 @@ func TestLoadMissingAutodetectsAndWritesConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.Claude.Enabled {
-		t.Error("expected claude enabled after autodetect")
+	if !got.Zed.Enabled {
+		t.Error("expected zed enabled after autodetect")
 	}
-	if got.Claude.Spawn != SpawnTerminal {
-		t.Errorf("spawn = %q, want %q (claude without herdr)", got.Claude.Spawn, SpawnTerminal)
-	}
-	if got.Claude.Binary != claude {
-		t.Errorf("claude binary = %q, want %q", got.Claude.Binary, claude)
-	}
-	if got.Herdr.Enabled {
-		t.Error("herdr should stay disabled when not on PATH")
+	if got.Zed.Binary != zed {
+		t.Errorf("zed binary = %q, want %q", got.Zed.Binary, zed)
 	}
 
 	data, err := os.ReadFile(path)
@@ -128,7 +112,7 @@ func TestLoadMissingAutodetectsAndWritesConfig(t *testing.T) {
 	if err := yaml.Unmarshal(data, &cf); err != nil {
 		t.Fatal(err)
 	}
-	if cf.Claude.UserSet {
+	if cf.Zed.UserSet {
 		t.Error("autodetected integration should not be marked user_set")
 	}
 }
@@ -139,8 +123,8 @@ func TestAutodetectSkipsUserSetIntegrations(t *testing.T) {
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	claude := filepath.Join(bin, "claude")
-	if err := os.WriteFile(claude, []byte("#!/bin/sh\n"), 0o755); err != nil {
+	zed := filepath.Join(bin, "zed")
+	if err := os.WriteFile(zed, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,9 +133,8 @@ func TestAutodetectSkipsUserSetIntegrations(t *testing.T) {
 	t.Setenv("PATH", bin)
 
 	s := Default()
-	s.Claude.Enabled = false
-	s.Claude.Spawn = SpawnDisabled
-	s.Claude.Binary = "disabled-by-user"
+	s.Zed.Enabled = false
+	s.Zed.Binary = "disabled-by-user"
 	if err := Save(s); err != nil {
 		t.Fatal(err)
 	}
@@ -160,71 +143,17 @@ func TestAutodetectSkipsUserSetIntegrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Claude.Enabled {
-		t.Error("user-set claude integration should not be auto-enabled")
+	if got.Zed.Enabled {
+		t.Error("user-set zed integration should not be auto-enabled")
 	}
-	if got.Claude.Spawn != SpawnDisabled {
-		t.Errorf("spawn = %q, want disabled", got.Claude.Spawn)
-	}
-	if got.Claude.Binary != "disabled-by-user" {
-		t.Errorf("binary = %q, want disabled-by-user", got.Claude.Binary)
-	}
-}
-
-func TestMigrateSpawnFromLegacyEnabledFlags(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "config.yml")
-	t.Setenv("MHTODO_CONFIG_PATH", path)
-	t.Setenv("PATH", t.TempDir()) // empty PATH — no autodetect
-
-	legacy := "claude:\n  enabled: true\n  binary: /usr/bin/claude\nherdr:\n  enabled: true\n  binary: /usr/bin/herdr\n"
-	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	got, err := Load(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Claude.Spawn != SpawnHerdr {
-		t.Fatalf("spawn = %q, want herdr", got.Claude.Spawn)
-	}
-	if !got.Claude.Enabled || !got.Herdr.Enabled {
-		t.Fatalf("enabled flags: claude=%v herdr=%v", got.Claude.Enabled, got.Herdr.Enabled)
-	}
-
-	legacyTerm := "claude:\n  enabled: true\n  binary: /usr/bin/claude\n  user_set: true\nherdr:\n  enabled: false\n  binary: herdr\n  user_set: true\n"
-	if err := os.WriteFile(path, []byte(legacyTerm), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	got, err = Load(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Claude.Spawn != SpawnTerminal {
-		t.Fatalf("spawn = %q, want terminal", got.Claude.Spawn)
-	}
-	if !got.Claude.Enabled || got.Herdr.Enabled {
-		t.Fatalf("enabled flags: claude=%v herdr=%v", got.Claude.Enabled, got.Herdr.Enabled)
-	}
-}
-
-func TestNormalizeSpawn(t *testing.T) {
-	t.Parallel()
-	if NormalizeSpawn("HERDR") != SpawnHerdr {
-		t.Fatal(NormalizeSpawn("HERDR"))
-	}
-	if NormalizeSpawn("terminal") != SpawnTerminal {
-		t.Fatal()
-	}
-	if NormalizeSpawn("") != SpawnDisabled {
-		t.Fatal()
+	if got.Zed.Binary != "disabled-by-user" {
+		t.Errorf("binary = %q, want disabled-by-user", got.Zed.Binary)
 	}
 }
 
 func TestMigrateFromMeta(t *testing.T) {
 	repo := openTestRepo(t)
 	ctx := t.Context()
-	legacy := Default()
-	legacy.DefaultCwd = "/legacy"
 	if err := repo.SetMeta(ctx, MetaGUISettings, `{"default_cwd":"/legacy"}`); err != nil {
 		t.Fatal(err)
 	}
@@ -274,8 +203,8 @@ func TestExpandBinaryNameOnLoad(t *testing.T) {
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	claude := filepath.Join(bin, "claude")
-	if err := os.WriteFile(claude, []byte("#!/bin/sh\n"), 0o755); err != nil {
+	zed := filepath.Join(bin, "zed")
+	if err := os.WriteFile(zed, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -283,7 +212,7 @@ func TestExpandBinaryNameOnLoad(t *testing.T) {
 	t.Setenv("MHTODO_CONFIG_PATH", path)
 	t.Setenv("PATH", bin)
 
-	if err := os.WriteFile(path, []byte("claude:\n  enabled: true\n  binary: claude\nherdr:\n  binary: herdr\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("zed:\n  enabled: true\n  binary: zed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -291,15 +220,15 @@ func TestExpandBinaryNameOnLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Claude.Binary != claude {
-		t.Errorf("claude binary = %q, want full path %q", got.Claude.Binary, claude)
+	if got.Zed.Binary != zed {
+		t.Errorf("zed binary = %q, want full path %q", got.Zed.Binary, zed)
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), claude) {
+	if !strings.Contains(string(data), zed) {
 		t.Fatalf("expected expanded path in config:\n%s", data)
 	}
 }
@@ -315,43 +244,21 @@ func TestOptionalIntegrationFieldsOmittedFromYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(data)
-	for _, key := range []string{"ticket_prompt:", "env_start:", "space_name:"} {
+	for _, key := range []string{"env_start:", "claude:", "herdr:", "terminal:"} {
 		if strings.Contains(body, key) {
-			t.Errorf("expected empty optional field omitted from config, found %q in:\n%s", key, body)
+			t.Errorf("expected field omitted from config, found %q in:\n%s", key, body)
 		}
-	}
-}
-
-func TestEffectiveIntegrationDefaults(t *testing.T) {
-	var c ClaudeConfig
-	if got := c.EffectiveTicketPrompt(); got != DefaultClaudeTicketPrompt {
-		t.Fatalf("EffectiveTicketPrompt = %q, want default", got)
-	}
-	var h HerdrConfig
-	if got := h.EffectiveSpaceName(); got != DefaultHerdrSpaceName {
-		t.Fatalf("EffectiveSpaceName = %q, want %q", got, DefaultHerdrSpaceName)
-	}
-}
-
-func TestStripStoredIntegrationDefaults(t *testing.T) {
-	cf := configFile{
-		Claude: claudeFile{TicketPrompt: DefaultClaudeTicketPrompt},
-		Herdr:  herdrFile{SpaceName: DefaultHerdrSpaceName},
-	}
-	stripStoredIntegrationDefaults(&cf)
-	if cf.Claude.TicketPrompt != "" || cf.Herdr.SpaceName != "" {
-		t.Fatalf("stripStoredIntegrationDefaults: %+v", cf)
 	}
 }
 
 func TestResolveBinary(t *testing.T) {
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "herdr")
+	exe := filepath.Join(dir, "zed")
 	if err := os.WriteFile(exe, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
-	p, ok := resolveBinary("herdr")
+	p, ok := resolveBinary("zed")
 	if !ok || p != exe {
 		t.Fatalf("resolveBinary = (%q, %v), want (%q, true)", p, ok, exe)
 	}

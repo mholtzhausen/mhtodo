@@ -19,75 +19,10 @@ import (
 // MetaGUISettings is the legacy DB meta key (migrated to config.yml on first load).
 const MetaGUISettings = "gui_settings"
 
-// DefaultHerdrSpaceName is the Herdr workspace label when space_name is unset in config.
-const DefaultHerdrSpaceName = "mhtodo"
-
-// DefaultClaudeTicketPrompt is used at runtime when ticket_prompt is empty in config.
-const DefaultClaudeTicketPrompt = "read todo {{todo-hash}} and start on the ticket. if there is not enough information to start working, gather as much information about the issue on your own (read-only) and ask your human for input. When starting the task, remember to create subtasks and notify about activities on the task."
-
-// EffectiveTicketPrompt returns the configured prompt or DefaultClaudeTicketPrompt.
-func (c ClaudeConfig) EffectiveTicketPrompt() string {
-	if p := strings.TrimSpace(c.TicketPrompt); p != "" {
-		return p
-	}
-	return DefaultClaudeTicketPrompt
-}
-
-// EffectiveSpaceName returns the configured Herdr space name or DefaultHerdrSpaceName.
-func (h HerdrConfig) EffectiveSpaceName() string {
-	if n := strings.TrimSpace(h.SpaceName); n != "" {
-		return n
-	}
-	return DefaultHerdrSpaceName
-}
-
-// IntegrationConfig holds one external agent integration (Wails/API surface).
+// IntegrationConfig holds one external editor integration (Wails/API surface).
 type IntegrationConfig struct {
 	Enabled  bool   `json:"enabled" yaml:"enabled"`
 	Binary   string `json:"binary" yaml:"binary"`
-	EnvStart string `json:"env_start" yaml:"env_start"`
-}
-
-// Claude spawn modes: where Claude sessions are opened.
-const (
-	SpawnHerdr    = "herdr"
-	SpawnTerminal = "terminal"
-	SpawnDisabled = "disabled"
-)
-
-// NormalizeSpawn returns a valid spawn mode (default disabled).
-func NormalizeSpawn(s string) string {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case SpawnHerdr:
-		return SpawnHerdr
-	case SpawnTerminal:
-		return SpawnTerminal
-	default:
-		return SpawnDisabled
-	}
-}
-
-// ClaudeConfig is the Claude Code integration.
-type ClaudeConfig struct {
-	IntegrationConfig
-	Spawn          string `json:"spawn" yaml:"spawn"` // herdr | terminal | disabled
-	TicketPrompt   string `json:"ticket_prompt" yaml:"ticket_prompt"`
-	CloseTabOnDone bool   `json:"close_tab_on_done" yaml:"close_tab_on_done"` // close Herdr tab / terminal session when task → done
-	RequireCwd     bool   `json:"require_cwd" yaml:"require_cwd"`             // hide Claude icon when task has no cwd
-}
-
-// HerdrConfig is the Herdr integration (space name is Herdr-specific).
-// Enabled is derived from Claude.Spawn == herdr for back-compat.
-type HerdrConfig struct {
-	Enabled   bool   `json:"enabled" yaml:"enabled"`
-	Binary    string `json:"binary" yaml:"binary"`
-	EnvStart  string `json:"env_start" yaml:"env_start"`
-	SpaceName string `json:"space_name" yaml:"space_name"`
-}
-
-// TerminalConfig is the terminal-emulator spawn backend (used when Claude.Spawn == terminal).
-type TerminalConfig struct {
-	Binary   string `json:"binary" yaml:"binary"` // empty = auto-pick emulator
 	EnvStart string `json:"env_start" yaml:"env_start"`
 }
 
@@ -104,46 +39,18 @@ type NotificationsConfig struct {
 
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd              string              `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly        bool                `json:"default_human_only" yaml:"default_human_only"`
-	DefaultIncludeInReport  bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
-	ArchiveDoneSubtasks     bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
-	StartHidden             bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
-	Notifications           NotificationsConfig `json:"notifications" yaml:"notifications"`
-	Claude                  ClaudeConfig        `json:"claude" yaml:"claude"`
-	Herdr                   HerdrConfig         `json:"herdr" yaml:"herdr"`
-	Terminal                TerminalConfig      `json:"terminal" yaml:"terminal"`
-	Zed                     IntegrationConfig   `json:"zed" yaml:"zed"`
-}
-
-type claudeFile struct {
-	Enabled        bool   `yaml:"enabled"`
-	Spawn          string `yaml:"spawn,omitempty"`
-	Binary         string `yaml:"binary"`
-	EnvStart       string `yaml:"env_start,omitempty"`
-	TicketPrompt   string `yaml:"ticket_prompt,omitempty"`
-	CloseTabOnDone bool   `yaml:"close_tab_on_done"`
-	RequireCwd     *bool  `yaml:"require_cwd,omitempty"`
-	UserSet        bool   `yaml:"user_set,omitempty"`
+	DefaultCwd             string              `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly       bool                `json:"default_human_only" yaml:"default_human_only"`
+	DefaultIncludeInReport bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
+	ArchiveDoneSubtasks    bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden            bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	Notifications          NotificationsConfig `json:"notifications" yaml:"notifications"`
+	Zed                    IntegrationConfig   `json:"zed" yaml:"zed"`
 }
 
 type integrationFile struct {
 	Enabled  bool   `yaml:"enabled"`
 	Binary   string `yaml:"binary"`
-	EnvStart string `yaml:"env_start,omitempty"`
-	UserSet  bool   `yaml:"user_set,omitempty"`
-}
-
-type herdrFile struct {
-	Enabled   bool   `yaml:"enabled"`
-	Binary    string `yaml:"binary"`
-	EnvStart  string `yaml:"env_start,omitempty"`
-	SpaceName string `yaml:"space_name,omitempty"`
-	UserSet   bool   `yaml:"user_set,omitempty"`
-}
-
-type terminalFile struct {
-	Binary   string `yaml:"binary,omitempty"`
 	EnvStart string `yaml:"env_start,omitempty"`
 	UserSet  bool   `yaml:"user_set,omitempty"`
 }
@@ -165,9 +72,6 @@ type configFile struct {
 	ArchiveDoneSubtasks    bool              `yaml:"archive_done_subtasks"`
 	StartHidden            bool              `yaml:"start_hidden"`
 	Notifications          notificationsFile `yaml:"notifications"`
-	Claude                 claudeFile        `yaml:"claude"`
-	Herdr                  herdrFile         `yaml:"herdr"`
-	Terminal               terminalFile      `yaml:"terminal"`
 	Zed                    integrationFile   `yaml:"zed"`
 }
 
@@ -177,7 +81,6 @@ func Default() GUISettings {
 }
 
 func defaultConfigFile() configFile {
-	requireCwd := true
 	maxItems := 10
 	notifyWIP := false
 	notifyWaiting := false
@@ -194,9 +97,7 @@ func defaultConfigFile() configFile {
 			NotifySendReview:   &notifyReview,
 			NotifySendDone:     &notifyDone,
 		},
-		Claude: claudeFile{Binary: "claude", RequireCwd: &requireCwd},
-		Herdr:  herdrFile{Binary: "herdr"},
-		Zed:    integrationFile{Binary: "zed"},
+		Zed: integrationFile{Binary: "zed"},
 	}
 }
 
@@ -288,13 +189,6 @@ func notificationsFromGUI(n NotificationsConfig) notificationsFile {
 	return nf
 }
 
-func claudeRequireCwd(cf claudeFile) bool {
-	if cf.RequireCwd != nil {
-		return *cf.RequireCwd
-	}
-	return true
-}
-
 // Load reads settings from config.yml, migrating legacy meta when needed.
 // Integrations that have not been user-configured are auto-detected via PATH.
 func Load(repo *store.TaskRepo) (GUISettings, error) {
@@ -340,58 +234,12 @@ func Save(s GUISettings) error {
 		return err
 	}
 	applyGUI(&cf, s)
-	cf.Claude.UserSet = true
-	cf.Herdr.UserSet = true
-	cf.Terminal.UserSet = true
 	cf.Zed.UserSet = true
 	return writeConfigFile(path, cf)
 }
 
 func autodetectIntegrations(cf *configFile) bool {
 	changed := false
-	if !cf.Claude.UserSet {
-		claudePath, claudeOK := resolveBinary("claude")
-		herdrPath, herdrOK := resolveBinary("herdr")
-		if claudeOK {
-			p := fullBinaryPath(claudePath)
-			if cf.Claude.Binary != p {
-				cf.Claude.Binary = p
-				changed = true
-			}
-		}
-		if herdrOK {
-			p := fullBinaryPath(herdrPath)
-			if cf.Herdr.Binary != p {
-				cf.Herdr.Binary = p
-				changed = true
-			}
-		}
-		current := NormalizeSpawn(cf.Claude.Spawn)
-		switch {
-		case herdrOK && claudeOK:
-			if current != SpawnHerdr {
-				cf.Claude.Spawn = SpawnHerdr
-				deriveEnabledFlags(cf)
-				changed = true
-			}
-		case claudeOK:
-			// Prefer terminal only when Claude is not already configured for Herdr.
-			if current == SpawnDisabled {
-				cf.Claude.Spawn = SpawnTerminal
-				deriveEnabledFlags(cf)
-				changed = true
-			}
-		}
-		// Never force spawn=disabled via autodetect (preserves legacy migrated modes).
-	} else if !cf.Herdr.UserSet {
-		if p, ok := resolveBinary("herdr"); ok {
-			p = fullBinaryPath(p)
-			if cf.Herdr.Binary != p {
-				cf.Herdr.Binary = p
-				changed = true
-			}
-		}
-	}
 	if !cf.Zed.UserSet {
 		if p, ok := resolveBinary("zed"); ok {
 			p = fullBinaryPath(p)
@@ -405,61 +253,9 @@ func autodetectIntegrations(cf *configFile) bool {
 	return changed
 }
 
-// deriveEnabledFlags keeps claude.enabled / herdr.enabled in sync with spawn.
-func deriveEnabledFlags(cf *configFile) {
-	spawn := NormalizeSpawn(cf.Claude.Spawn)
-	cf.Claude.Spawn = spawn
-	cf.Claude.Enabled = spawn != SpawnDisabled
-	cf.Herdr.Enabled = spawn == SpawnHerdr
-}
-
-// migrateSpawnFromLegacy fills Claude.Spawn when unset, using legacy enabled flags.
-func migrateSpawnFromLegacy(cf *configFile) bool {
-	if strings.TrimSpace(cf.Claude.Spawn) != "" {
-		before := cf.Claude.Spawn
-		cf.Claude.Spawn = NormalizeSpawn(cf.Claude.Spawn)
-		if before != cf.Claude.Spawn {
-			deriveEnabledFlags(cf)
-			return true
-		}
-		// Keep derived flags consistent even when spawn was already set.
-		wantClaude := cf.Claude.Spawn != SpawnDisabled
-		wantHerdr := cf.Claude.Spawn == SpawnHerdr
-		if cf.Claude.Enabled != wantClaude || cf.Herdr.Enabled != wantHerdr {
-			deriveEnabledFlags(cf)
-			return true
-		}
-		return false
-	}
-	switch {
-	case cf.Herdr.Enabled && cf.Claude.Enabled:
-		cf.Claude.Spawn = SpawnHerdr
-	case cf.Claude.Enabled && !cf.Herdr.Enabled:
-		cf.Claude.Spawn = SpawnTerminal
-	default:
-		cf.Claude.Spawn = SpawnDisabled
-	}
-	deriveEnabledFlags(cf)
-	return true
-}
-
 // expandIntegrationBinaries rewrites bare names to absolute executable paths when found.
 func expandIntegrationBinaries(cf *configFile) bool {
 	changed := false
-	if p := fullBinaryPath(cf.Claude.Binary); p != cf.Claude.Binary {
-		cf.Claude.Binary = p
-		changed = true
-	}
-	if p := fullBinaryPath(cf.Herdr.Binary); p != cf.Herdr.Binary {
-		cf.Herdr.Binary = p
-		changed = true
-	}
-	if bin := strings.TrimSpace(cf.Terminal.Binary); bin != "" {
-		if p := fullBinaryPath(bin); p != cf.Terminal.Binary {
-			cf.Terminal.Binary = p
-			changed = true
-		}
-	}
 	if p := fullBinaryPath(cf.Zed.Binary); p != cf.Zed.Binary {
 		cf.Zed.Binary = p
 		changed = true
@@ -548,11 +344,6 @@ func filepathBase(path string) string {
 	return path
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 func readConfigFile(path string) (configFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -590,30 +381,11 @@ func writeConfigFile(path string, cf configFile) error {
 }
 
 func normalizeConfigFile(cf *configFile) {
-	if cf.Claude.Binary == "" {
-		cf.Claude.Binary = "claude"
-	}
-	if cf.Herdr.Binary == "" {
-		cf.Herdr.Binary = "herdr"
-	}
 	if cf.Zed.Binary == "" {
 		cf.Zed.Binary = "zed"
 	}
 	normalizeNotifications(&cf.Notifications)
-	migrateSpawnFromLegacy(cf)
-	stripStoredIntegrationDefaults(cf)
 	expandIntegrationBinaries(cf)
-}
-
-// stripStoredIntegrationDefaults removes legacy baked-in defaults from the file
-// representation so runtime defaults can evolve without rewriting config on upgrade.
-func stripStoredIntegrationDefaults(cf *configFile) {
-	if strings.TrimSpace(cf.Claude.TicketPrompt) == DefaultClaudeTicketPrompt {
-		cf.Claude.TicketPrompt = ""
-	}
-	if strings.TrimSpace(cf.Herdr.SpaceName) == DefaultHerdrSpaceName {
-		cf.Herdr.SpaceName = ""
-	}
 }
 
 func toGUI(cf configFile) GUISettings {
@@ -628,27 +400,6 @@ func toGUI(cf configFile) GUISettings {
 		ArchiveDoneSubtasks:    cf.ArchiveDoneSubtasks,
 		StartHidden:            cf.StartHidden,
 		Notifications:          notificationsToGUI(cf.Notifications),
-		Claude: ClaudeConfig{
-			IntegrationConfig: IntegrationConfig{
-				Enabled:  cf.Claude.Enabled,
-				Binary:   cf.Claude.Binary,
-				EnvStart: cf.Claude.EnvStart,
-			},
-			Spawn:          NormalizeSpawn(cf.Claude.Spawn),
-			TicketPrompt:   cf.Claude.TicketPrompt,
-			CloseTabOnDone: cf.Claude.CloseTabOnDone,
-			RequireCwd:     claudeRequireCwd(cf.Claude),
-		},
-		Herdr: HerdrConfig{
-			Enabled:   cf.Herdr.Enabled,
-			Binary:    cf.Herdr.Binary,
-			EnvStart:  cf.Herdr.EnvStart,
-			SpaceName: cf.Herdr.SpaceName,
-		},
-		Terminal: TerminalConfig{
-			Binary:   cf.Terminal.Binary,
-			EnvStart: cf.Terminal.EnvStart,
-		},
 		Zed: IntegrationConfig{
 			Enabled:  cf.Zed.Enabled,
 			Binary:   cf.Zed.Binary,
@@ -665,28 +416,6 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.StartHidden = s.StartHidden
 	cf.Notifications = notificationsFromGUI(s.Notifications)
-	cf.Claude.Binary = s.Claude.Binary
-	cf.Claude.EnvStart = s.Claude.EnvStart
-	cf.Claude.TicketPrompt = s.Claude.TicketPrompt
-	cf.Claude.CloseTabOnDone = s.Claude.CloseTabOnDone
-	requireCwd := s.Claude.RequireCwd
-	cf.Claude.RequireCwd = &requireCwd
-	// Prefer explicit spawn from GUI; fall back to deriving from enabled flags.
-	if strings.TrimSpace(s.Claude.Spawn) != "" {
-		cf.Claude.Spawn = NormalizeSpawn(s.Claude.Spawn)
-	} else if s.Claude.Enabled && s.Herdr.Enabled {
-		cf.Claude.Spawn = SpawnHerdr
-	} else if s.Claude.Enabled {
-		cf.Claude.Spawn = SpawnTerminal
-	} else {
-		cf.Claude.Spawn = SpawnDisabled
-	}
-	deriveEnabledFlags(cf)
-	cf.Herdr.Binary = s.Herdr.Binary
-	cf.Herdr.EnvStart = s.Herdr.EnvStart
-	cf.Herdr.SpaceName = s.Herdr.SpaceName
-	cf.Terminal.Binary = s.Terminal.Binary
-	cf.Terminal.EnvStart = s.Terminal.EnvStart
 	cf.Zed.Enabled = s.Zed.Enabled
 	cf.Zed.Binary = s.Zed.Binary
 	cf.Zed.EnvStart = s.Zed.EnvStart
@@ -704,25 +433,10 @@ func migrateFromMeta(ctx context.Context, repo *store.TaskRepo) (configFile, boo
 	}
 	cf := defaultConfigFile()
 	applyGUI(&cf, legacy)
-	cf.Claude.UserSet = claudeIntegrationConfigured(legacy.Claude, "claude")
-	cf.Herdr.UserSet = herdrIntegrationConfigured(legacy.Herdr, "herdr")
 	cf.Zed.UserSet = integrationConfigured(legacy.Zed, "zed")
 	return cf, true
 }
 
 func integrationConfigured(c IntegrationConfig, defaultBinary string) bool {
 	return c.Enabled || c.EnvStart != "" || (c.Binary != "" && c.Binary != defaultBinary)
-}
-
-func claudeIntegrationConfigured(c ClaudeConfig, defaultBinary string) bool {
-	return integrationConfigured(c.IntegrationConfig, defaultBinary) ||
-		strings.TrimSpace(c.TicketPrompt) != ""
-}
-
-func herdrIntegrationConfigured(c HerdrConfig, defaultBinary string) bool {
-	return integrationConfigured(IntegrationConfig{
-		Enabled:  c.Enabled,
-		Binary:   c.Binary,
-		EnvStart: c.EnvStart,
-	}, defaultBinary) || (strings.TrimSpace(c.SpaceName) != "" && c.SpaceName != DefaultHerdrSpaceName)
 }

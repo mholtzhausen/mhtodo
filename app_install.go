@@ -35,18 +35,15 @@ type InstallStatus struct {
 
 // InstallActionsInput is the confirmation dialog selection.
 type InstallActionsInput struct {
-	UpdateApp       bool
-	InstallService  bool
-	IntegrationZsh  bool
-	IntegrationBash bool
+	UpdateApp      bool
+	InstallService bool
 }
 
 // InstallActionsResult summarizes CLI outcomes for the toast.
 type InstallActionsResult struct {
-	Message     string `json:"message"`
-	Updated     bool   `json:"updated"`
-	Service     bool   `json:"service"`
-	Integration bool   `json:"integration"`
+	Message string `json:"message"`
+	Updated bool   `json:"updated"`
+	Service bool   `json:"service"`
 }
 
 var (
@@ -143,12 +140,12 @@ func fetchInstallStatus() (InstallStatus, error) {
 	}, nil
 }
 
-// RunInstallActions execs this binary's CLI: `update`, `service install`, and/or
-// `integration zsh|bash`. When the app is already current, update is invoked with
-// --force so a deliberate reinstall still works. Service install is skipped after
-// an update that already restarted an attached unit.
+// RunInstallActions execs this binary's CLI: `update` and/or `service install`.
+// When the app is already current, update is invoked with --force so a deliberate
+// reinstall still works. Service install is skipped after an update that already
+// restarted an attached unit.
 func (a *App) RunInstallActions(in InstallActionsInput) (InstallActionsResult, error) {
-	if !in.UpdateApp && !in.InstallService && !in.IntegrationZsh && !in.IntegrationBash {
+	if !in.UpdateApp && !in.InstallService {
 		return InstallActionsResult{}, fmt.Errorf("choose at least one action")
 	}
 
@@ -201,31 +198,6 @@ func (a *App) RunInstallActions(in InstallActionsInput) (InstallActionsResult, e
 		} else if strings.TrimSpace(raw) != "" {
 			messages = append(messages, strings.TrimSpace(raw))
 		}
-	}
-
-	for _, shell := range []struct {
-		on   bool
-		name string
-	}{
-		{in.IntegrationZsh, "zsh"},
-		{in.IntegrationBash, "bash"},
-	} {
-		if !shell.on {
-			continue
-		}
-		raw, err := execSelfCLI("integration", shell.name)
-		if err != nil {
-			if len(messages) > 0 {
-				return out, fmt.Errorf("%s; integration %s: %v", strings.Join(messages, "; "), shell.name, err)
-			}
-			return out, fmt.Errorf("integration %s: %w", shell.name, err)
-		}
-		out.Integration = true
-		msg := firstLine(raw)
-		if msg == "" {
-			msg = fmt.Sprintf("updated %s integration", shell.name)
-		}
-		messages = append(messages, msg)
 	}
 
 	out.Message = strings.Join(messages, "; ")
