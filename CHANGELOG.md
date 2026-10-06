@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.0.2 (PENDING)
+## 3.0.2 (16afcb8)
 
 ### Features and Improvements
 - (none)
