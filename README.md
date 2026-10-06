@@ -3,7 +3,7 @@
 A personal todo manager in Go. **One binary, two frontends over one shared core:**
 
 - **CLI** — the scriptable, agentic interface: `--json` everywhere, stable exit codes and JSON field names.
-- **GUI** — Wails v2 webview + system tray: board (kanban) and list views, task detail editing
+- **GUI** — Wails v2 webview + system tray: board (kanban), archive, and activity views, task detail editing
   (description/feedback/activity comments are markdown-rendered outside inputs; links open in
   the system browser), desktop notifications, live sync so CLI changes appear without a restart.
 
@@ -176,7 +176,7 @@ Activity entry:
 
 `--json list` returns an array of task objects. Timestamps are RFC3339 UTC; `completed_at` is set on
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
-`parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board/list ordering
+`parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board ordering
 (lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
 directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
 such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
@@ -186,7 +186,7 @@ such tasks; default `list` hides them unless `--human-only` is passed. IDs are U
 
 ### Zed (Settings → Integrations)
 
-When Zed is enabled and found on PATH, board/list cards show an Open-in-Zed action for tasks that
+When Zed is enabled and found on PATH, board/archive cards show an Open-in-Zed action for tasks that
 have a working directory. It runs the configured binary with the task `cwd` (optional `env_start`
 prefix) and copies the same **ticket reference** block to the clipboard. There is no direct
 Claude/Herdr/terminal spawn in the app; agent hosts still install via `mhtodo ai`
@@ -245,19 +245,19 @@ status transitions → activity → delete) using only this CLI.
   column cards), in creation order (oldest first). Drag a **root** card to change status (including onto
   a collapsed lane). Per-column **+** opens new-task preset to that status. Filter chips: **All** /
   **Agents** (hide human-only) / **Human** (human-only only).
-- **List view:** status + progress stacked in one column; human-only rows show a person icon before
-  the status chip; title takes remaining width; updated shows elapsed + absolute time. Sub-tasks indent
-  under parents when shown (creation order). Same human filter as the board. Toggle Board / List / Activity with `b` /
-  `l` / `a`; choice persists.
+- **Archived view:** table of archived tasks (status + progress, title, updated); sub-tasks indent
+  under parents when shown (creation order). Same human filter as the board. Open a row to unarchive
+  from the detail modal. Tabs: Board / Activity / Archived (`b` / `a` / `r`, or `7` for Archived);
+  choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
-- **Detail pane:** edit fields (including working directory with fuzzy typeahead over template
+- **Detail modal:** edit fields (including working directory with fuzzy typeahead over template
   cwds and previously used ticket paths — plus folder picker / free-typed path — Todo session /
   Claude session UUID, human-only / Slack report checkboxes, Slack thread URL), activity composer,
-  Add sub-task (roots only). Feedback is agent/CLI-authored (read-only in the GUI). Markdown
-  http(s) links open externally. **Pin** / Float / Modal detail modes (persisted). Esc closes
-  modals/unpinned detail, otherwise hides to tray. Modal: click another task to switch; `←`/`→`
-  move to adjacent tasks.
+  Add sub-task (roots only). Header repeats card actions (copy markdown / ticket ref, Slack, Zed,
+  human-only / include-in-report toggles, archive). Feedback is agent/CLI-authored (read-only in the
+  GUI). Markdown http(s) links open externally. Esc closes the modal, otherwise hides to tray.
+  Click another task to switch; `←`/`→` move to adjacent tasks.
 - **New task dialog:** optional working directory (same typeahead + folder picker as detail), Slack
   thread, human-only, include-in-Slack-report (defaults from Settings), and initial status. Header
   icons apply a **task template** or save the current fields as one.
@@ -287,8 +287,8 @@ status transitions → activity → delete) using only this CLI.
   with a manual refresh control (`install` vs `upgrade`, optional service).
 - **Window:** frameless; drag the app header to move, double-click header (outside tabs/actions) to toggle maximize. Header Close / Esc hide to tray; hold **Ctrl** while hovering Close to reveal Exit, then Ctrl+click (or `Ctrl+Q`) to quit.
 - **Window position:** last position is saved on hide/quit and periodically while visible (`meta.window_pos`), restored on show. On Ubuntu 24+ Wayland sessions the app defaults to the XWayland backend so GTK can read/write coordinates reliably; set `MHTODO_WAYLAND=1` to keep native Wayland (position may not persist).
-- **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–6` status filter · `7` archived
-  (list; from board jumps to list+archived) · `b`/`l`/`a` views · `←`/`→` adjacent task in modal ·
+- **Keyboard:** `/` search · `n` new · `esc` dismiss/hide · `1–6` status filter · `7`/`r` archived view ·
+  `b`/`a` board/activity · `←`/`→` adjacent task in modal ·
   detail short-ID: copy button for short ID, `Ctrl+click` (⌘-click) for full UUID ·
   `Ctrl+Shift+Alt+T` global show/hide · `Ctrl+Q` quit.
 - **System tray:** Show/Hide, New Task, New Task from Template, Settings, Quit; close hides to tray. Label shows
@@ -301,7 +301,7 @@ status transitions → activity → delete) using only this CLI.
   local and CLI-driven DB changes.
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
-- **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; pinned detail auto-falls back to floating when the main pane would be under ~640px; footer shortcut legend hides below ~900px width.
+- **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; footer shortcut legend hides below ~900px width.
 - **GUI refresh:** `tasks:changed` is debounced/coalesced; single-task updates patch in place when possible. Search input is debounced (~200ms). Zed binary readiness is cached app-wide (not per board card).
 
 ## Data & concurrency

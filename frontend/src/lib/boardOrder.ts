@@ -72,8 +72,8 @@ export function boardAdjacentTaskId(
   return order[next]
 }
 
-/** List-view visual order: roots then nested children when showSubtasks. */
-export function listTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
+/** Archive-view visual order: roots then nested children when showSubtasks. */
+export function archiveTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
   const roots = tasks.filter((t) => !t.parent_id)
   const childrenOf = (pid: string) =>
     sortSubtasksByCreated(tasks.filter((t) => t.parent_id === pid))
@@ -95,13 +95,13 @@ export function listTaskOrder(tasks: any[], showSubtasks: boolean): string[] {
   return out
 }
 
-export function listAdjacentTaskId(
+export function archiveAdjacentTaskId(
   tasks: any[],
   showSubtasks: boolean,
   currentId: string,
   dir: -1 | 1
 ): string | null {
-  const order = listTaskOrder(tasks, showSubtasks)
+  const order = archiveTaskOrder(tasks, showSubtasks)
   const idx = order.indexOf(currentId)
   if (idx < 0) return null
   const next = idx + dir

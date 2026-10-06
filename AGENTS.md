@@ -19,7 +19,7 @@
  `mhtodo template list|search|show|create|update|rm` manages task templates
  (search: fuzzy/regex + `--cwd`); `add --template` applies one when creating a task.
  `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset` manages GUI themes.
-- **GUI** (Wails v2 webview + system tray) — the human view. Board/list views, task detail editing,
+- **GUI** (Wails v2 webview + system tray) — the human view. Board/activity/archived views, task detail editing,
   desktop notifications, live sync so CLI changes appear without restart.
 
 One binary: bare `mhtodo` launches the GUI; any subcommand runs the CLI and exits. All data lives in a
@@ -48,11 +48,11 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 
 **Post-v0.1 (v0.2, shipped 2026-08-20):** archive/unarchive for done tasks — bulk archive from the
-board's Done column, `mhtodo archive` / `unarchive`, archived filter in list view; see plan docs + `.agent/plan/PROGRESS.md`.
+board's Done column, `mhtodo archive` / `unarchive`, Archived view in the GUI; see plan docs + `.agent/plan/PROGRESS.md`.
 Single-task archive: `mhtodo archive ID` and the card archive action (done tasks only).
 
 **v0.3 (shipped):** one-level sub-tasks (`parent_id`), agent-authored activity/comment entries +
-Activity view, detail-pane pin, `review` status (after waiting), rebalanced list columns. See
+Activity view, `review` status (after waiting). See
 [`.agent/plan/`](.agent/plan/README.md). New sub-tasks in the GUI seed cwd, Slack
 thread, and human-only from the parent; `include_in_report` defaults to false (CLI `add --parent`
 likewise).
@@ -67,16 +67,16 @@ running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
 **Zed** (Settings → Integrations) opens the task working directory when enabled and copies the
 ticket reference to the clipboard on the same click; there is no direct Claude/Herdr/terminal
-spawn. Board/list cards can also copy a markdown report or a ticket reference block
+spawn. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
 (`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`,
  clean `master`/`main` before a new branch, and ask the user if the tree is dirty).
 `todo_session` stores the linked Claude session UUID (set via `edit --session`);
 `terminal_pid` remains unused for schema stability.
 
-**Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board and list default
+**Board order (v0.4):** root tasks have optional `board_rank` (migration v5). Board default
 sort is `board` (status workflow → rank → `updated_at`). GUI: drag root cards within a column to
 reorder; cross-column drag changes status (appends to target column). CLI: `mhtodo reorder`.
-Nested sub-tasks on the board/list/detail are shown in creation order (oldest first), not board
+Nested sub-tasks on the board/archive/detail are shown in creation order (oldest first), not board
 `updated_at` order. Board cards have a top-right mark-done control that sets status to `done`
 immediately. Board columns collapse to a slim vertical strip (rotated title + count); state is
 persisted in `localStorage` (`mhtodo.collapsedColumns`).
@@ -99,7 +99,7 @@ length pickers. Runtime apply sets CSS variables on `documentElement`. CLI: `mht
 list|search|show|create|update|rm|activate|duplicate|reset`. See
 [`.agent/plan/09-themes.md`](.agent/plan/09-themes.md).
 
-**Out of scope (stretch):** cross-column insert index, sub-task reorder, list-view drag reorder,
+**Out of scope (stretch):** cross-column insert index, sub-task reorder,
 Windows/macOS support, tags/labels/projects, due dates/reminders.
 
 **GUI display:** description, feedback, and activity comments are markdown-rendered
@@ -114,8 +114,8 @@ to 500px, then scroll.
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle
 maximize. The board uses `minmax(200px, 1fr)` columns with horizontal scroll instead of
-  crushing six columns (PR collapsed by default). Pinned detail auto-renders as floating when the main pane would be
-under ~640px (preference unchanged). Footer shortcuts hide below ~900px. Reloads coalesce/
+crushing six columns (PR collapsed by default). Task detail is always a modal overlay.
+Footer shortcuts hide below ~900px. Reloads coalesce/
 `tasks:changed` debounce; search is debounced; Zed binary readiness is cached once per
 settings change (not per card).
 Header Install icon (left of Settings) is enabled when a release update is available; hold

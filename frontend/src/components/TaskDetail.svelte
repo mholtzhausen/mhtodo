@@ -2,55 +2,47 @@
   import { api, errMsg, type Activity, type Status, type Task } from '../lib/api'
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import { openExternalUrl } from '../lib/openExternal'
+  import type { GUISettings } from '../lib/settings'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
   import CwdField from './CwdField.svelte'
+  import TaskActivityActions from './TaskActivityActions.svelte'
   import { focusOnOpen } from '../lib/focusFirstField'
-
-  type DetailMode = 'pinned' | 'floating' | 'modal'
 
   let {
     task,
     parentTitle = null,
-    mode,
-    width = 420,
-    resizing = false,
-    onResizeStart,
+    settings = null,
+    zedBinaryOk = false,
     onClose,
     onError,
     onNotify,
+    onToast,
     onDelete,
-    onSetMode,
     onAddSubtask,
     onSelectParent
   }: {
     task: any
     parentTitle?: string | null
-    mode: DetailMode
-    width?: number
-    resizing?: boolean
-    onResizeStart?: (e: PointerEvent) => void
+    settings?: GUISettings | null
+    zedBinaryOk?: boolean
     onClose: () => void
     onError: (msg: string) => void
     onNotify?: (msg: string) => void
+    onToast?: (msg: string, kind?: 'error' | 'info') => void
     onDelete: (task: any) => void
-    onSetMode: (mode: DetailMode) => void
     onAddSubtask: (parentId: string) => void
     onSelectParent?: (parentId: string) => void
   } = $props()
-
-  const modeOptions: { value: DetailMode; label: string; title: string }[] = [
-    { value: 'pinned', label: 'Pin', title: 'Pin detail to the right' },
-    { value: 'floating', label: 'Float', title: 'Floating panel on the right' },
-    { value: 'modal', label: 'Modal', title: 'Full modal overlay' }
-  ]
 
   type ModalSection = 'task' | 'subtasks' | 'activity'
   let activeSection = $state<ModalSection>('task')
 
   let saveAsOpen = $state(false)
+
+  const archived = $derived(!!task.archived_at)
 
   const modalSections = $derived.by(() => {
     const sections: { id: ModalSection; label: string }[] = [
@@ -187,6 +179,7 @@
   }
 
   function startEditDesc() {
+    if (archived) return
     editingDesc = true
     queueMicrotask(() => {
       fitTextarea(descEl)
@@ -195,6 +188,7 @@
   }
 
   async function saveTitle() {
+    if (archived) return
     const v = title.trim()
     if (!v || v === task.title) return
     try {
@@ -206,6 +200,7 @@
 
   async function saveDescription() {
     editingDesc = false
+    if (archived) return
     if (description === task.description) return
     try {
       await api.update(task.id, { description })
@@ -215,6 +210,7 @@
   }
 
   async function setStatus(s: Status) {
+    if (archived) return
     if (s === task.status) return
     try {
       await api.setStatus(task.id, s)
@@ -224,6 +220,7 @@
   }
 
   async function saveProgress(p: number) {
+    if (archived) return
     p = Math.max(0, Math.min(100, Number(p) || 0))
     if (p === task.progress) return
     try {
@@ -234,6 +231,7 @@
   }
 
   async function saveCwd(next?: string) {
+    if (archived) return
     const v = (next ?? cwd).trim()
     cwd = next !== undefined ? next : cwd
     if (v === (task.cwd ?? '')) return
@@ -245,6 +243,7 @@
   }
 
   async function saveSlackThread() {
+    if (archived) return
     const v = slackThread.trim()
     if (v === (task.slack_thread ?? '')) return
     try {
@@ -255,6 +254,7 @@
   }
 
   async function savePRUrl() {
+    if (archived) return
     const v = prUrl.trim()
     if (v === (task.pr_url ?? '')) return
     try {
@@ -265,6 +265,7 @@
   }
 
   async function saveTodoSession() {
+    if (archived) return
     const v = todoSession.trim()
     if (v === (task.todo_session ?? '')) return
     try {
@@ -275,6 +276,7 @@
   }
 
   async function toggleHumanOnly() {
+    if (archived) return
     if (humanOnly === !!task.human_only) return
     try {
       await api.update(task.id, { humanOnly })
@@ -285,6 +287,7 @@
   }
 
   async function toggleIncludeInReport() {
+    if (archived) return
     const taskIncluded = task.include_in_report !== false
     if (includeInReport === taskIncluded) return
     try {
@@ -306,7 +309,7 @@
 
   async function postActivity(e: Event) {
     e.preventDefault()
-    if (posting || (!actText.trim() && !commentText.trim())) return
+    if (archived || posting || (!actText.trim() && !commentText.trim())) return
     posting = true
     try {
       await api.addActivity(task.id, { activity: actText, comment: commentText })
@@ -320,59 +323,43 @@
     }
   }
 
-  const resizable = $derived(mode === 'pinned' || mode === 'floating')
-
-  const shellClass = $derived(
-    mode === 'pinned'
-      ? 'relative flex h-full flex-none flex-col border-l border-line bg-canvas'
-      : mode === 'floating'
-        ? 'fixed inset-y-0 right-0 z-40 flex flex-none flex-col border-l border-line bg-canvas shadow-md'
-        : 'flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-panel border border-line bg-canvas shadow-md'
-  )
 </script>
 
 <!-- Click sink so modal backdrop close does not fire while editing the pane. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 <aside
-  use:focusOnOpen={mode === 'modal'}
-  class={shellClass}
-  style:width={resizable ? `${width}px` : undefined}
-  style:max-width={resizable ? '100%' : undefined}
+  use:focusOnOpen={true}
+  class="flex h-[min(85vh,860px)] w-full max-w-4xl flex-col overflow-hidden rounded-panel border border-line bg-canvas shadow-md"
   onclick={(e) => e.stopPropagation()}
 >
-  {#if resizable && onResizeStart}
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize detail pane"
-      class="absolute inset-y-0 left-0 z-30 w-1.5 -translate-x-1/2 cursor-col-resize touch-none
-        {resizing ? 'bg-accent/50' : 'bg-transparent hover:bg-accent/30'}"
-      onpointerdown={onResizeStart}
-    ></div>
-  {/if}
-  <div class="flex flex-none items-center justify-end gap-2 border-b border-line-soft bg-chrome px-4 py-2.5">
-    <div
-      class="mr-auto flex rounded-control border border-line-soft p-0.5"
-      role="group"
-      aria-label="Detail display mode"
-    >
-      {#each modeOptions as opt (opt.value)}
-        <button
-          type="button"
-          onclick={() => onSetMode(opt.value)}
-          title={opt.title}
-          aria-pressed={mode === opt.value}
-          class="rounded-control px-2 py-0.5 text-xs font-medium transition-colors
-            {mode === opt.value ? 'bg-accent/20 text-accent-hi' : 'text-ink-3 hover:bg-white/5 hover:text-ink'}"
-        >
-          {opt.label}
-        </button>
-      {/each}
+  <div
+    class="flex flex-none items-center justify-end gap-2 border-b border-line-soft px-4 py-2.5
+      {archived ? 'bg-field' : 'bg-chrome'}"
+  >
+    <div class="mr-auto min-w-0">
+      <TaskActivityActions
+        {task}
+        {settings}
+        {zedBinaryOk}
+        {onError}
+        onToast={(msg, kind) => {
+          if (onToast) onToast(msg, kind)
+          else if (kind === 'error') onError(msg)
+          else onNotify?.(msg)
+        }}
+      />
     </div>
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1.5">
+      {#if archived}
+        <span
+          class="inline-flex items-center rounded-control border border-[#5a2a2e] bg-[#6e343a] px-1.5 py-1 font-mono text-[10px] font-semibold uppercase leading-none tracking-wide text-[#f0d0d2]"
+        >
+          Archived
+        </span>
+      {/if}
       <div
-        class="flex items-center gap-0.5 rounded-control border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3"
+        class="flex items-center gap-0.5 rounded-control border border-line-soft bg-field/40 pl-1.5 font-mono text-[10px] leading-none text-ink-3
+          {archived ? 'bg-chrome/40' : ''}"
       >
         <button
           type="button"
@@ -500,22 +487,7 @@
     {#if task.parent_id}
       <div>
         <span class="micro mb-1.5">Parent task</span>
-        {#if mode === 'modal'}
-          {#if onSelectParent}
-            <button
-              type="button"
-              onclick={() => onSelectParent?.(task.parent_id)}
-              class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
-              title={parentTitle ?? task.parent_id}
-            >
-              {parentTitle ?? 'Open parent'}
-            </button>
-          {:else}
-            <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
-              {parentTitle ?? task.parent_id}
-            </p>
-          {/if}
-        {:else}
+        {#if onSelectParent}
           <button
             type="button"
             onclick={() => onSelectParent?.(task.parent_id)}
@@ -524,6 +496,10 @@
           >
             {parentTitle ?? 'Open parent'}
           </button>
+        {:else}
+          <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
+            {parentTitle ?? task.parent_id}
+          </p>
         {/if}
       </div>
     {/if}
@@ -533,27 +509,28 @@
       <input
         data-focus-primary
         bind:value={title}
+        disabled={archived}
         onblur={saveTitle}
         onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm font-medium text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm font-medium text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
       />
     </label>
 
     <div>
       <span class="micro mb-1.5">Status</span>
-      <StatusPicker value={task.status} onPick={(s) => setStatus(s)} />
+      <StatusPicker value={task.status} disabled={archived} onPick={(s) => setStatus(s)} />
     </div>
 
     <div>
       <span class="micro mb-1.5">Progress</span>
-      <ProgressControl value={progress} onCommit={(p) => saveProgress(p)} />
+      <ProgressControl value={progress} disabled={archived} onCommit={(p) => saveProgress(p)} />
     </div>
   {/snippet}
 
   {#snippet contentSection()}
     <div class="block">
       <span class="micro mb-1.5">Description</span>
-      {#if editingDesc}
+      {#if editingDesc && !archived}
         <textarea
           bind:this={descEl}
           bind:value={description}
@@ -572,15 +549,20 @@
         ></textarea>
       {:else}
         <div
-          role="button"
-          tabindex="0"
-          class="md-scroll w-full cursor-text rounded-control border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] transition-colors hover:border-line hover:bg-card-hi/40"
-          title="Click to edit"
+          role={archived ? undefined : 'button'}
+          tabindex={archived ? undefined : 0}
+          class="md-scroll w-full rounded-control border border-line-soft bg-field px-3 py-2 text-left text-sm leading-relaxed text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]
+            {archived
+            ? 'cursor-default opacity-55'
+            : 'cursor-text transition-colors hover:border-line hover:bg-card-hi/40'}"
+          title={archived ? 'Unarchive to edit' : 'Click to edit'}
           onclick={(e) => {
+            if (archived) return
             if ((e.target as HTMLElement).closest('a')) return
             startEditDesc()
           }}
           onkeydown={(e) => {
+            if (archived) return
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               startEditDesc()
@@ -612,6 +594,7 @@
       <span class="micro mb-1.5">Working directory</span>
       <CwdField
         bind:value={cwd}
+        disabled={archived}
         onCommit={saveCwd}
         onError={onError}
         inputClass="font-mono text-xs"
@@ -622,9 +605,10 @@
       <span class="micro mb-1.5">Todo session</span>
       <input
         bind:value={todoSession}
+        disabled={archived}
         onblur={saveTodoSession}
         placeholder="Claude session UUID"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
       />
       <p class="mt-1 text-[11px] text-ink-3">
         Claude session UUID linked to this ticket (<code class="text-ink-2">edit --session</code>); empty
@@ -636,9 +620,10 @@
       <span class="micro mb-1.5">Slack thread</span>
       <input
         bind:value={slackThread}
+        disabled={archived}
         onblur={saveSlackThread}
         placeholder="https://… (optional Slack thread link)"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
       />
       {#if slackThread.trim()}
         <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
@@ -661,9 +646,10 @@
       <span class="micro mb-1.5">Pull request</span>
       <input
         bind:value={prUrl}
+        disabled={archived}
         onblur={savePRUrl}
         placeholder="https://… (optional PR link)"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
       />
       <p class="mt-1 text-[11px] text-ink-3">
         Setting a URL advances the ticket to the Pull Request lane.
@@ -685,20 +671,22 @@
       {/if}
     </label>
 
-    <label class="flex cursor-pointer items-center gap-gap-md">
+    <label class="flex items-center gap-gap-md {archived ? 'cursor-default opacity-55' : 'cursor-pointer'}">
       <input
         type="checkbox"
         bind:checked={humanOnly}
+        disabled={archived}
         onchange={toggleHumanOnly}
         class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
       />
       <span class="text-sm text-ink-2">Human only <span class="text-ink-3">(agents skip this task)</span></span>
     </label>
 
-    <label class="flex cursor-pointer items-center gap-gap-md">
+    <label class="flex items-center gap-gap-md {archived ? 'cursor-default opacity-55' : 'cursor-pointer'}">
       <input
         type="checkbox"
         bind:checked={includeInReport}
+        disabled={archived}
         onchange={toggleIncludeInReport}
         class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
       />
@@ -708,13 +696,15 @@
 
   {#snippet subtasksSection()}
     <div class="flex flex-col gap-3">
-      <button
-        type="button"
-        onclick={() => onAddSubtask(task.id)}
-        class="self-start rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
-      >
-        + Add sub-task
-      </button>
+      {#if !archived}
+        <button
+          type="button"
+          onclick={() => onAddSubtask(task.id)}
+          class="self-start rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+        >
+          + Add sub-task
+        </button>
+      {/if}
     <ul class="space-y-1">
       {#each subtasks as st (st.id)}
         <li>
@@ -748,26 +738,28 @@
   {/snippet}
 
   {#snippet activitySection()}
-    <form onsubmit={postActivity} class="mb-3 space-y-2">
-      <input
-        bind:value={actText}
-        placeholder="Activity summary…"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-      />
-      <textarea
-        bind:value={commentText}
-        rows="2"
-        placeholder="Optional comment… (markdown)"
-        class="w-full resize-y rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-      ></textarea>
-      <button
-        type="submit"
-        disabled={posting || (!actText.trim() && !commentText.trim())}
-        class="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
-      >
-        Post
-      </button>
-    </form>
+    {#if !archived}
+      <form onsubmit={postActivity} class="mb-3 space-y-2">
+        <input
+          bind:value={actText}
+          placeholder="Activity summary…"
+          class="w-full rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        />
+        <textarea
+          bind:value={commentText}
+          rows="2"
+          placeholder="Optional comment… (markdown)"
+          class="w-full resize-y rounded-control border border-line-soft bg-field px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+        ></textarea>
+        <button
+          type="submit"
+          disabled={posting || (!actText.trim() && !commentText.trim())}
+          class="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink disabled:opacity-40"
+        >
+          Post
+        </button>
+      </form>
+    {/if}
     <ul class="space-y-2">
       {#each activities as a (a.id)}
         <li class="rounded-control border border-line-soft bg-field/50 px-2.5 py-2">
@@ -818,76 +810,51 @@
     {/if}
   {/snippet}
 
-  {#if mode === 'modal'}
-    <div class="@container flex min-h-0 flex-1 overflow-hidden">
-      <nav
-        class="flex max-h-14 w-full flex-none flex-row gap-0.5 overflow-x-auto border-b border-line-soft p-2
-          @[560px]:max-h-none @[560px]:w-44 @[560px]:flex-col @[560px]:overflow-y-auto @[560px]:border-b-0 @[560px]:border-r @[560px]:p-3"
-        aria-label="Task sections"
-      >
-        {#each modalSections as section (section.id)}
-          <button
-            type="button"
-            onclick={() => {
-              activeSection = section.id
-              if (section.id === 'subtasks') void loadSubtasks()
-            }}
-            class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
-              {activeSection === section.id
-              ? 'bg-accent/15 text-ink'
-              : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
-          >
-            {section.label}
-            {#if section.id === 'activity' && activities.length > 0}
-              <span class="ml-1.5 text-[11px] text-ink-3">({activities.length})</span>
-            {:else if section.id === 'subtasks' && subtasks.length > 0}
-              <span class="ml-1.5 text-[11px] text-ink-3">({subtasks.length})</span>
-            {/if}
-          </button>
-        {/each}
-      </nav>
-
-      <div class="min-h-0 flex-1 overflow-y-auto p-5">
-        <div class="flex flex-col gap-5">
-          {#if activeSection === 'task'}
-            {@render taskSection()}
-          {:else if activeSection === 'subtasks'}
-            {@render subtasksSection()}
-          {:else}
-            {@render activitySection()}
+  <div class="@container flex min-h-0 flex-1 overflow-hidden">
+    <nav
+      class="flex max-h-14 w-full flex-none flex-row gap-0.5 overflow-x-auto border-b border-line-soft p-2
+        @[560px]:max-h-none @[560px]:w-44 @[560px]:flex-col @[560px]:overflow-y-auto @[560px]:border-b-0 @[560px]:border-r @[560px]:p-3"
+      aria-label="Task sections"
+    >
+      {#each modalSections as section (section.id)}
+        <button
+          type="button"
+          onclick={() => {
+            activeSection = section.id
+            if (section.id === 'subtasks') void loadSubtasks()
+          }}
+          class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
+            {activeSection === section.id
+            ? 'bg-accent/15 text-ink'
+            : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+        >
+          {section.label}
+          {#if section.id === 'activity' && activities.length > 0}
+            <span class="ml-1.5 text-[11px] text-ink-3">({activities.length})</span>
+          {:else if section.id === 'subtasks' && subtasks.length > 0}
+            <span class="ml-1.5 text-[11px] text-ink-3">({subtasks.length})</span>
           {/if}
-        </div>
-      </div>
-    </div>
+        </button>
+      {/each}
+    </nav>
 
-    {#if task.archived_at}
-      <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
-        {@render actionSection()}
-      </div>
-    {/if}
-  {:else}
-    <div class="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
-      {@render overviewSection()}
-      {@render contextSection()}
-      {@render contentSection()}
-      {#if !task.parent_id}
-        <div class="border-t border-line-soft pt-3">
-          <span class="micro mb-2">Sub-tasks</span>
+    <div class="min-h-0 flex-1 overflow-y-auto p-5">
+      <div class="flex flex-col gap-5">
+        {#if activeSection === 'task'}
+          {@render taskSection()}
+        {:else if activeSection === 'subtasks'}
           {@render subtasksSection()}
-        </div>
-      {/if}
-      <div class="border-t border-line-soft pt-3">
-        <span class="micro mb-2">Activity</span>
-        {@render activitySection()}
+        {:else}
+          {@render activitySection()}
+        {/if}
       </div>
-      {@render infoSection()}
     </div>
+  </div>
 
-    {#if task.archived_at}
-      <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-chrome px-5 py-3">
-        {@render actionSection()}
-      </div>
-    {/if}
+  {#if archived}
+    <div class="flex flex-none flex-col gap-2 border-t border-line-soft bg-field px-5 py-3">
+      {@render actionSection()}
+    </div>
   {/if}
 </aside>
 

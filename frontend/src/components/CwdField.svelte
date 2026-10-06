@@ -15,6 +15,7 @@
     value = $bindable(''),
     inputClass = '',
     placeholder = 'Optional project path…',
+    disabled = false,
     onCommit,
     onError
   }: {
@@ -22,6 +23,7 @@
     /** Extra classes for the text input (mono/xs vs sm parity). */
     inputClass?: string
     placeholder?: string
+    disabled?: boolean
     /** Called when the value should be persisted (blur / pick / folder). */
     onCommit?: (cwd: string) => void | Promise<void>
     onError?: (msg: string) => void
@@ -60,6 +62,7 @@
   })
 
   function openList() {
+    if (disabled) return
     open = true
     cursor = 0
   }
@@ -91,6 +94,7 @@
   }
 
   async function pickFolder() {
+    if (disabled) return
     try {
       const path = await api.pickDirectory(value.trim())
       if (path) await commit(path)
@@ -155,6 +159,7 @@
     <input
       bind:value
       {placeholder}
+      disabled={disabled}
       onfocus={openList}
       oninput={() => {
         if (!open) openList()
@@ -168,13 +173,14 @@
       aria-expanded={open}
       aria-autocomplete="list"
       aria-controls="cwd-typeahead-list"
-      class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 {inputClass}"
+      class="min-w-0 flex-1 rounded-control border border-line-soft bg-field px-3 py-2 text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55 {inputClass}"
     />
     <button
       type="button"
       onclick={pickFolder}
+      disabled={disabled}
       title="Pick folder"
-      class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink"
+      class="flex-none rounded-control border border-line-soft bg-field px-2.5 py-2 text-ink-2 transition-colors hover:bg-card-hi hover:text-ink disabled:cursor-default disabled:opacity-55 disabled:hover:bg-field disabled:hover:text-ink-2"
     >
       <svg
         class="h-4 w-4"

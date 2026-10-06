@@ -55,6 +55,7 @@
   const slackURL = $derived((task.slack_thread ?? '').trim())
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
+  const isArchived = $derived(!!task.archived_at)
 
   function reportError(msg: string) {
     onError?.(msg)
@@ -206,7 +207,7 @@
 
   async function toggleHumanOnly(e: MouseEvent) {
     stop(e)
-    if (togglingHuman) return
+    if (togglingHuman || isArchived) return
     togglingHuman = true
     const next = !task.human_only
     try {
@@ -220,7 +221,7 @@
 
   async function toggleIncludeInReport(e: MouseEvent) {
     stop(e)
-    if (togglingReport) return
+    if (togglingReport || isArchived) return
     togglingReport = true
     const next = !includeInReport
     try {
@@ -338,8 +339,12 @@
   <button
     type="button"
     onclick={toggleHumanOnly}
-    disabled={togglingHuman}
-    title={task.human_only ? 'Human only (click to allow agents)' : 'Mark human-only (agents skip)'}
+    disabled={togglingHuman || isArchived}
+    title={isArchived
+      ? 'Unarchive to change human-only'
+      : task.human_only
+        ? 'Human only (click to allow agents)'
+        : 'Mark human-only (agents skip)'}
     aria-label={task.human_only ? 'Clear human-only' : 'Mark human-only'}
     aria-pressed={!!task.human_only}
     class={toggleClass(!!task.human_only)}
@@ -350,8 +355,12 @@
   <button
     type="button"
     onclick={toggleIncludeInReport}
-    disabled={togglingReport}
-    title={includeInReport ? 'Included in Slack report (click to exclude)' : 'Excluded from Slack report (click to include)'}
+    disabled={togglingReport || isArchived}
+    title={isArchived
+      ? 'Unarchive to change Slack report inclusion'
+      : includeInReport
+        ? 'Included in Slack report (click to exclude)'
+        : 'Excluded from Slack report (click to include)'}
     aria-label={includeInReport ? 'Exclude from Slack report' : 'Include in Slack report'}
     aria-pressed={includeInReport}
     class={toggleClass(includeInReport)}

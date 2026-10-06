@@ -1,6 +1,5 @@
 <script lang="ts">
   import { relTime, absList, STATUS_LABELS } from '../lib/format'
-  import type { Status } from '../lib/api'
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
@@ -31,7 +30,7 @@
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
 
-  const badge: Record<Status, string> = {
+  const badge: Record<string, string> = {
     pending: 'border-st-pending/50 bg-st-pending/15 text-st-pending',
     wip: 'border-st-wip/60 bg-st-wip/20 text-st-wip',
     waiting: 'border-st-waiting/50 bg-st-waiting/15 text-st-waiting',
@@ -39,7 +38,7 @@
     pr: 'border-st-pr/50 bg-st-pr/15 text-st-pr',
     done: 'border-st-done/50 bg-st-done/15 text-st-done'
   }
-  const bar: Record<Status, string> = {
+  const bar: Record<string, string> = {
     pending: 'bg-st-pending',
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
@@ -88,19 +87,26 @@
 {#if rows.length === 0}
   <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
     {#if humanFilterEmpty}
-      <p class="text-sm text-ink-3">No tasks match the owner filter.</p>
-      <p class="text-xs text-ink-3/70">Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or <strong class="font-medium text-ink-2">Human</strong>.</p>
+      <p class="text-sm text-ink-3">No archived tasks match the owner filter.</p>
+      <p class="text-xs text-ink-3/70">
+        Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or
+        <strong class="font-medium text-ink-2">Human</strong>.
+      </p>
     {:else if hasFilters}
-      <p class="text-sm text-ink-3">No tasks match.</p>
+      <p class="text-sm text-ink-3">No archived tasks match.</p>
       <p class="text-xs text-ink-3/70">Clear the filters above to see everything.</p>
     {:else}
-      <p class="text-sm text-ink-3">No tasks yet.</p>
-      <p class="text-xs text-ink-3/70">Press <kbd>n</kbd> or use <strong class="font-medium text-ink-2">New task</strong> in the header.</p>
+      <p class="text-sm text-ink-3">No archived tasks.</p>
+      <p class="text-xs text-ink-3/70">
+        Archive done tasks from the board; open one here to unarchive.
+      </p>
     {/if}
   </div>
 {:else}
   <div class="flex h-full flex-col overflow-hidden rounded-card border border-line-soft bg-col shadow-sm">
-    <div class="flex flex-none items-center gap-3 px-3 py-2 text-[11px] uppercase tracking-[0.07em] text-ink-3">
+    <div
+      class="flex flex-none items-center gap-3 border-b border-line-soft px-3 py-2 text-[11px] uppercase tracking-[0.07em] text-ink-3"
+    >
       <span class="w-4 flex-none"></span>
       <span class="w-28 flex-none font-medium">Status</span>
       <span class="min-w-0 flex-1 font-medium">Title</span>
@@ -108,19 +114,25 @@
         <span class="w-36 flex-none text-right font-medium">Updated</span>
       {/if}
     </div>
-    <div class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 pt-0">
+    <div class="min-h-0 flex-1 overflow-y-auto">
       {#each rows as { task: t, depth } (t.id)}
         {#if depth === 0}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
-            class="flex w-full items-stretch gap-3 rounded-control px-3 py-2.5
-              {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
+            role="button"
+            tabindex="0"
+            onclick={() => onSelect(t.id)}
+            onkeydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect(t.id)
+              }
+            }}
+            class="flex w-full cursor-pointer items-stretch gap-3 border-b border-line-soft px-3 py-2.5 transition-colors
+              {selectedId === t.id ? 'bg-accent/15' : 'bg-transparent hover:bg-card-hi'}"
           >
             <span class="w-4 flex-none" aria-hidden="true"></span>
-            <button
-              type="button"
-              onclick={() => onSelect(t.id)}
-              class="flex w-28 flex-none items-center self-stretch text-left"
-            >
+            <div class="flex w-28 flex-none items-center self-stretch">
               <div class="flex flex-col gap-1.5">
                 <span
                   class="inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium
@@ -136,41 +148,38 @@
                   ></div>
                 </div>
               </div>
-            </button>
+            </div>
             <div class="flex min-w-0 flex-1 flex-col justify-center gap-1">
-              <button
-                type="button"
-                onclick={() => onSelect(t.id)}
-                class="min-w-0 truncate text-left text-sm text-ink"
-                title={t.title}
-              >
+              <span class="min-w-0 truncate text-left text-sm text-ink" title={t.title}>
                 {t.title}
-              </button>
-              <TaskActivityActions
-                task={t}
-                {settings}
-                {zedBinaryOk}
-                {onError}
-                {onToast}
-              />
+              </span>
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => e.stopPropagation()}
+              >
+                <TaskActivityActions
+                  task={t}
+                  {settings}
+                  {zedBinaryOk}
+                  {onError}
+                  {onToast}
+                />
+              </div>
             </div>
             {#if showUpdated}
-              <button
-                type="button"
-                onclick={() => onSelect(t.id)}
-                class="flex w-36 flex-none flex-col items-end justify-center gap-0.5 self-stretch text-left"
-              >
+              <div class="flex w-36 flex-none flex-col items-end justify-center gap-0.5 self-stretch">
                 <span class="text-xs text-ink-2">{relTime(t.updated_at)}</span>
                 <span class="font-mono text-[10px] text-ink-3">{absList(t.updated_at)}</span>
-              </button>
+              </div>
             {/if}
           </div>
         {:else}
           <button
             type="button"
             onclick={() => onSelect(t.id)}
-            class="flex w-[calc(100%-1.25rem)] items-center gap-3 rounded-control border-l-2 border-line px-3 py-2.5 text-left ml-5
-              {selectedId === t.id ? 'bg-accent/10' : 'bg-white/[0.03] hover:bg-white/[0.06]'}"
+            class="flex w-full cursor-pointer items-center gap-3 border-b border-line-soft border-l-2 border-l-line py-2.5 pl-8 pr-3 text-left transition-colors
+              {selectedId === t.id ? 'bg-accent/15' : 'bg-transparent hover:bg-card-hi'}"
           >
             <span class="w-4 flex-none" aria-hidden="true"></span>
             <div class="w-28 flex-none">

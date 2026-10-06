@@ -3,7 +3,7 @@
   import { fly } from 'svelte/transition'
   import Board from './components/Board.svelte'
   import FilterBar from './components/FilterBar.svelte'
-  import List from './components/List.svelte'
+  import Archive from './components/Archive.svelte'
   import ActivityView from './components/ActivityView.svelte'
   import TaskDetail from './components/TaskDetail.svelte'
   import NewTaskDialog from './components/NewTaskDialog.svelte'
@@ -13,7 +13,7 @@
   import { api, errMsg, type Activity, type GUISettings, type InstallStatus, type Status, type Task } from './lib/api'
   import { defaultSettings } from './lib/settings'
   import { applyThemeTokens } from './lib/themes'
-  import { boardAdjacentTaskId, listAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
+  import { boardAdjacentTaskId, archiveAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
   import {
     invalidateBinaryCache,
@@ -25,58 +25,28 @@
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
-  type View = 'board' | 'list' | 'activity'
-  type DetailMode = 'pinned' | 'floating' | 'modal'
+  type View = 'board' | 'archive' | 'activity'
 
-  function loadDetailMode(): DetailMode {
+  function loadStoredView(): View {
     try {
-      const stored = localStorage.getItem('mhtodo.detailMode')
-      if (stored === 'pinned' || stored === 'floating' || stored === 'modal') return stored
-      const legacy = localStorage.getItem('mhtodo.detailPinned')
-      if (legacy === 'true') return 'pinned'
-    } catch {
-      /* ignore */
-    }
-    return 'floating'
-  }
-
-  const DETAIL_PANEL_WIDTH_DEFAULT = 420
-  const DETAIL_PANEL_WIDTH_MIN = 280
-
-  function maxDetailPanelWidth() {
-    return Math.min(960, Math.floor(window.innerWidth * 0.75))
-  }
-
-  function loadDetailPanelWidth(): number {
-    try {
-      for (const key of ['mhtodo.detailPanelWidth', 'mhtodo.detailPinnedWidth']) {
-        const stored = localStorage.getItem(key)
-        if (stored) {
-          const n = parseInt(stored, 10)
-          if (!Number.isNaN(n)) {
-            return Math.max(DETAIL_PANEL_WIDTH_MIN, Math.min(maxDetailPanelWidth(), n))
-          }
+      const stored = localStorage.getItem('mhtodo.view')
+      if (stored === 'archive' || stored === 'activity') return stored
+      // Legacy list view → archive (archived browsing lived there).
+      if (stored === 'list') {
+        try {
+          localStorage.setItem('mhtodo.view', 'archive')
+        } catch {
+          /* ignore */
         }
+        return 'archive'
       }
     } catch {
       /* ignore */
     }
-    return DETAIL_PANEL_WIDTH_DEFAULT
+    return 'board'
   }
 
-  function clampDetailPanelWidth(w: number) {
-    return Math.max(DETAIL_PANEL_WIDTH_MIN, Math.min(maxDetailPanelWidth(), w))
-  }
-  const storedView = (() => {
-    try {
-      return localStorage.getItem('mhtodo.view')
-    } catch {
-      return null
-    }
-  })()
-  let view = $state<View>(
-    storedView === 'list' || storedView === 'activity' ? storedView : 'board'
-  )
+  let view = $state<View>(loadStoredView())
 
   const storedShowSub = (() => {
     try {
@@ -87,9 +57,6 @@
   })()
   let showSubtasks = $state(storedShowSub !== 'false')
 
-  let detailMode = $state<DetailMode>(loadDetailMode())
-  let detailPanelWidth = $state(loadDetailPanelWidth())
-  let resizingDetail = $state(false)
   let alwaysOnTop = $state(false)
   let viewportWidth = $state(
     typeof window !== 'undefined' ? window.innerWidth : 1100
@@ -104,13 +71,7 @@
   let loadTimer: ReturnType<typeof setTimeout> | undefined
   let searchTimer: ReturnType<typeof setTimeout> | undefined
   let resizeRaf = 0
-  let detailResizeRaf = 0
 
-  /** Pinned detail would leave the main pane under ~640px — render as floating instead. */
-  const pinCramped = $derived(
-    detailMode === 'pinned' && viewportWidth - detailPanelWidth < 640
-  )
-  const renderDetailMode = $derived(pinCramped ? 'floating' : detailMode)
   const narrowChrome = $derived(viewportWidth < 900)
   const TOAST_MS = 3000
   let toast: { id: number; msg: string; kind: 'error' | 'info' } | null = $state(null)
@@ -137,9 +98,9 @@
   let deleting = $state(false)
   let dbPath = $state('')
 
-  let status = $state<Status | '' | 'archived'>('')
+  let status = $state<Status | ''>('')
   let search = $state('')
-  let sort = $state<'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'>('board')
+  let sort = $state<'board' | 'created' | 'updated' | 'status' | 'progress' | 'title'>('updated')
   let ascending = $state(false)
   let humanFilter = $state<HumanFilter>(loadHumanFilter())
 
@@ -263,10 +224,6 @@
 
   function setView(v: View) {
     if (view === v) return
-    // Archived is list-only; keep it from blanking the board/activity.
-    if (v !== 'list' && status === 'archived') {
-      status = ''
-    }
     view = v
     try {
       localStorage.setItem('mhtodo.view', v)
@@ -280,16 +237,6 @@
     showSubtasks = !showSubtasks
     try {
       localStorage.setItem('mhtodo.showSubtasks', showSubtasks ? 'true' : 'false')
-    } catch {
-      /* ignore */
-    }
-  }
-
-  function setDetailMode(mode: DetailMode) {
-    if (detailMode === mode) return
-    detailMode = mode
-    try {
-      localStorage.setItem('mhtodo.detailMode', mode)
     } catch {
       /* ignore */
     }
@@ -363,11 +310,10 @@
   async function focusTaskFromTray(id: string) {
     const tid = String(id ?? '').trim()
     if (!tid) return
-    if (view === 'activity') {
+    if (view === 'activity' || view === 'archive') {
       view = 'board'
       await load()
     }
-    setDetailMode('modal')
     let task = tasks.find((t) => t.id === tid)
     if (!task) {
       try {
@@ -391,21 +337,21 @@
   }
 
   function navigateModalTask(dir: -1 | 1) {
-    if (renderDetailMode !== 'modal' || !selectedId) return
+    if (!selectedId) return
     let nextId: string | null = null
     if (view === 'board') {
       nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
-    } else if (view === 'list') {
-      nextId = listAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+    } else if (view === 'archive') {
+      nextId = archiveAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
     } else if (view === 'activity') {
-      // Prefer currently filtered activity order; fall back to task list.
+      // Prefer currently filtered activity order; fall back to board order.
       const acts =
         activityFilterIds.length === 0
           ? activities
           : activities.filter((a) => activityFilterIds.includes(a.task_id))
       nextId = activityAdjacentTaskId(acts, selectedId, dir)
       if (!nextId) {
-        nextId = listAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+        nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
       }
     }
     if (nextId) selectedId = nextId
@@ -419,56 +365,6 @@
     } catch {
       /* ignore */
     }
-  }
-
-  function persistDetailPanelWidth() {
-    try {
-      localStorage.setItem('mhtodo.detailPanelWidth', String(detailPanelWidth))
-    } catch {
-      /* ignore */
-    }
-  }
-
-  function startDetailResize(e: PointerEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    const startX = e.clientX
-    const startWidth = detailPanelWidth
-    resizingDetail = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-
-    function onMove(ev: PointerEvent | MouseEvent) {
-      if ('buttons' in ev && ev.buttons === 0) return
-      const next = clampDetailPanelWidth(startWidth + startX - ev.clientX)
-      if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
-      detailResizeRaf = requestAnimationFrame(() => {
-        detailPanelWidth = next
-        detailResizeRaf = 0
-      })
-    }
-
-    function onUp() {
-      resizingDetail = false
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      document.removeEventListener('pointermove', onMove, true)
-      document.removeEventListener('pointerup', onUp, true)
-      document.removeEventListener('pointercancel', onUp, true)
-      document.removeEventListener('mousemove', onMove, true)
-      document.removeEventListener('mouseup', onUp, true)
-      if (detailResizeRaf) {
-        cancelAnimationFrame(detailResizeRaf)
-        detailResizeRaf = 0
-      }
-      persistDetailPanelWidth()
-    }
-
-    document.addEventListener('pointermove', onMove, true)
-    document.addEventListener('pointerup', onUp, true)
-    document.addEventListener('pointercancel', onUp, true)
-    document.addEventListener('mousemove', onMove, true)
-    document.addEventListener('mouseup', onUp, true)
   }
 
   function onHeaderDblClick(e: MouseEvent) {
@@ -506,15 +402,12 @@
         const filter =
           view === 'board'
             ? {
-                // Board never shows archived; statusFilter==='archived' is cleared in setView.
-                status: status === 'archived' ? '' : status,
+                status,
                 search,
                 sort: 'board' as const,
                 ascending: false
               }
-            : status === 'archived'
-              ? { archived: true, search, sort, ascending }
-              : { status, search, sort, ascending }
+            : { archived: true, search, sort, ascending }
         const t = await api.list(filter)
         if (seq !== loadSeq) return
         tasks = t
@@ -596,7 +489,7 @@
       else if (dialogOpen) {
         dialogOpen = false
         dialogParentId = ''
-      } else if (selectedId && renderDetailMode !== 'pinned') selectedId = null
+      } else if (selectedId) selectedId = null
       else api.hideWindow()
       return
     }
@@ -607,7 +500,6 @@
     }
     if (
       (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
-      renderDetailMode === 'modal' &&
       selectedId &&
       !dialogOpen &&
       !confirmTask &&
@@ -642,8 +534,8 @@
       case 'b':
         setView('board')
         break
-      case 'l':
-        setView('list')
+      case 'r':
+        setView('archive')
         break
       case 'a':
         setView('activity')
@@ -673,13 +565,7 @@
         load()
         break
       case '7':
-        if (view === 'board') {
-          status = 'archived'
-          setView('list')
-        } else if (view === 'list') {
-          status = status === 'archived' ? '' : 'archived'
-          load()
-        }
+        setView('archive')
         break
     }
   }
@@ -688,11 +574,6 @@
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
     resizeRaf = requestAnimationFrame(() => {
       viewportWidth = window.innerWidth
-      const clamped = clampDetailPanelWidth(detailPanelWidth)
-      if (clamped !== detailPanelWidth) {
-        detailPanelWidth = clamped
-        persistDetailPanelWidth()
-      }
       resizeRaf = 0
     })
   }
@@ -780,7 +661,6 @@
     clearTimeout(searchTimer)
     clearTimeout(cwdSuggestTimer)
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
-    if (detailResizeRaf) cancelAnimationFrame(detailResizeRaf)
     unbindChanged?.()
     unbindTemplatesChanged?.()
     unbindThemesChanged?.()
@@ -793,16 +673,10 @@
     window.removeEventListener('keyup', onCtrlKeyup)
     window.removeEventListener('blur', onCtrlBlur)
     window.removeEventListener('resize', onWindowResize)
-    if (resizingDetail) {
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
   })
 </script>
 
-<div
-  class="flex h-full flex-col border border-line {resizingDetail ? 'select-none' : ''}"
->
+<div class="flex h-full flex-col border border-line">
   <!-- Frameless window: double-click header (outside chrome) toggles maximize. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header
@@ -829,12 +703,12 @@
     </div>
 
     <div
-      class="flex items-stretch gap-0.5 [--wails-draggable:no-drag] sm:gap-1"
+      class="flex min-w-0 flex-1 items-stretch gap-0.5 [--wails-draggable:no-drag] sm:gap-1"
       data-window-chrome
       role="tablist"
       aria-label="View"
     >
-      {#each [['board', 'Board'], ['list', 'List'], ['activity', 'Activity']] as [v, label] (v)}
+      {#each [['board', 'Board'], ['activity', 'Activity']] as [v, label] (v)}
         <button
           role="tab"
           aria-selected={view === v}
@@ -846,12 +720,25 @@
           {#if view === v}<span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>{/if}
         </button>
       {/each}
+
+      <div class="hidden flex-1 sm:block" aria-hidden="true"></div>
+
+      <button
+        role="tab"
+        aria-selected={view === 'archive'}
+        onclick={() => setView('archive')}
+        class="relative ml-auto px-2 text-[13px] font-medium transition-colors sm:ml-0 sm:px-3
+          {view === 'archive' ? 'text-ink' : 'text-ink-3/30 hover:text-ink-3'}"
+      >
+        Archived
+        {#if view === 'archive'}
+          <span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>
+        {/if}
+      </button>
     </div>
 
-    <div class="hidden flex-1 sm:block"></div>
-
     <div
-      class="ml-auto flex items-center gap-2 [--wails-draggable:no-drag] sm:ml-0"
+      class="flex items-center gap-2 [--wails-draggable:no-drag]"
       data-window-chrome
     >
     <button
@@ -1041,24 +928,23 @@
     </div>
   </header>
 
-  {#if view === 'list'}
+  {#if view === 'archive'}
     <FilterBar
-      {status}
+      status=""
       {search}
       {sort}
       {ascending}
       {humanFilter}
       {showSubtasks}
-      onStatusChange={(s: Status | '' | 'archived') => {
-        status = s
-        load()
-      }}
+      showStatus={false}
+      showSort={true}
+      onStatusChange={() => {}}
       onSearchInput={(v: string) => {
         search = v
         scheduleSearchLoad()
       }}
-      onSortChange={(f: 'created' | 'updated' | 'status' | 'progress' | 'title') => {
-        sort = f
+      onSortChange={(f: string) => {
+        sort = f as 'created' | 'updated' | 'status' | 'progress' | 'title'
         load()
       }}
       onToggleAsc={() => {
@@ -1079,12 +965,7 @@
       {showSubtasks}
       showSort={false}
       taskCount={displayRootCount}
-      onStatusChange={(s: Status | '' | 'archived') => {
-        if (s === 'archived') {
-          status = 'archived'
-          setView('list')
-          return
-        }
+      onStatusChange={(s: Status | '') => {
         status = s
         load()
       }}
@@ -1132,7 +1013,7 @@
           {search}
           selectedId={selectedId}
           {showSubtasks}
-          statusFilter={status === 'archived' ? '' : status}
+          statusFilter={status}
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           settings={guiSettings}
@@ -1143,10 +1024,10 @@
           onError={showToast}
           onToast={showToast}
         />
-      {:else if view === 'list'}
-        <List
+      {:else if view === 'archive'}
+        <Archive
           tasks={displayTasks}
-          hasFilters={status !== '' || search.trim() !== '' || humanFilter !== 'all'}
+          hasFilters={search.trim() !== '' || humanFilter !== 'all'}
           humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
           selectedId={selectedId}
           {showSubtasks}
@@ -1173,24 +1054,6 @@
         />
       {/if}
     </main>
-
-    {#if selectedTask && renderDetailMode === 'pinned'}
-      <TaskDetail
-        task={selectedTask}
-        parentTitle={selectedParentTitle}
-        mode="pinned"
-        width={detailPanelWidth}
-        resizing={resizingDetail}
-        onResizeStart={startDetailResize}
-        onClose={() => (selectedId = null)}
-        onError={showToast}
-        onNotify={(m) => showToast(m, 'info')}
-        onDelete={(t: any) => requestDelete(t)}
-        onSetMode={setDetailMode}
-        onSelectParent={selectTask}
-        onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
-      />
-    {/if}
   </div>
 
   <footer class="flex h-9 flex-none items-center gap-4 border-t border-line-soft bg-chrome px-5 text-xs text-ink-3">
@@ -1198,33 +1061,15 @@
     <div class="flex-1"></div>
     {#if !narrowChrome}
       <span class="flex-none whitespace-nowrap"
-        ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>l</kbd>/<kbd>a</kbd> view ·
-        <kbd>1–6</kbd> status · <kbd>7</kbd> archived · <kbd>←</kbd>/<kbd>→</kbd> modal ·
+        ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>a</kbd> view · <kbd>r</kbd>/<kbd>7</kbd> archived ·
+        <kbd>1–6</kbd> status · <kbd>←</kbd>/<kbd>→</kbd> modal ·
         <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
         <kbd>ctrl+q</kbd> / <kbd>ctrl+click</kbd> × quit</span
       >
     {/if}
   </footer>
 
-  {#if selectedTask && renderDetailMode === 'floating'}
-    <TaskDetail
-      task={selectedTask}
-      parentTitle={selectedParentTitle}
-      mode="floating"
-      width={detailPanelWidth}
-      resizing={resizingDetail}
-      onResizeStart={startDetailResize}
-      onClose={() => (selectedId = null)}
-      onError={showToast}
-      onNotify={(m) => showToast(m, 'info')}
-      onDelete={(t: any) => requestDelete(t)}
-      onSetMode={setDetailMode}
-      onSelectParent={selectTask}
-      onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
-    />
-  {/if}
-
-  {#if selectedTask && renderDetailMode === 'modal'}
+  {#if selectedTask}
     <!-- Backdrop dismiss; Escape also closes via global key handler. -->
     <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
     <div
@@ -1234,12 +1079,13 @@
       <TaskDetail
         task={selectedTask}
         parentTitle={selectedParentTitle}
-        mode="modal"
+        settings={guiSettings}
+        {zedBinaryOk}
         onClose={() => (selectedId = null)}
         onError={showToast}
         onNotify={(m) => showToast(m, 'info')}
+        onToast={showToast}
         onDelete={(t: any) => requestDelete(t)}
-        onSetMode={setDetailMode}
         onSelectParent={selectTask}
         onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
       />

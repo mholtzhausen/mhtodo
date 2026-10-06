@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Status } from '../lib/api'
 
-  let { value, onPick }: { value: Status; onPick: (s: Status) => void } = $props()
+  let { value, onPick, disabled = false }: { value: Status; onPick: (s: Status) => void; disabled?: boolean } =
+    $props()
 
   const OPTIONS: { s: Status; label: string; short: string; active: string; dot: string }[] = [
     {
@@ -54,16 +55,21 @@
     role="radiogroup"
     aria-label="Status"
     class="grid grid-cols-3 gap-1 rounded-control border border-line-soft bg-field p-1 shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)]
-      @[360px]:grid-cols-6"
+      @[360px]:grid-cols-6 {disabled ? 'opacity-55' : ''}"
   >
     {#each OPTIONS as o (o.s)}
       <button
         type="button"
         role="radio"
         aria-checked={value === o.s}
+        aria-disabled={disabled}
+        disabled={disabled}
         title={o.label}
-        onclick={() => onPick(o.s)}
-        class="flex items-center justify-center gap-1 rounded-chip border border-transparent px-0.5 py-[7px] text-[11px] font-medium text-ink-2 hover:bg-white/5 hover:text-ink
+        onclick={() => {
+          if (!disabled) onPick(o.s)
+        }}
+        class="flex items-center justify-center gap-1 rounded-chip border border-transparent px-0.5 py-[7px] text-[11px] font-medium text-ink-2
+          {disabled ? 'cursor-default' : 'hover:bg-white/5 hover:text-ink'}
           {value === o.s ? o.active : ''}"
       >
         <span class="h-[7px] w-[7px] flex-none rounded-full {o.dot}"></span>

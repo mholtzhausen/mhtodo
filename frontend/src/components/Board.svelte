@@ -26,7 +26,7 @@
     search: string
     selectedId: string | null
     showSubtasks: boolean
-    statusFilter?: Status | '' | 'archived'
+    statusFilter?: Status | ''
     humanFilterEmpty?: boolean
     archiveDoneSubtasks?: boolean
     settings?: GUISettings | null
@@ -72,7 +72,7 @@
   ]
 
   const visibleColumns = $derived(
-    statusFilter && statusFilter !== 'archived'
+    statusFilter
       ? COLUMNS.filter((c) => c.status === statusFilter)
       : COLUMNS
   )
@@ -430,7 +430,7 @@
     {:else if humanFilterEmpty}
       <p class="text-sm text-ink-3">No tasks match the owner filter.</p>
       <p class="text-xs text-ink-3/70">Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or <strong class="font-medium text-ink-2">Human</strong>.</p>
-    {:else if statusFilter && statusFilter !== 'archived'}
+    {:else if statusFilter}
       <p class="text-sm text-ink-3">No {STATUS_LABELS[statusFilter] ?? statusFilter} tasks.</p>
       <p class="text-xs text-ink-3/70">Clear the status filter above to see all columns.</p>
     {:else}
@@ -518,8 +518,8 @@
           {#if col.status === 'done'}
             <button
               title={archiveDoneSubtasks
-                ? 'Archive all done tasks including subtasks (reversible from List → Archived)'
-                : 'Archive done root tasks only (reversible from List → Archived)'}
+                ? 'Archive all done tasks including subtasks (reversible from Archive)'
+                : 'Archive done root tasks only (reversible from Archive)'}
               disabled={archivableDoneCount === 0 || archiving}
               onclick={archiveAll}
               class="rounded-control p-1 transition-colors hover:bg-white/5 hover:text-accent disabled:cursor-default disabled:opacity-30"

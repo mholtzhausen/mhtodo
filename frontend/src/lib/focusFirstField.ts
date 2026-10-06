@@ -52,7 +52,7 @@ export function focusFirstField(root: ParentNode | null | undefined): HTMLElemen
 /**
  * Svelte action: when the node mounts (typical `{#if open}` modal body), focus
  * the first field after paint so fly transitions / layout have settled.
- * Pass `false` to disable (e.g. TaskDetail pin/float modes).
+ * Pass `false` to disable.
  */
 export function focusOnOpen(node: HTMLElement, enabled: boolean = true) {
   let cancelled = false

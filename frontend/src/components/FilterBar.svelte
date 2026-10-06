@@ -22,7 +22,7 @@
     onToggleSubtasks,
     onCopySlackReport
   }: {
-    status: Status | '' | 'archived'
+    status: Status | ''
     search: string
     sort: string
     ascending: boolean
@@ -31,7 +31,7 @@
     showSort?: boolean
     showStatus?: boolean
     taskCount?: number
-    onStatusChange: (s: Status | '' | 'archived') => void
+    onStatusChange: (s: Status | '') => void
     onSearchInput: (v: string) => void
     onSortChange: (f: string) => void
     onToggleAsc: () => void
@@ -41,7 +41,7 @@
   } = $props()
 
   const statusOptions: {
-    value: Status | '' | 'archived'
+    value: Status | ''
     label: string
     activeClass: string
   }[] = [
@@ -67,8 +67,7 @@
       label: STATUS_LABELS.pr,
       activeClass: 'text-st-pr'
     },
-    { value: 'done', label: STATUS_LABELS.done, activeClass: 'text-st-done' },
-    { value: 'archived', label: 'Archived', activeClass: 'text-ink' }
+    { value: 'done', label: STATUS_LABELS.done, activeClass: 'text-st-done' }
   ]
 
   const humanOptions: { value: HumanFilter; label: string; title: string }[] = [
