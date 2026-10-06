@@ -3,10 +3,21 @@
 ## Unreleased
 
 ### Features and Improvements
-- `pr_url` accepts multiple pull-request URLs (one per line); CLI `--pr-url` is repeatable; detail pane uses a multi-line field; the PR action icon opens directly for one URL or shows a picker for two or more; agents must set PR links on `pr_url` (not only in feedback)
+- (none)
 
 ### Bugfixes
 - (none)
+
+### Deprecations
+- (none)
+
+## 3.1.1 (pending)
+
+### Features and Improvements
+- `pr_url` accepts multiple pull-request URLs (one per line); CLI `--pr-url` is repeatable (full list replace); detail pane uses a multi-line field; the PR action icon opens directly for one URL or shows a picker for two or more; agents must set PR links on `pr_url` (not only in feedback), and re-pass every URL when adding another
+
+### Bugfixes
+- PR picker menu uses fixed positioning above board lanes (no longer clipped by column overflow) with clearer hover wash and separators between links
 
 ### Deprecations
 - (none)
