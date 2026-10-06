@@ -325,6 +325,16 @@ func TestEditSession(t *testing.T) {
 	}
 
 	out.Reset()
+	if code := run("activity", "list", "--task", created.ID, "--json"); code != 0 {
+		t.Fatalf("activity list exit %d", code)
+	}
+	var acts []core.Activity
+	mustJSON(t, out.Bytes(), &acts)
+	if len(acts) != 1 || acts[0].Activity != "Claude Session" || acts[0].Comment != "Claude Session: "+sid {
+		t.Fatalf("auto activity = %+v", acts)
+	}
+
+	out.Reset()
 	if code := run("edit", created.ID, "--session", "", "--json"); code != 0 {
 		t.Fatalf("edit --session clear exit %d", code)
 	}

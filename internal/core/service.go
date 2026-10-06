@@ -247,12 +247,25 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	if in.SlackThread != nil {
 		t.SlackThread = strings.TrimSpace(*in.SlackThread)
 	}
+	sessionSet := false
+	sessionID := ""
 	if in.TodoSession != nil {
-		t.TodoSession = strings.TrimSpace(*in.TodoSession)
+		sessionID = strings.TrimSpace(*in.TodoSession)
+		t.TodoSession = sessionID
+		sessionSet = sessionID != ""
 	}
 	t.UpdatedAt = s.now()
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
+	}
+	if sessionSet {
+		// Audit trail so the user can find which Claude session worked this ticket.
+		if _, err := s.AddActivity(ctx, t.ID, ActivityInput{
+			Activity: "Claude Session",
+			Comment:  "Claude Session: " + sessionID,
+		}); err != nil {
+			return Task{}, fmt.Errorf("record session activity: %w", err)
+		}
 	}
 	return t, nil
 }

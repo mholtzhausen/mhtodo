@@ -18,10 +18,12 @@ const IntegrationVersion = 16
 
 // integrationChangelog is rendered into §9 of the ai document. Newest first.
 const integrationChangelog = `v16 On adopt, record the current Claude session on the ticket with
-    mhtodo edit ID --session <claude-session-uuid> (empty clears). Ticket
-    reference Instructions block requires that plus sub-task/activity updates.
-    todo_session is again the agent-facing link from ticket → session (not used
-    for in-app Claude spawn). terminal_pid remains inert.
+    mhtodo edit ID --session <claude-session-uuid> (empty clears). A non-empty
+    --session also auto-posts activity "Claude Session" with comment
+    "Claude Session: <uuid>". Ticket reference Instructions block requires
+    that plus sub-task/activity updates. todo_session is again the
+    agent-facing link from ticket → session (not used for in-app Claude
+    spawn). terminal_pid remains inert.
 v15 Ticket reference (GUI copy) is a fenced block:
     --- / MHTodo Ticket: mhtodo://task/{short8} / Status: / Title: / reminder / ---
 v14 Ticket deep links: GUI copy uses mhtodo://task/{short8}; mhtodo open TARGET

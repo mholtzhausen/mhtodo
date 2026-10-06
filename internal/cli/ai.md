@@ -123,8 +123,10 @@ the GUI opens Zed at that folder.
 **`todo_session`** links the ticket to the Claude (or host) session currently working
 it. Set with `mhtodo edit ID --session <claude-session-uuid>` when you adopt or
 resume work; empty string clears. Prefer the host’s real session id (hooks expose
-`session_id` on Claude Code). This is how the user later finds which session worked
-a ticket — keep it current if the session id changes (`/new`, `/clear`, new chat).
+`session_id` on Claude Code). Setting a non-empty session also posts an activity
+(`Claude Session` / comment `Claude Session: <uuid>`) so the trail is visible in
+the Activity view. This is how the user later finds which session worked a ticket
+— keep it current if the session id changes (`/new`, `/clear`, new chat).
 
 **Ticket reference (GUI copy):** the board/list card action “Copy ticket reference”
 puts a handoff block on the clipboard. Treat a user paste like this as pointing

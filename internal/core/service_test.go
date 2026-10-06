@@ -223,6 +223,46 @@ func TestEdit(t *testing.T) {
 	}
 }
 
+func TestEditSessionPostsActivity(t *testing.T) {
+	svc, repo := newTestService(t)
+	ctx := context.Background()
+	seed(t, repo, "sess1111-0000-7000-8000-000000000001", "linked", core.StatusPending, 0)
+
+	const sid = "01958b2e-aaaa-7bbb-8ccc-ddddeeeeffff"
+	got, err := svc.Edit(ctx, "sess", core.UpdateInput{TodoSession: strPtr(sid)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.TodoSession != sid {
+		t.Fatalf("todo_session = %q, want %q", got.TodoSession, sid)
+	}
+	acts, err := svc.ListActivity(ctx, core.ActivityFilter{TaskIDs: []string{got.ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(acts) != 1 {
+		t.Fatalf("activities = %d, want 1", len(acts))
+	}
+	if acts[0].Activity != "Claude Session" || acts[0].Comment != "Claude Session: "+sid {
+		t.Fatalf("activity = {%q, %q}", acts[0].Activity, acts[0].Comment)
+	}
+
+	// Clearing session does not post another activity.
+	empty := ""
+	if _, err := svc.Edit(ctx, "sess", core.UpdateInput{TodoSession: &empty}); err != nil {
+		t.Fatal(err)
+	}
+	acts, err = svc.ListActivity(ctx, core.ActivityFilter{TaskIDs: []string{got.ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(acts) != 1 {
+		t.Fatalf("after clear, activities = %d, want 1", len(acts))
+	}
+}
+
+func strPtr(s string) *string { return &s }
+
 func TestDelete(t *testing.T) {
 	svc, repo := newTestService(t)
 	ctx := context.Background()
