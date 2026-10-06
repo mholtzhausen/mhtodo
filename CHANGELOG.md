@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 2.11.0 (pending)
+## 2.11.0 (e61b54c)
 
 ### Features and Improvements
 - **`mhtodo ai` reworked:** installs/updates `~/.claude/skills/mhtodo/SKILL.md` (named workflows) and strips legacy hooks, settings entries, `integration.json`, session pointer files, and `claude.todo`; `--check` reports only (no IntegrationVersion / printed contract / hook install)

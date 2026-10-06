@@ -17,6 +17,6 @@ Agent setup is skill-first: `mhtodo ai` installs a Claude workflow skill, strips
 - **Open in Zed** also copies the ticket reference block to the clipboard
 - Removed: versioned agent-integration contract document and Claude Code hook install path from `mhtodo ai`
 
-Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.11.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2110-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.11.0).
+Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.11.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2110-e61b54c) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.11.0).
 
 How the skill is meant to be used: [How the mhtodo Claude skill works]({{ site.baseurl }}/guide/2026/10/06/mhtodo-ai-skill.html). Board habits: [Claude and mhtodo]({{ site.baseurl }}/guide/2026/10/06/claude-and-mhtodo-primer.html).
