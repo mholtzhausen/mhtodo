@@ -46,6 +46,6 @@ That keeps the live signal honest: **status → progress → sub-tasks**, with t
 - Detail pane shows **Todo session** again (`todo_session` / `edit --session`)
 - Markdown links in description, feedback, and activity open in the system browser (not the Wails webview)
 
-Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.12.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2120-PENDING) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.12.0).
+Upgrade with `mhtodo update`, or grab the release from GitHub. Full notes: [CHANGELOG — 2.12.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#2120-0670a5a) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v2.12.0).
 
 Board habits for agents: [Claude and mhtodo]({{ site.baseurl }}/guide/2026/10/06/claude-and-mhtodo-primer.html) · [How the mhtodo Claude skill works]({{ site.baseurl }}/guide/2026/10/06/mhtodo-ai-skill.html).

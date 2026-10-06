@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 2.12.0 (PENDING)
+## 2.12.0 (0670a5a)
 
 ### Features and Improvements
 - Board lane **Pull Request** (`pr`) between review and done; optional `pr_url` on tasks (`edit`/`add --pr-url`); setting a URL advances status to `pr`; PR column collapsed by default; card link left of mark-done
