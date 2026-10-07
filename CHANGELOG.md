@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 3.2.1 (pending)
+
+### Features and Improvements
+- Ticket reference Instructions and Claude skill: register pull-request URLs on the **root** ticket via `edit … --pr-url` (repeatable full-list replace); when the handoff is a sub-task, target the parent id — never the sub-task
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.2.0 (157f767)
 
 ### Features and Improvements
