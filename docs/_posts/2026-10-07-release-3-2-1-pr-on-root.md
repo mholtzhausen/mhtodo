@@ -22,4 +22,4 @@ The embedded skill matches: handoff sample, ownership, step plan, PR hand-back, 
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.2.1](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#321-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.2.1).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.2.1](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#321-ce2e0d9) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.2.1).
