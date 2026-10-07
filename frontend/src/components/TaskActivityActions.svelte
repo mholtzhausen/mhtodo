@@ -25,6 +25,7 @@
       human_only?: boolean
       include_in_report?: boolean
       archived_at?: string | null
+      parent_id?: string | null
       slack_thread?: string
       pr_url?: string
     }
@@ -77,9 +78,12 @@
 
   function ticketReference(): string {
     const id = shortId(task.id)
+    const parentRaw = (task.parent_id ?? '').trim()
+    const isSubtask = !!parentRaw
+    const rootId = isSubtask ? shortId(parentRaw) : id
     const status = (task.status ?? 'pending').trim() || 'pending'
     const title = (task.title ?? '').trim() || '(untitled)'
-    return [
+    const lines = [
       '',
       '---',
       `MHTodo Ticket: mhtodo://task/${id}`,
@@ -89,9 +93,15 @@
       ` - record your current claude session against the ticket: \`mhtodo edit ${id} --session <claude-session-uuid>\``,
       ' - remember to update subtasks and activity comments if you do work on this',
       ' - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work',
-      '---',
-      ''
-    ].join('\n')
+      ` - when you open a pull request: put every PR URL on the root ticket with \`mhtodo edit ${rootId} --pr-url <url> [--pr-url <url>…]\` (repeatable; each edit replaces the full list — \`mhtodo show ${rootId} --json\` first if adding another). Never leave PR links only in feedback or comments.`
+    ]
+    if (isSubtask) {
+      lines.push(
+        ` - this is a sub-task — register pull requests against the main ticket \`${rootId}\`, not this sub-task id \`${id}\``
+      )
+    }
+    lines.push('---', '')
+    return lines.join('\n')
   }
 
   async function ensureZedCommand() {

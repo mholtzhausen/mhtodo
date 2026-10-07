@@ -55,14 +55,15 @@ On a board or list card, use **Copy ticket reference**. You get a handoff block 
 MHTodo Ticket: mhtodo://task/{short8}
 Status: {status}
 Title: {title}
-Instructions: (only if you start working on this task) 
+Instructions: (only if you start working on this task)
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
  - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
+ - when you open a pull request: put every PR URL on the root ticket with `mhtodo edit {rootShort8} --pr-url <url> […]` (never only in feedback; sub-task handoffs target the parent id)
 ---
 ```
 
-Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. **Open in Zed** (when enabled) opens the task working directory and copies the same ticket reference block so you can paste it straight into the session. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current.
+Paste that into Claude. On an installed mhtodo, the `mhtodo://task/…` URI (or `mhtodo open …`) raises the GUI focused on that task. **Open in Zed** (when enabled) opens the task working directory and copies the same ticket reference block so you can paste it straight into the session. When the agent starts work it should set `todo_session` with `mhtodo edit … --session`, then keep **status, progress, and sub-tasks** current. Register pull requests on the **root** ticket (`--pr-url`), not on a sub-task.
 
 ## Starting and continuing work
 

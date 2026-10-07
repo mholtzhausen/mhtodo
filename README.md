@@ -205,8 +205,12 @@ Instructions: (only if you start working on this task)
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
  - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
+ - when you open a pull request: put every PR URL on the root ticket with `mhtodo edit {rootShort8} --pr-url <url> [--pr-url <url>…]` (repeatable; each edit replaces the full list — `mhtodo show {rootShort8} --json` first if adding another). Never leave PR links only in feedback or comments.
+ - (sub-task handoffs only) register pull requests against the main ticket `{rootShort8}`, not this sub-task id
 ---
 ```
+
+`{rootShort8}` is the pasted ticket id for a root card, or the parent id when copying a sub-task.
 
 Clicking `mhtodo://task/…` (or running `mhtodo open mhtodo://task/{short8}`) raises the
 GUI on that task when mhtodo is installed with its desktop entry.
