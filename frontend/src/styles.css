@@ -337,3 +337,48 @@ kbd {
 .board-dragging [data-ghost-slot] .ghost-card {
   transition: none !important;
 }
+
+/* Collapsed lane occupancy pulse (Settings → Notifications → Panel Notifications). */
+.collapsed-lane-attn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.collapsed-lane-attn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  /* Intensity is baked into the wash color; keyframes only fade opacity in/out
+     (more reliable in WebKitGTK than var() peak opacity inside @keyframes). */
+  background-color: color-mix(
+    in srgb,
+    var(--collapsed-attn-color, var(--color-accent)) var(--collapsed-attn-mix, 22%),
+    transparent
+  );
+  opacity: 0;
+  animation: collapsed-lane-attn var(--collapsed-attn-period, 5s) ease-in-out infinite;
+}
+.collapsed-lane-attn > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes collapsed-lane-attn {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .collapsed-lane-attn::before {
+    animation: none;
+  }
+}

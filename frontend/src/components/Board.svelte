@@ -2,7 +2,11 @@
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
   import { sortSubtasksByCreated } from '../lib/boardOrder'
-  import type { GUISettings } from '../lib/settings'
+  import {
+    DEFAULT_PANEL_ATTN_STATUSES,
+    panelAttnPeakOpacity,
+    type GUISettings
+  } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
 
   let {
@@ -37,37 +41,62 @@
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
 
-  const COLUMNS: { status: Status; label: string; dot: string; bar: string; edge: string }[] = [
+  const COLUMNS: {
+    status: Status
+    label: string
+    dot: string
+    bar: string
+    edge: string
+    attn: string
+  }[] = [
     {
       status: 'pending',
       label: 'Pending',
       dot: 'bg-st-pending',
       bar: 'bg-st-pending',
-      edge: 'border-l-st-pending'
+      edge: 'border-l-st-pending',
+      attn: 'var(--color-st-pending)'
     },
-    { status: 'wip', label: 'In progress', dot: 'bg-st-wip', bar: 'bg-st-wip', edge: 'border-l-st-wip' },
+    {
+      status: 'wip',
+      label: 'In progress',
+      dot: 'bg-st-wip',
+      bar: 'bg-st-wip',
+      edge: 'border-l-st-wip',
+      attn: 'var(--color-st-wip)'
+    },
     {
       status: 'waiting',
       label: 'Waiting',
       dot: 'bg-st-waiting',
       bar: 'bg-st-waiting',
-      edge: 'border-l-st-waiting'
+      edge: 'border-l-st-waiting',
+      attn: 'var(--color-st-waiting)'
     },
     {
       status: 'review',
       label: 'Review',
       dot: 'bg-st-review',
       bar: 'bg-st-review',
-      edge: 'border-l-st-review'
+      edge: 'border-l-st-review',
+      attn: 'var(--color-st-review)'
     },
     {
       status: 'pr',
       label: 'Pull Request',
       dot: 'bg-st-pr',
       bar: 'bg-st-pr',
-      edge: 'border-l-st-pr'
+      edge: 'border-l-st-pr',
+      attn: 'var(--color-st-pr)'
     },
-    { status: 'done', label: 'Done', dot: 'bg-st-done', bar: 'bg-st-done', edge: 'border-l-st-done' }
+    {
+      status: 'done',
+      label: 'Done',
+      dot: 'bg-st-done',
+      bar: 'bg-st-done',
+      edge: 'border-l-st-done',
+      attn: 'var(--color-st-done)'
+    }
   ]
 
   const visibleColumns = $derived(
@@ -157,6 +186,16 @@
     }
     return `grid-template-columns: ${parts.join(' ')}; min-width: ${minW}px`
   })
+
+  const panelAttnStatuses = $derived(
+    settings?.notifications?.panel_attn_statuses ?? DEFAULT_PANEL_ATTN_STATUSES
+  )
+  const panelAttnIntervalSec = $derived(
+    Math.min(30, Math.max(1, Math.floor(settings?.notifications?.panel_attn_interval_sec ?? 5) || 5))
+  )
+  const panelAttnPeak = $derived(
+    panelAttnPeakOpacity(settings?.notifications?.panel_attn_intensity ?? 40)
+  )
 
   // Only roots occupy columns; children nest under their parent card.
   const byStatus = $derived.by(() => {
@@ -452,6 +491,8 @@
         dragLifted && dragFrom === col.status && draggingId
           ? columnRoots(col.status).length
           : byStatus[col.status].length}
+      {@const collapsedAttn =
+        collapsed && colCount > 0 && panelAttnStatuses.includes(col.status)}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <section
         ondragover={(e) => onColumnDragOver(e, col.status)}
@@ -459,7 +500,11 @@
         class="flex min-h-0 flex-col rounded-card border shadow-sm
           {dropTarget === col.status
             ? 'border-accent/60 bg-accent/5'
-            : 'border-line-soft bg-col'}"
+            : 'border-line-soft bg-col'}
+          {collapsedAttn ? 'collapsed-lane-attn' : ''}"
+        style={collapsedAttn
+          ? `--collapsed-attn-color: ${col.attn}; --collapsed-attn-period: ${panelAttnIntervalSec}s; --collapsed-attn-mix: ${(panelAttnPeak * 100).toFixed(1)}%`
+          : undefined}
       >
         {#if collapsed}
           <button

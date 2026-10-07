@@ -36,7 +36,9 @@
   let zedFound = $state(false)
 
   type SettingsPage = 'general' | 'notifications' | 'integrations' | 'templates' | 'themes'
+  type NotificationsSub = 'tray' | 'panel'
   let activePage = $state<SettingsPage>('general')
+  let notificationsSub = $state<NotificationsSub>('tray')
 
   const pages: { id: SettingsPage; label: string }[] = [
     { id: 'general', label: 'General' },
@@ -258,6 +260,7 @@
     if (!open) {
       ready = false
       activePage = 'general'
+      notificationsSub = 'tray'
       templateStatus = 'idle'
       themeStatus = 'idle'
       focusedOpen = false
@@ -317,6 +320,9 @@
     void notifications.notify_send_waiting
     void notifications.notify_send_review
     void notifications.notify_send_done
+    void notifications.panel_attn_statuses
+    void notifications.panel_attn_interval_sec
+    void notifications.panel_attn_intensity
     void zed.enabled
     void zed.binary
     void zed.env_start
@@ -388,7 +394,10 @@
           {#each pages as page (page.id)}
             <button
               type="button"
-              onclick={() => (activePage = page.id)}
+              onclick={() => {
+                activePage = page.id
+                if (page.id === 'notifications') notificationsSub = 'tray'
+              }}
               class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
                 {activePage === page.id
                 ? 'bg-accent/15 text-ink'
@@ -396,6 +405,24 @@
             >
               {page.label}
             </button>
+
+            {#if page.id === 'notifications'}
+              <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
+                <button
+                  type="button"
+                  onclick={() => {
+                    activePage = 'notifications'
+                    notificationsSub = 'panel'
+                  }}
+                  class="truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
+                    {activePage === 'notifications' && notificationsSub === 'panel'
+                    ? 'bg-accent/10 text-ink'
+                    : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+                >
+                  Panel Notifications
+                </button>
+              </div>
+            {/if}
 
             <!-- Task Templates is the one section with a second nav tier: each
                  template is its own sub-item, always visible so the set is
@@ -550,6 +577,73 @@
                   >
                 </span>
               </label>
+              </div>
+            </section>
+          {:else if activePage === 'notifications' && notificationsSub === 'panel'}
+            <section>
+              <h3 class="mb-2 text-sm font-semibold text-ink">Panel Notifications</h3>
+              <p class="mb-4 text-xs text-ink-3">
+                Choose which board columns highlight occupancy while collapsed. Empty lanes never
+                pulse. Frequency and intensity control how often and how strongly the background wash
+                appears.
+              </p>
+              <div class="flex flex-col gap-gap-lg">
+                <div>
+                  <p class="mb-1 text-sm text-ink-2">Highlight while collapsed</p>
+                  <p class="mb-2 text-xs italic text-ink-3/75">
+                    Checked statuses pulse when the column is collapsed and has root tasks.
+                  </p>
+                  <div class="flex flex-col gap-2">
+                    {#each STATUS_OPTIONS as opt}
+                      <label class="flex cursor-pointer items-center gap-gap-md">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.panel_attn_statuses.includes(opt.id)}
+                          onchange={(e) => {
+                            settings.notifications.panel_attn_statuses = toggleStatusInOrder(
+                              settings.notifications.panel_attn_statuses,
+                              opt.id,
+                              e.currentTarget.checked
+                            )
+                          }}
+                          class="h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                        />
+                        <span class="text-sm text-ink-2">{opt.label}</span>
+                      </label>
+                    {/each}
+                  </div>
+                </div>
+
+                <label class="block">
+                  <span class="micro mb-1.5">Pulse every (seconds)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    bind:value={settings.notifications.panel_attn_interval_sec}
+                    class="w-24 rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                  />
+                  <p class="mt-1 text-xs italic text-ink-3/75">Default 5. Range 1–30.</p>
+                </label>
+
+                <div>
+                  <div class="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span class="micro">Intensity</span>
+                    <span class="font-mono text-[11px] text-ink-3"
+                      >{settings.notifications.panel_attn_intensity}</span
+                    >
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    bind:value={settings.notifications.panel_attn_intensity}
+                    class="w-full accent-[var(--color-accent)]"
+                  />
+                  <p class="mt-1 text-xs italic text-ink-3/75">
+                    How aggressive the background pulse color is (gentle → strong). Default 40.
+                  </p>
+                </div>
               </div>
             </section>
           {:else if activePage === 'notifications'}

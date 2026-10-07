@@ -465,6 +465,9 @@ export namespace settings {
 	    notify_send_waiting: boolean;
 	    notify_send_review: boolean;
 	    notify_send_done: boolean;
+	    panel_attn_statuses: string[];
+	    panel_attn_interval_sec: number;
+	    panel_attn_intensity: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NotificationsConfig(source);
@@ -479,6 +482,9 @@ export namespace settings {
 	        this.notify_send_waiting = source["notify_send_waiting"];
 	        this.notify_send_review = source["notify_send_review"];
 	        this.notify_send_done = source["notify_send_done"];
+	        this.panel_attn_statuses = source["panel_attn_statuses"];
+	        this.panel_attn_interval_sec = source["panel_attn_interval_sec"];
+	        this.panel_attn_intensity = source["panel_attn_intensity"];
 	    }
 	}
 	export class GUISettings {

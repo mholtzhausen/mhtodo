@@ -28,6 +28,9 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.Notifications.NotifySendWaiting = false
 	want.Notifications.NotifySendReview = false
 	want.Notifications.NotifySendDone = true
+	want.Notifications.PanelAttnStatuses = []string{"wip", "review"}
+	want.Notifications.PanelAttnIntervalSec = 8
+	want.Notifications.PanelAttnIntensity = 70
 	want.Zed.Enabled = false
 	want.Zed.Binary = "/usr/bin/zed"
 	want.Zed.EnvStart = "FOO=1"
@@ -75,6 +78,32 @@ func TestNotificationsDefaultsWhenAbsent(t *testing.T) {
 	}
 	if !got.Notifications.NotifySendReview {
 		t.Fatal("notify-send review default should be true")
+	}
+	defPanel := Default().Notifications.PanelAttnStatuses
+	if !reflect.DeepEqual(got.Notifications.PanelAttnStatuses, defPanel) {
+		t.Fatalf("panel attn statuses = %v, want %v", got.Notifications.PanelAttnStatuses, defPanel)
+	}
+	if got.Notifications.PanelAttnIntervalSec != 5 {
+		t.Fatalf("panel attn interval = %d, want 5", got.Notifications.PanelAttnIntervalSec)
+	}
+	if got.Notifications.PanelAttnIntensity != 40 {
+		t.Fatalf("panel attn intensity = %d, want 40", got.Notifications.PanelAttnIntensity)
+	}
+}
+
+func TestPanelAttnEmptyListRoundTrip(t *testing.T) {
+	_ = configPathIn(t, "config.yml")
+	want := Default()
+	want.Notifications.PanelAttnStatuses = []string{}
+	if err := Save(want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Notifications.PanelAttnStatuses) != 0 {
+		t.Fatalf("empty panel attn should round-trip, got %v", got.Notifications.PanelAttnStatuses)
 	}
 }
 

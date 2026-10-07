@@ -26,15 +26,19 @@ type IntegrationConfig struct {
 	EnvStart string `json:"env_start" yaml:"env_start"`
 }
 
-// NotificationsConfig drives tray label / status submenus and notify-send toggles.
+// NotificationsConfig drives tray label / status submenus, notify-send toggles,
+// and collapsed board-lane occupancy pulses (panel notifications).
 type NotificationsConfig struct {
-	TrayLabelStatuses []string `json:"tray_label_statuses" yaml:"tray_label_statuses"` // drive icon label summary
-	TrayMenuStatuses  []string `json:"tray_menu_statuses" yaml:"tray_menu_statuses"`   // status submenu order
-	MaxItemsPerStatus  int      `json:"max_items_per_status" yaml:"max_items_per_status"`
-	NotifySendWIP      bool     `json:"notify_send_wip" yaml:"notify_send_wip"`         // →wip (default off)
-	NotifySendWaiting  bool     `json:"notify_send_waiting" yaml:"notify_send_waiting"` // →waiting (default off)
-	NotifySendReview   bool     `json:"notify_send_review" yaml:"notify_send_review"`   // →review (default on)
-	NotifySendDone     bool     `json:"notify_send_done" yaml:"notify_send_done"`       // →done (default off)
+	TrayLabelStatuses   []string `json:"tray_label_statuses" yaml:"tray_label_statuses"`     // drive icon label summary
+	TrayMenuStatuses    []string `json:"tray_menu_statuses" yaml:"tray_menu_statuses"`       // status submenu order
+	MaxItemsPerStatus    int      `json:"max_items_per_status" yaml:"max_items_per_status"`
+	NotifySendWIP        bool     `json:"notify_send_wip" yaml:"notify_send_wip"`               // →wip (default off)
+	NotifySendWaiting    bool     `json:"notify_send_waiting" yaml:"notify_send_waiting"`       // →waiting (default off)
+	NotifySendReview     bool     `json:"notify_send_review" yaml:"notify_send_review"`         // →review (default on)
+	NotifySendDone       bool     `json:"notify_send_done" yaml:"notify_send_done"`             // →done (default off)
+	PanelAttnStatuses   []string `json:"panel_attn_statuses" yaml:"panel_attn_statuses"`       // collapsed lanes that pulse
+	PanelAttnIntervalSec int      `json:"panel_attn_interval_sec" yaml:"panel_attn_interval_sec"` // pulse period (default 5)
+	PanelAttnIntensity   int      `json:"panel_attn_intensity" yaml:"panel_attn_intensity"`     // 1–100 (default 40)
 }
 
 // GUISettings are user preferences exposed to the GUI.
@@ -56,13 +60,17 @@ type integrationFile struct {
 }
 
 type notificationsFile struct {
-	TrayLabelStatuses []string `yaml:"tray_label_statuses,omitempty"`
-	TrayMenuStatuses  []string `yaml:"tray_menu_statuses,omitempty"`
-	MaxItemsPerStatus  *int     `yaml:"max_items_per_status,omitempty"`
-	NotifySendWIP      *bool    `yaml:"notify_send_wip,omitempty"`
-	NotifySendWaiting  *bool    `yaml:"notify_send_waiting,omitempty"`
-	NotifySendReview   *bool    `yaml:"notify_send_review,omitempty"`
-	NotifySendDone     *bool    `yaml:"notify_send_done,omitempty"`
+	TrayLabelStatuses   []string `yaml:"tray_label_statuses,omitempty"`
+	TrayMenuStatuses    []string `yaml:"tray_menu_statuses,omitempty"`
+	MaxItemsPerStatus    *int     `yaml:"max_items_per_status,omitempty"`
+	NotifySendWIP        *bool    `yaml:"notify_send_wip,omitempty"`
+	NotifySendWaiting    *bool    `yaml:"notify_send_waiting,omitempty"`
+	NotifySendReview     *bool    `yaml:"notify_send_review,omitempty"`
+	NotifySendDone       *bool    `yaml:"notify_send_done,omitempty"`
+	// No omitempty: empty list means all pulses off and must round-trip.
+	PanelAttnStatuses   []string `yaml:"panel_attn_statuses"`
+	PanelAttnIntervalSec *int     `yaml:"panel_attn_interval_sec,omitempty"`
+	PanelAttnIntensity   *int     `yaml:"panel_attn_intensity,omitempty"`
 }
 
 type configFile struct {
@@ -86,16 +94,21 @@ func defaultConfigFile() configFile {
 	notifyWaiting := false
 	notifyReview := true
 	notifyDone := false
+	panelInterval := 5
+	panelIntensity := 40
 	return configFile{
 		StartHidden: defaultLaunchHidden(),
 		Notifications: notificationsFile{
-			TrayLabelStatuses: []string{"waiting", "review"},
-			TrayMenuStatuses:  []string{"waiting", "review"},
-			MaxItemsPerStatus:  &maxItems,
-			NotifySendWIP:      &notifyWIP,
-			NotifySendWaiting:  &notifyWaiting,
-			NotifySendReview:   &notifyReview,
-			NotifySendDone:     &notifyDone,
+			TrayLabelStatuses:   []string{"waiting", "review"},
+			TrayMenuStatuses:    []string{"waiting", "review"},
+			MaxItemsPerStatus:    &maxItems,
+			NotifySendWIP:        &notifyWIP,
+			NotifySendWaiting:    &notifyWaiting,
+			NotifySendReview:     &notifyReview,
+			NotifySendDone:       &notifyDone,
+			PanelAttnStatuses:   []string{"pending", "wip", "waiting", "review", "pr"},
+			PanelAttnIntervalSec: &panelInterval,
+			PanelAttnIntensity:   &panelIntensity,
 		},
 		Zed: integrationFile{Binary: "zed"},
 	}
@@ -131,8 +144,18 @@ func normalizeStatusList(in []string, fallback []string) []string {
 func normalizeNotifications(nf *notificationsFile) {
 	defLabel := []string{"waiting", "review"}
 	defMenu := []string{"waiting", "review"}
+	defPanel := []string{"pending", "wip", "waiting", "review", "pr"}
 	nf.TrayLabelStatuses = normalizeStatusList(nf.TrayLabelStatuses, defLabel)
 	nf.TrayMenuStatuses = normalizeStatusList(nf.TrayMenuStatuses, defMenu)
+	// Empty panel list is intentional (user disabled all pulses); only nil/absent
+	// YAML falls back via omitempty + normalize when the field was never set.
+	// Distinguish "absent" from "explicit empty": if the slice is nil, apply default;
+	// if non-nil empty, keep empty.
+	if nf.PanelAttnStatuses == nil {
+		nf.PanelAttnStatuses = append([]string(nil), defPanel...)
+	} else {
+		nf.PanelAttnStatuses = normalizeStatusList(nf.PanelAttnStatuses, nil)
+	}
 	if nf.MaxItemsPerStatus == nil || *nf.MaxItemsPerStatus <= 0 {
 		v := 10
 		nf.MaxItemsPerStatus = &v
@@ -156,18 +179,35 @@ func normalizeNotifications(nf *notificationsFile) {
 		v := false
 		nf.NotifySendDone = &v
 	}
+	if nf.PanelAttnIntervalSec == nil || *nf.PanelAttnIntervalSec <= 0 {
+		v := 5
+		nf.PanelAttnIntervalSec = &v
+	} else if *nf.PanelAttnIntervalSec > 30 {
+		v := 30
+		nf.PanelAttnIntervalSec = &v
+	}
+	if nf.PanelAttnIntensity == nil || *nf.PanelAttnIntensity <= 0 {
+		v := 40
+		nf.PanelAttnIntensity = &v
+	} else if *nf.PanelAttnIntensity > 100 {
+		v := 100
+		nf.PanelAttnIntensity = &v
+	}
 }
 
 func notificationsToGUI(nf notificationsFile) NotificationsConfig {
 	normalizeNotifications(&nf)
 	return NotificationsConfig{
-		TrayLabelStatuses: append([]string(nil), nf.TrayLabelStatuses...),
-		TrayMenuStatuses:  append([]string(nil), nf.TrayMenuStatuses...),
-		MaxItemsPerStatus:  *nf.MaxItemsPerStatus,
-		NotifySendWIP:      *nf.NotifySendWIP,
-		NotifySendWaiting:  *nf.NotifySendWaiting,
-		NotifySendReview:   *nf.NotifySendReview,
-		NotifySendDone:     *nf.NotifySendDone,
+		TrayLabelStatuses:   append([]string(nil), nf.TrayLabelStatuses...),
+		TrayMenuStatuses:    append([]string(nil), nf.TrayMenuStatuses...),
+		MaxItemsPerStatus:    *nf.MaxItemsPerStatus,
+		NotifySendWIP:        *nf.NotifySendWIP,
+		NotifySendWaiting:    *nf.NotifySendWaiting,
+		NotifySendReview:     *nf.NotifySendReview,
+		NotifySendDone:       *nf.NotifySendDone,
+		PanelAttnStatuses:   append([]string(nil), nf.PanelAttnStatuses...),
+		PanelAttnIntervalSec: *nf.PanelAttnIntervalSec,
+		PanelAttnIntensity:   *nf.PanelAttnIntensity,
 	}
 }
 
@@ -177,14 +217,24 @@ func notificationsFromGUI(n NotificationsConfig) notificationsFile {
 	waiting := n.NotifySendWaiting
 	review := n.NotifySendReview
 	done := n.NotifySendDone
+	interval := n.PanelAttnIntervalSec
+	intensity := n.PanelAttnIntensity
+	// Preserve explicit empty panel list (all pulses off).
+	panel := n.PanelAttnStatuses
+	if panel == nil {
+		panel = []string{}
+	}
 	nf := notificationsFile{
-		TrayLabelStatuses: n.TrayLabelStatuses,
-		TrayMenuStatuses:  n.TrayMenuStatuses,
-		MaxItemsPerStatus:  &max,
-		NotifySendWIP:      &wip,
-		NotifySendWaiting:  &waiting,
-		NotifySendReview:   &review,
-		NotifySendDone:     &done,
+		TrayLabelStatuses:   n.TrayLabelStatuses,
+		TrayMenuStatuses:    n.TrayMenuStatuses,
+		MaxItemsPerStatus:    &max,
+		NotifySendWIP:        &wip,
+		NotifySendWaiting:    &waiting,
+		NotifySendReview:     &review,
+		NotifySendDone:       &done,
+		PanelAttnStatuses:   panel,
+		PanelAttnIntervalSec: &interval,
+		PanelAttnIntensity:   &intensity,
 	}
 	normalizeNotifications(&nf)
 	return nf

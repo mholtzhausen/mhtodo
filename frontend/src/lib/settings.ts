@@ -17,6 +17,18 @@ export interface NotificationsConfig {
   notify_send_waiting: boolean
   notify_send_review: boolean
   notify_send_done: boolean
+  /** Collapsed board lanes that pulse when they have tickets. */
+  panel_attn_statuses: TaskStatusId[]
+  /** Pulse period in seconds (1–30, default 5). */
+  panel_attn_interval_sec: number
+  /** Pulse aggressiveness 1–100 (default 40 → peak opacity ~0.22). */
+  panel_attn_intensity: number
+}
+
+/** Peak CSS opacity for a given panel intensity (1–100). */
+export function panelAttnPeakOpacity(intensity: number): number {
+  const n = Number.isFinite(intensity) ? Math.min(100, Math.max(1, Math.floor(intensity))) : 40
+  return (n / 100) * 0.55
 }
 
 export interface GUISettings {
@@ -68,6 +80,14 @@ export function toggleStatusInOrder(
   return list.filter((s) => s !== id)
 }
 
+export const DEFAULT_PANEL_ATTN_STATUSES: TaskStatusId[] = [
+  'pending',
+  'wip',
+  'waiting',
+  'review',
+  'pr'
+]
+
 export const defaultNotifications = (): NotificationsConfig => ({
   tray_label_statuses: ['waiting', 'review'],
   tray_menu_statuses: ['waiting', 'review'],
@@ -75,7 +95,10 @@ export const defaultNotifications = (): NotificationsConfig => ({
   notify_send_wip: false,
   notify_send_waiting: false,
   notify_send_review: true,
-  notify_send_done: false
+  notify_send_done: false,
+  panel_attn_statuses: [...DEFAULT_PANEL_ATTN_STATUSES],
+  panel_attn_interval_sec: 5,
+  panel_attn_intensity: 40
 })
 
 export const defaultSettings = (): GUISettings => ({
@@ -88,10 +111,19 @@ export const defaultSettings = (): GUISettings => ({
   zed: { enabled: false, binary: 'zed', env_start: '' }
 })
 
+function normalizePanelAttnStatuses(list: unknown): TaskStatusId[] {
+  // Absent/undefined → defaults. Explicit empty array → all pulses off.
+  if (list === undefined || list === null) return [...DEFAULT_PANEL_ATTN_STATUSES]
+  if (!Array.isArray(list)) return [...DEFAULT_PANEL_ATTN_STATUSES]
+  return normalizeStatusList(list, [])
+}
+
 function fromGoNotifications(n: goSettings.NotificationsConfig | undefined): NotificationsConfig {
   const d = defaultNotifications()
   if (!n) return d
   const max = Number(n.max_items_per_status)
+  const interval = Number(n.panel_attn_interval_sec)
+  const intensity = Number(n.panel_attn_intensity)
   return {
     tray_label_statuses: normalizeStatusList(n.tray_label_statuses, d.tray_label_statuses),
     tray_menu_statuses: normalizeStatusList(n.tray_menu_statuses, d.tray_menu_statuses),
@@ -99,7 +131,12 @@ function fromGoNotifications(n: goSettings.NotificationsConfig | undefined): Not
     notify_send_wip: !!n.notify_send_wip,
     notify_send_waiting: !!n.notify_send_waiting,
     notify_send_review: n.notify_send_review !== false,
-    notify_send_done: !!n.notify_send_done
+    notify_send_done: !!n.notify_send_done,
+    panel_attn_statuses: normalizePanelAttnStatuses(n.panel_attn_statuses),
+    panel_attn_interval_sec:
+      Number.isFinite(interval) && interval > 0 ? Math.min(30, Math.floor(interval)) : 5,
+    panel_attn_intensity:
+      Number.isFinite(intensity) && intensity > 0 ? Math.min(100, Math.floor(intensity)) : 40
   }
 }
 
@@ -135,7 +172,10 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
       notify_send_wip: n.notify_send_wip,
       notify_send_waiting: n.notify_send_waiting,
       notify_send_review: n.notify_send_review,
-      notify_send_done: n.notify_send_done
+      notify_send_done: n.notify_send_done,
+      panel_attn_statuses: n.panel_attn_statuses,
+      panel_attn_interval_sec: n.panel_attn_interval_sec,
+      panel_attn_intensity: n.panel_attn_intensity
     },
     zed: {
       enabled: s.zed.enabled,

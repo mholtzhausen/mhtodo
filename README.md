@@ -243,7 +243,9 @@ status transitions → activity → delete) using only this CLI.
   sits next to the Slack thread icon in those footer actions (and in the detail modal header);
   one URL opens directly, two or more open a picker dropdown. The Pull Request column is collapsed by default. Columns collapse
   via a header caret into a slim vertical strip (rotated title + count); collapsed state persists across
-  restarts (`mhtodo.collapsedColumns.v2`). Sub-tasks nest under the parent card when shown (never own
+  restarts (`mhtodo.collapsedColumns.v2`). Collapsed lanes with tickets can pulse a slow status-tinted
+  background (Settings → Notifications → Panel Notifications: which statuses, interval, intensity;
+  defaults exclude Done, 5s, intensity 40). Sub-tasks nest under the parent card when shown (never own
   column cards), in creation order (oldest first). Drag a **root** card to change status (including onto
   a collapsed lane). Per-column **+** opens new-task preset to that status. Filter chips: **All** /
   **Agents** (hide human-only) / **Human** (human-only only).
@@ -301,8 +303,9 @@ status transitions → activity → delete) using only this CLI.
   window and selects the task (Settings → Notifications).
   Global hotkey (X11) toggles the window and raises it on show. The grab is renewed periodically and after resume from suspend (screen lock can drop passive X11 grabs).
 - **Notifications:** Settings → Notifications configures tray label/menu statuses and `notify-send` on
-  GUI status transitions (defaults: →review on; →wip / →waiting / →done off). Tray menus refresh on
-  local and CLI-driven DB changes.
+  GUI status transitions (defaults: →review on; →wip / →waiting / →done off). Sub-page **Panel
+  Notifications** controls which collapsed board lanes pulse when occupied, how often (default 5s),
+  and intensity (default 40). Tray menus refresh on local and CLI-driven DB changes.
 - **Live sync:** CLI writes appear via fsnotify + 2s poll; same SQLite WAL DB.
 - **Single instance:** second launch focuses the existing window.
 - **Window size:** default 1100×720, minimum 800×560 (desktop-only; no mobile layout). Near the floor, the board keeps ~200px columns and scrolls horizontally; footer shortcut legend hides below ~900px width.

@@ -45,6 +45,8 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   and focus them on click (Settings → Notifications).
 - Desktop notifications (`notify-send`) on status transitions, toggleable in Settings → Notifications
   (defaults: →review on; →wip / →waiting / →done off).
+- Panel notifications (Settings → Notifications → Panel Notifications): which collapsed board lanes
+  pulse when occupied, pulse interval (default 5s), and intensity (default 40).
 - Comprehensive Makefile: `dev`, `build`, `test`, `lint`, `release` (linux amd64/arm64), `install`.
 
 **Post-v0.1 (v0.2, shipped 2026-08-20):** archive/unarchive for done tasks — bulk archive from the
@@ -79,7 +81,9 @@ reorder; cross-column drag changes status (appends to target column). CLI: `mhto
 Nested sub-tasks on the board/archive/detail are shown in creation order (oldest first), not board
 `updated_at` order. Board cards have a top-right mark-done control that sets status to `done`
 immediately. Board columns collapse to a slim vertical strip (rotated title + count); state is
-persisted in `localStorage` (`mhtodo.collapsedColumns`).
+persisted in `localStorage` (`mhtodo.collapsedColumns`). Collapsed lanes with tickets pulse a slow
+status-tinted background when enabled under Settings → Notifications → Panel Notifications
+(defaults: all statuses except Done; 5s; intensity 40).
 
 **Task templates (v0.5):** named sets of task presets (`title_prefix`, `description`, `status`, `cwd`,
 `slack_thread`, `human_only`, `include_in_report`) in a `task_templates` table (migration v9). Every
