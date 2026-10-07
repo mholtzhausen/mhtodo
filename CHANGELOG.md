@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 3.2.0 (pending)
+
+### Features and Improvements
+- Collapsed board lanes with tickets pulse a slow status-tinted background; Settings → Notifications → Panel Notifications configures which statuses highlight, pulse interval (default 5s), and intensity (default 40); prefs persist in `config.yml`
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.1.1 (89887b4)
 
 ### Features and Improvements
