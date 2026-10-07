@@ -28,4 +28,4 @@ Prefs live with the rest of Notifications in `config.yml`.
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.2.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#320-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.2.0).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.2.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#320-157f767) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.2.0).
