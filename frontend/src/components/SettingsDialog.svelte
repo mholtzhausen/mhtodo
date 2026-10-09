@@ -47,6 +47,7 @@
     { id: 'templates', label: 'Task Templates' },
     { id: 'themes', label: 'Themes' }
   ]
+  const pagesWithSubnav = new Set<SettingsPage>(['notifications', 'templates', 'themes'])
 
   // --- task templates ---
   // Templates persist through their own bound methods, not the whole-settings
@@ -392,21 +393,43 @@
           aria-label="Settings sections"
         >
           {#each pages as page (page.id)}
+            {@const hasSubnav = pagesWithSubnav.has(page.id)}
+            {@const subnavOpen = hasSubnav && activePage === page.id}
             <button
               type="button"
               onclick={() => {
                 activePage = page.id
                 if (page.id === 'notifications') notificationsSub = 'tray'
               }}
-              class="whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
+              class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-control px-3 py-2 text-left text-[13px] font-medium transition-colors
                 {activePage === page.id
                 ? 'bg-accent/15 text-ink'
                 : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
             >
+              {#if hasSubnav}
+                <svg
+                  class="h-3.5 w-3.5 flex-none opacity-80"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  {#if subnavOpen}
+                    <path
+                      d="M6 14l1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"
+                    />
+                  {:else}
+                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                  {/if}
+                </svg>
+              {/if}
               {page.label}
             </button>
 
-            {#if page.id === 'notifications'}
+            {#if page.id === 'notifications' && activePage === 'notifications'}
               <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
                 <button
                   type="button"
@@ -424,10 +447,8 @@
               </div>
             {/if}
 
-            <!-- Task Templates is the one section with a second nav tier: each
-                 template is its own sub-item, always visible so the set is
-                 discoverable without opening the section first. -->
-            {#if page.id === 'templates'}
+            <!-- Task Templates second nav tier: shown only while this section is active. -->
+            {#if page.id === 'templates' && activePage === 'templates'}
               <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
                 {#each templates as tpl (tpl.id)}
                   <button
@@ -456,7 +477,7 @@
               </div>
             {/if}
 
-            {#if page.id === 'themes'}
+            {#if page.id === 'themes' && activePage === 'themes'}
               <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
                 {#each themes as th (th.id)}
                   <button
