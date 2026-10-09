@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.3.0 (pending)
+## 3.3.0 (000f228)
 
 ### Features and Improvements
 - Icebox lane/status (leftmost): park tickets outside the pipeline; default CLI `list` hides icebox like done (`--status icebox` / `--all` to see them)

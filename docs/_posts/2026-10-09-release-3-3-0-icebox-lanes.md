@@ -36,4 +36,4 @@ Moves every non-archived task from one status to another. The Settings hide flow
 mhtodo update
 ```
 
-Or grab the release from GitHub. Full notes: [CHANGELOG — 3.3.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#330-pending) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.3.0).
+Or grab the release from GitHub. Full notes: [CHANGELOG — 3.3.0](https://github.com/mholtzhausen/mhtodo/blob/main/CHANGELOG.md#330-000f228) · [Release](https://github.com/mholtzhausen/mhtodo/releases/tag/v3.3.0).
