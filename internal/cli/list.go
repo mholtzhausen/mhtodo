@@ -75,7 +75,7 @@ func newListCmd() *cobra.Command {
 			return o.printTasks(tasks)
 		},
 	}
-	cmd.Flags().StringVar(&status, "status", "", "filter by status (pending|wip|waiting|review|done)")
+	cmd.Flags().StringVar(&status, "status", "", "filter by status (icebox|pending|wip|waiting|review|pr|done)")
 	cmd.Flags().StringVar(&search, "search", "", "case-insensitive substring over title + description")
 	cmd.Flags().IntVar(&limit, "limit", 0, "max results (0 = unlimited)")
 	cmd.Flags().StringVar(&sort, "sort", "board", "sort field: board|created|updated|status|progress|title; suffix - ascending, + or none descending")

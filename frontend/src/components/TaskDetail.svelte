@@ -57,6 +57,7 @@
   })
 
   const statusDot: Record<string, string> = {
+    icebox: 'bg-st-icebox',
     pending: 'bg-st-pending',
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
@@ -519,7 +520,12 @@
 
     <div>
       <span class="micro mb-1.5">Status</span>
-      <StatusPicker value={task.status} disabled={archived} onPick={(s) => setStatus(s)} />
+      <StatusPicker
+        value={task.status}
+        disabled={archived}
+        visibleStatuses={settings?.visible_statuses}
+        onPick={(s) => setStatus(s)}
+      />
     </div>
 
     <div>

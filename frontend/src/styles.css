@@ -43,7 +43,8 @@
   --color-accent-hi: #93a0ff;
   --color-accent-ink: #0e1230;
 
-  /* status legend: pending / wip / waiting / review / pr / done */
+  /* status legend: icebox / pending / wip / waiting / review / pr / done */
+  --color-st-icebox: #6d8a9e;
   --color-st-pending: #a3adbf;
   --color-st-wip: #7b8cff;
   --color-st-waiting: #e8ab4a;

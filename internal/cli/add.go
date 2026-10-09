@@ -105,7 +105,7 @@ func newAddCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&desc, "desc", "", "task description")
 	cmd.Flags().StringVar(&feedback, "feedback", "", "agent feedback (shown in GUI when set)")
-	cmd.Flags().StringVar(&status, "status", "", "initial status (pending|wip|waiting|review|pr|done; default pending)")
+	cmd.Flags().StringVar(&status, "status", "", "initial status (icebox|pending|wip|waiting|review|pr|done; default pending)")
 	cmd.Flags().IntVar(&progress, "progress", 0, "initial progress 0-100")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent task ID (create as a one-level sub-task)")
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")

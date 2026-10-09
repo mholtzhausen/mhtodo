@@ -1,6 +1,14 @@
 import type { Status } from './api'
 
-const BOARD_COLUMNS: Status[] = ['pending', 'wip', 'waiting', 'review', 'pr', 'done']
+export const BOARD_COLUMNS: Status[] = [
+  'icebox',
+  'pending',
+  'wip',
+  'waiting',
+  'review',
+  'pr',
+  'done'
+]
 
 function rootRank(t: any): number {
   return t.board_rank ?? Number.POSITIVE_INFINITY

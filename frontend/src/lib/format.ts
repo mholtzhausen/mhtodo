@@ -45,6 +45,7 @@ export function absList(iso: string): string {
 }
 
 export const STATUS_LABELS: Record<string, string> = {
+  icebox: 'Icebox',
   pending: 'Pending',
   wip: 'In progress',
   waiting: 'Waiting',

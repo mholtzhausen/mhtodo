@@ -101,12 +101,13 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status icebox\|pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
 | `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
 | `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
-| `status` (`set`) | `mhtodo status ID pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
+| `status` (`set`) | `mhtodo status ID icebox\|pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
+| `status migrate` | `mhtodo status migrate FROM TO` | bulk-moves every non-archived task from one status to another (JSON: `migrated`, `from`, `to`) |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
 | `archive` | `mhtodo archive [ID]` | with no ID, archives **all** currently-done tasks; with ID, archives that single done task only (must be done; already archived → `already_archived`); reversible via `unarchive` |
@@ -241,7 +242,7 @@ status transitions → activity → delete) using only this CLI.
 
 ## GUI
 
-- **Board view (default):** six kanban columns — pending / wip / waiting / review / pr / done — with live
+- **Board view (default):** seven kanban columns — icebox / pending / wip / waiting / review / pr / done — with live
   counts; root cards show title, progress, relative time; human-only / Slack-report flags live in the
   card footer actions (not duplicated in the title row). When `pr_url` is set, a pull-request icon
   sits next to the Slack thread icon in those footer actions (and in the detail modal header);
@@ -283,7 +284,12 @@ status transitions → activity → delete) using only this CLI.
   a template from the save icon in either header. CLI: `mhtodo template
   list|search|show|create|update|rm` and `add --template REF` (`search --cwd "$PWD"`
   is the agent-friendly probe; `--mode fuzzy|regex` for text).
-- **Themes:** Settings → Themes authors design tokens (colors, radii, spacing). Built-ins **Slate**
+- **Statuses / Lanes:** Settings → Statuses/Lanes toggles which board columns are visible, edits
+  each lane’s color on the **active** theme, and can leave or bulk-migrate tickets when hiding a
+  lane (`mhtodo status migrate`). Hidden lanes are omitted from the StatusPicker. Icebox (leftmost)
+  parks work outside the pipeline; default CLI `list` hides it like `done`.
+- **Themes:** Settings → Themes authors design tokens (colors, radii, spacing; status colors under
+  Statuses/Lanes). Built-ins **Slate**
   (default active), **Paper** (light), and **Ember** (warm) are editable with Reset-to-factory;
   Duplicate always available; built-ins cannot be deleted. The active theme applies live via CSS
   variables. CLI: `mhtodo theme list|search|show|create|update|rm|activate|duplicate|reset`.
@@ -331,6 +337,8 @@ status transitions → activity → delete) using only this CLI.
 | `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/todo_session; `pr_url` is newline-separated URL(s); empty→non-empty advances to `pr` |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | optional notify-send per Settings (wip/waiting/review/done); assigns end rank on column change |
+| `MigrateStatus(from, to)` | `status migrate` | bulk-move non-archived tasks between statuses |
+| `CountByStatus()` | — | Settings → Statuses/Lanes ticket counts |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
 | `Archive(id)` | `archive ID` | single done task → archive |
 | `ArchiveDone()` | `archive` | bulk done → archive |

@@ -270,7 +270,7 @@ func bindTemplatePresetFlags(cmd *cobra.Command, titlePrefix, desc, status, cwd,
 	humanOnly, noHumanOnly, includeInReport, noIncludeInReport *bool) {
 	cmd.Flags().StringVar(titlePrefix, "title-prefix", "", "title prefix applied on create")
 	cmd.Flags().StringVar(desc, "desc", "", "description preset")
-	cmd.Flags().StringVar(status, "status", "", "status preset (pending|wip|waiting|review|pr|done)")
+	cmd.Flags().StringVar(status, "status", "", "status preset (icebox|pending|wip|waiting|review|pr|done)")
 	cmd.Flags().StringVar(cwd, "cwd", "", "working directory preset")
 	cmd.Flags().StringVar(slackThread, "slack-thread", "", "Slack thread URL preset")
 	cmd.Flags().BoolVar(humanOnly, "human-only", false, "set human_only preset to true")

@@ -31,6 +31,7 @@
   } = $props()
 
   const badge: Record<string, string> = {
+    icebox: 'border-st-icebox/50 bg-st-icebox/15 text-st-icebox',
     pending: 'border-st-pending/50 bg-st-pending/15 text-st-pending',
     wip: 'border-st-wip/60 bg-st-wip/20 text-st-wip',
     waiting: 'border-st-waiting/50 bg-st-waiting/15 text-st-waiting',
@@ -39,6 +40,7 @@
     done: 'border-st-done/50 bg-st-done/15 text-st-done'
   }
   const bar: Record<string, string> = {
+    icebox: 'bg-st-icebox',
     pending: 'bg-st-pending',
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',

@@ -540,6 +540,10 @@
       case 'a':
         setView('activity')
         break
+      case '0':
+        status = status === 'icebox' ? '' : 'icebox'
+        load()
+        break
       case '1':
         status = status === 'pending' ? '' : 'pending'
         load()
@@ -967,6 +971,7 @@
       {showSubtasks}
       showSort={false}
       taskCount={displayRootCount}
+      visibleStatuses={guiSettings.visible_statuses}
       onStatusChange={(s: Status | '') => {
         status = s
         load()
@@ -1064,7 +1069,7 @@
     {#if !narrowChrome}
       <span class="flex-none whitespace-nowrap"
         ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>a</kbd> view · <kbd>r</kbd>/<kbd>7</kbd> archived ·
-        <kbd>1–6</kbd> status · <kbd>←</kbd>/<kbd>→</kbd> modal ·
+        <kbd>0–6</kbd> status · <kbd>←</kbd>/<kbd>→</kbd> modal ·
         <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
         <kbd>ctrl+q</kbd> / <kbd>ctrl+click</kbd> × quit</span
       >
@@ -1102,6 +1107,7 @@
     defaultHumanOnly={dialogDefaultHumanOnly}
     defaultIncludeInReport={dialogDefaultIncludeInReport}
     defaultSlackThread={dialogDefaultSlackThread}
+    visibleStatuses={guiSettings.visible_statuses}
     openWithTemplatePicker={dialogTemplatePicker}
     onClose={() => {
       dialogOpen = false

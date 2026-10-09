@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte'
   import { api, errMsg } from '../lib/api'
   import {
-    THEME_CATEGORIES,
+    THEME_EDITOR_CATEGORIES,
     THEME_FIELDS,
     applyThemeTokens,
     colorInputValue,
@@ -224,7 +224,7 @@
 
     <div class="h-px bg-line-soft"></div>
 
-    {#each THEME_CATEGORIES as category (category)}
+    {#each THEME_EDITOR_CATEGORIES as category (category)}
       <div>
         <h4 class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">{category}</h4>
         <div class="flex flex-col gap-3">

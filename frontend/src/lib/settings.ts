@@ -1,7 +1,7 @@
 // GUI settings types — mirror internal/settings/settings.go (Wails bindings).
 import { settings as goSettings } from '../../wailsjs/go/models'
 
-export type TaskStatusId = 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
+export type TaskStatusId = 'icebox' | 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
 
 export interface IntegrationConfig {
   enabled: boolean
@@ -37,11 +37,14 @@ export interface GUISettings {
   default_include_in_report: boolean
   archive_done_subtasks: boolean
   start_hidden: boolean
+  /** Board lanes + StatusPicker options that are shown. At least one. */
+  visible_statuses: TaskStatusId[]
   notifications: NotificationsConfig
   zed: IntegrationConfig
 }
 
 export const STATUS_OPTIONS: { id: TaskStatusId; label: string }[] = [
+  { id: 'icebox', label: 'Icebox' },
   { id: 'pending', label: 'Pending' },
   { id: 'wip', label: 'WIP' },
   { id: 'waiting', label: 'Waiting' },
@@ -49,6 +52,8 @@ export const STATUS_OPTIONS: { id: TaskStatusId; label: string }[] = [
   { id: 'pr', label: 'Pull Request' },
   { id: 'done', label: 'Done' }
 ]
+
+export const DEFAULT_VISIBLE_STATUSES: TaskStatusId[] = STATUS_OPTIONS.map((s) => s.id)
 
 const statusSet = new Set(STATUS_OPTIONS.map((s) => s.id))
 
@@ -66,6 +71,24 @@ export function normalizeStatusList(list: unknown, fallback: TaskStatusId[]): Ta
   }
   if (out.length === 0) return [...fallback]
   return STATUS_OPTIONS.map((s) => s.id).filter((id) => out.includes(id))
+}
+
+export function normalizeVisibleStatuses(list: unknown): TaskStatusId[] {
+  if (list === undefined || list === null) return [...DEFAULT_VISIBLE_STATUSES]
+  return normalizeStatusList(list, DEFAULT_VISIBLE_STATUSES)
+}
+
+export function isStatusVisible(settings: GUISettings | null | undefined, id: TaskStatusId | string): boolean {
+  const list = settings?.visible_statuses
+  if (!list || list.length === 0) return true
+  return list.includes(id as TaskStatusId)
+}
+
+export function visibleStatusOptions(settings: GUISettings | null | undefined): typeof STATUS_OPTIONS {
+  const list = settings?.visible_statuses?.length
+    ? settings.visible_statuses
+    : DEFAULT_VISIBLE_STATUSES
+  return STATUS_OPTIONS.filter((s) => list.includes(s.id))
 }
 
 export function toggleStatusInOrder(
@@ -107,6 +130,7 @@ export const defaultSettings = (): GUISettings => ({
   default_include_in_report: true,
   archive_done_subtasks: false,
   start_hidden: false,
+  visible_statuses: [...DEFAULT_VISIBLE_STATUSES],
   notifications: defaultNotifications(),
   zed: { enabled: false, binary: 'zed', env_start: '' }
 })
@@ -148,6 +172,7 @@ export function fromGoSettings(s: goSettings.GUISettings): GUISettings {
     default_include_in_report: s.default_include_in_report !== false,
     archive_done_subtasks: !!s.archive_done_subtasks,
     start_hidden: !!s.start_hidden,
+    visible_statuses: normalizeVisibleStatuses(s.visible_statuses),
     notifications: fromGoNotifications(s.notifications),
     zed: {
       enabled: !!s.zed?.enabled,
@@ -165,6 +190,9 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
     default_include_in_report: s.default_include_in_report,
     archive_done_subtasks: s.archive_done_subtasks,
     start_hidden: s.start_hidden,
+    visible_statuses: s.visible_statuses?.length
+      ? s.visible_statuses
+      : [...DEFAULT_VISIBLE_STATUSES],
     notifications: {
       tray_label_statuses: n.tray_label_statuses,
       tray_menu_statuses: n.tray_menu_statuses,

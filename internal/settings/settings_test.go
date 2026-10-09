@@ -310,3 +310,42 @@ func openTestRepo(t *testing.T) *store.TaskRepo {
 	t.Cleanup(func() { repo.Close() })
 	return repo
 }
+
+func TestVisibleStatusesDefaultAndNormalize(t *testing.T) {
+	path := configPathIn(t, "config.yml")
+	if err := os.WriteFile(path, []byte("start_hidden: false\nzed:\n  binary: zed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.VisibleStatuses, DefaultVisibleStatuses) {
+		t.Fatalf("visible = %v, want %v", got.VisibleStatuses, DefaultVisibleStatuses)
+	}
+
+	// Empty list falls back to all.
+	if err := os.WriteFile(path, []byte("visible_statuses: []\nzed:\n  binary: zed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.VisibleStatuses, DefaultVisibleStatuses) {
+		t.Fatalf("empty visible = %v, want all", got.VisibleStatuses)
+	}
+
+	// Subset keeps board order.
+	if err := os.WriteFile(path, []byte("visible_statuses: [done, icebox, wip]\nzed:\n  binary: zed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = Load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"icebox", "wip", "done"}
+	if !reflect.DeepEqual(got.VisibleStatuses, want) {
+		t.Fatalf("subset = %v, want %v", got.VisibleStatuses, want)
+	}
+}

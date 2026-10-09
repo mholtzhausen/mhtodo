@@ -29,7 +29,8 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
 
 **In scope (v0.1):**
 - Task fields: title, description, feedback (agent-authored; GUI shows when non-empty),
-  status (`pending | wip | waiting | review | pr | done`), progress 0–100,
+  status (`icebox | pending | wip | waiting | review | pr | done`), progress 0–100,
+  optional lane visibility (Settings → Statuses/Lanes; GUI board/picker),
   created_at / updated_at / completed_at, optional `pr_url` (pull-request URL(s), one per line;
   setting empty→non-empty advances status to `pr`). UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
@@ -120,7 +121,8 @@ to 500px, then scroll.
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle
 maximize. The board uses `minmax(200px, 1fr)` columns with horizontal scroll instead of
-crushing six columns (PR collapsed by default). Task detail is always a modal overlay.
+crushing columns (PR collapsed by default; icebox leftmost). Task detail is always a modal overlay.
+Lane visibility and per-lane colors (active theme) live under Settings → Statuses/Lanes.
 Footer shortcuts hide below ~900px. Reloads coalesce/
 `tasks:changed` debounce; search is debounced; Zed binary readiness is cached once per
 settings change (not per card).

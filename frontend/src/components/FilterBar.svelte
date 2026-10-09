@@ -14,6 +14,7 @@
     showSort = true,
     showStatus = true,
     taskCount,
+    visibleStatuses = null,
     onStatusChange,
     onSearchInput,
     onSortChange,
@@ -31,6 +32,7 @@
     showSort?: boolean
     showStatus?: boolean
     taskCount?: number
+    visibleStatuses?: readonly Status[] | null
     onStatusChange: (s: Status | '') => void
     onSearchInput: (v: string) => void
     onSortChange: (f: string) => void
@@ -40,12 +42,17 @@
     onCopySlackReport?: () => void
   } = $props()
 
-  const statusOptions: {
+  const allStatusOptions: {
     value: Status | ''
     label: string
     activeClass: string
   }[] = [
     { value: '', label: 'All statuses', activeClass: 'text-accent-hi' },
+    {
+      value: 'icebox',
+      label: STATUS_LABELS.icebox,
+      activeClass: 'text-st-icebox'
+    },
     {
       value: 'pending',
       label: STATUS_LABELS.pending,
@@ -69,6 +76,14 @@
     },
     { value: 'done', label: STATUS_LABELS.done, activeClass: 'text-st-done' }
   ]
+
+  const statusOptions = $derived(
+    visibleStatuses?.length
+      ? allStatusOptions.filter(
+          (o) => o.value === '' || visibleStatuses.includes(o.value as Status)
+        )
+      : allStatusOptions
+  )
 
   const humanOptions: { value: HumanFilter; label: string; title: string }[] = [
     { value: 'all', label: 'All tasks', title: 'Show all tasks' },

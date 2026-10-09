@@ -86,6 +86,8 @@ func StatusMenuTitle(status string, count int) string {
 // StatusDisplayName returns a short title-case name for menu roots.
 func StatusDisplayName(status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "icebox":
+		return "Icebox"
 	case "pending":
 		return "Pending"
 	case "wip":

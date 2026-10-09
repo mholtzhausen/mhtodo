@@ -18,6 +18,8 @@ export function CheckBinary(arg1:string):Promise<boolean>;
 
 export function ConsumePendingFocus():Promise<string>;
 
+export function CountByStatus():Promise<Record<string, number>>;
+
 export function CountChildren(arg1:string):Promise<number>;
 
 export function CreateTask(arg1:core.CreateInput):Promise<core.Task>;
@@ -61,6 +63,8 @@ export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 export function ListTemplates():Promise<Array<core.Template>>;
 
 export function ListThemes():Promise<Array<core.Theme>>;
+
+export function MigrateStatus(arg1:core.Status,arg2:core.Status):Promise<number>;
 
 export function OpenZedTicket(arg1:string):Promise<void>;
 

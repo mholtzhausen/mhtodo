@@ -10,6 +10,8 @@ import (
 // slackStatusIcon is the per-task marker in the Slack board report.
 func slackStatusIcon(st Status) string {
 	switch st {
+	case StatusIcebox:
+		return "❄"
 	case StatusPending:
 		return "○"
 	case StatusWIP:
@@ -38,9 +40,11 @@ type slackSection struct {
 // Todo, then WIP (wip + waiting + review + pr grouped under one heading). Tasks
 // should already be in board order; this re-buckets by section.
 func FormatSlackReport(tasks []Task) string {
-	var completed, todo, wip []Task
+	var icebox, completed, todo, wip []Task
 	for _, t := range tasks {
 		switch t.Status {
+		case StatusIcebox:
+			icebox = append(icebox, t)
 		case StatusDone:
 			completed = append(completed, t)
 		case StatusPending:
@@ -49,14 +53,16 @@ func FormatSlackReport(tasks []Task) string {
 			wip = append(wip, t)
 		}
 	}
+	sortSlackTasks(icebox)
 	sortSlackTasks(completed)
 	sortSlackTasks(todo)
 	sortSlackWIPTasks(wip)
 
 	sections := []slackSection{
-		{title: "Completed", icon: "✓", order: 0, tasks: completed},
-		{title: "Todo", icon: "○", order: 1, tasks: todo},
-		{title: "WIP", icon: "◐", order: 2, tasks: wip},
+		{title: "Icebox", icon: "❄", order: 0, tasks: icebox},
+		{title: "Completed", icon: "✓", order: 1, tasks: completed},
+		{title: "Todo", icon: "○", order: 2, tasks: todo},
+		{title: "WIP", icon: "◐", order: 3, tasks: wip},
 	}
 
 	var b strings.Builder

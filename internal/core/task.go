@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
-// Status is a task's lifecycle state. waiting is first-class: blocked on an
-// external dependency, not a flag. review sits after waiting (v0.3).
-// pr (Pull Request) sits between review and done.
+// Status is a task's lifecycle state. icebox parks work outside the pipeline
+// (leftmost board lane). waiting is first-class: blocked on an external
+// dependency, not a flag. review sits after waiting (v0.3). pr (Pull Request)
+// sits between review and done.
 type Status string
 
 const (
+	StatusIcebox  Status = "icebox"
 	StatusPending Status = "pending"
 	StatusWIP     Status = "wip"
 	StatusWaiting Status = "waiting"
@@ -21,7 +23,12 @@ const (
 	StatusDone    Status = "done"
 )
 
-var allStatuses = []Status{StatusPending, StatusWIP, StatusWaiting, StatusReview, StatusPR, StatusDone}
+// AllStatuses is board order: icebox (parked) → pipeline → done.
+var AllStatuses = []Status{
+	StatusIcebox, StatusPending, StatusWIP, StatusWaiting, StatusReview, StatusPR, StatusDone,
+}
+
+var allStatuses = AllStatuses
 
 // ParseStatus validates a status string.
 func ParseStatus(s string) (Status, error) {
@@ -113,7 +120,7 @@ type ListFilter struct {
 	Limit       int    // 0 = unlimited
 	Sort        string // board|created|updated|status|progress|title; default "board"
 	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
-	IncludeDone bool   // default false → done tasks are hidden unless matched by Status
+	IncludeDone bool   // default false → done and icebox are hidden unless matched by Status
 	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
 	RootsOnly         bool   // true → parent_id IS NULL only (v0.3)
 	ParentID          string // if set, only direct children of this parent (ignores RootsOnly)
@@ -163,7 +170,7 @@ func (e *AmbiguousIDError) Error() string {
 type InvalidStatusError struct{ Status string }
 
 func (e *InvalidStatusError) Error() string {
-	return fmt.Sprintf("invalid status %q (want pending, wip, waiting, review, pr or done)", e.Status)
+	return fmt.Sprintf("invalid status %q (want icebox, pending, wip, waiting, review, pr or done)", e.Status)
 }
 
 var ErrEmptyTitle = errors.New("title must not be empty")

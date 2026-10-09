@@ -493,6 +493,7 @@ export namespace settings {
 	    default_include_in_report: boolean;
 	    archive_done_subtasks: boolean;
 	    start_hidden: boolean;
+	    visible_statuses: string[];
 	    notifications: NotificationsConfig;
 	    zed: IntegrationConfig;
 	
@@ -507,6 +508,7 @@ export namespace settings {
 	        this.default_include_in_report = source["default_include_in_report"];
 	        this.archive_done_subtasks = source["archive_done_subtasks"];
 	        this.start_hidden = source["start_hidden"];
+	        this.visible_statuses = source["visible_statuses"];
 	        this.notifications = this.convertValues(source["notifications"], NotificationsConfig);
 	        this.zed = this.convertValues(source["zed"], IntegrationConfig);
 	    }

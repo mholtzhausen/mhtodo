@@ -30,6 +30,10 @@ export function ConsumePendingFocus() {
   return window['go']['main']['App']['ConsumePendingFocus']();
 }
 
+export function CountByStatus() {
+  return window['go']['main']['App']['CountByStatus']();
+}
+
 export function CountChildren(arg1) {
   return window['go']['main']['App']['CountChildren'](arg1);
 }
@@ -116,6 +120,10 @@ export function ListTemplates() {
 
 export function ListThemes() {
   return window['go']['main']['App']['ListThemes']();
+}
+
+export function MigrateStatus(arg1, arg2) {
+  return window['go']['main']['App']['MigrateStatus'](arg1, arg2);
 }
 
 export function OpenZedTicket(arg1) {

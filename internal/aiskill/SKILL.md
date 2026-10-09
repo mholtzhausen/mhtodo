@@ -19,7 +19,8 @@ description: >-
 mhtodo list --roots [--search S] [--json]
 mhtodo show ID
 mhtodo open TARGET
-mhtodo status ID pending|wip|waiting|review|pr|done
+mhtodo status ID icebox|pending|wip|waiting|review|pr|done
+mhtodo status migrate FROM TO
 mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S|--pr-url URL [--pr-url URL…]
   # --pr-url is repeatable; each edit replaces the full PR list (not append)
 mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
@@ -29,7 +30,7 @@ mhtodo template search --cwd "$PWD"
 mhtodo done ID
 ```
 
-IDs: unique prefix of 4+ chars; show **13** chars in listings. Default `list` hides `done`, archived, and `human_only`.
+IDs: unique prefix of 4+ chars; show **13** chars in listings. Default `list` hides `done`, `icebox`, archived, and `human_only`. Icebox parks work outside the pipeline (`list --status icebox` or `--all` to see it).
 
 ---
 

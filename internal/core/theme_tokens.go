@@ -63,7 +63,8 @@ var ThemeTokenRegistry = []TokenMeta{
 	{Key: "color.accent", Category: "Accent", Label: "Accent", Kind: TokenKindColor},
 	{Key: "color.accentHi", Category: "Accent", Label: "Accent hover", Kind: TokenKindColor},
 	{Key: "color.accentInk", Category: "Accent", Label: "Accent ink", Kind: TokenKindColor},
-	// Status
+	// Status (edited under Settings → Statuses/Lanes; still stored on the theme)
+	{Key: "color.stIcebox", Category: "Status", Label: "Icebox", Kind: TokenKindColor},
 	{Key: "color.stPending", Category: "Status", Label: "Pending", Kind: TokenKindColor},
 	{Key: "color.stWip", Category: "Status", Label: "WIP", Kind: TokenKindColor},
 	{Key: "color.stWaiting", Category: "Status", Label: "Waiting", Kind: TokenKindColor},
@@ -131,6 +132,7 @@ var factoryPalettes = map[string]map[string]string{
 		"color.accent":    "#7b8cff",
 		"color.accentHi":  "#93a0ff",
 		"color.accentInk": "#0e1230",
+		"color.stIcebox":  "#6d8a9e",
 		"color.stPending": "#a3adbf",
 		"color.stWip":     "#7b8cff",
 		"color.stWaiting": "#e8ab4a",
@@ -165,6 +167,7 @@ var factoryPalettes = map[string]map[string]string{
 		"color.accent":    "#3b5bdb",
 		"color.accentHi":  "#4c6ef5",
 		"color.accentInk": "#ffffff",
+		"color.stIcebox":  "#5c7a8a",
 		"color.stPending": "#868e9c",
 		"color.stWip":     "#3b5bdb",
 		"color.stWaiting": "#d9480f",
@@ -199,6 +202,7 @@ var factoryPalettes = map[string]map[string]string{
 		"color.accent":    "#e8a04a",
 		"color.accentHi":  "#f0b56a",
 		"color.accentInk": "#1a1208",
+		"color.stIcebox":  "#7a9088",
 		"color.stPending": "#a89888",
 		"color.stWip":     "#e8a04a",
 		"color.stWaiting": "#e07040",

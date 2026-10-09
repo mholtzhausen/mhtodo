@@ -28,7 +28,8 @@ type TaskRepository interface {
 	// them (v0.2). When includeSubtasks is false, only root tasks are archived.
 	// at is the service clock (tests inject it).
 	ArchiveDone(ctx context.Context, at time.Time, includeSubtasks bool) ([]Task, error)
-	CountOpen(ctx context.Context) (int, error) // non-done tasks; tray tooltip only
+	CountOpen(ctx context.Context) (int, error) // pipeline tasks; tray tooltip only
+	CountByStatus(ctx context.Context) (map[string]int, error)
 	CountChildren(ctx context.Context, parentID string) (int, error)
 
 	CreateActivity(ctx context.Context, a Activity) error
@@ -499,9 +500,44 @@ func (s *Service) Delete(ctx context.Context, ref string) (Task, error) {
 	return s.repo.Delete(ctx, id)
 }
 
-// CountOpen returns the number of non-done tasks. Tray tooltip only — not part
-// of the CLI parity surface (no business rules involved).
+// CountOpen returns the number of non-archived pipeline tasks (excludes done
+// and icebox). Tray tooltip only — not part of the CLI parity surface.
 func (s *Service) CountOpen(ctx context.Context) (int, error) { return s.repo.CountOpen(ctx) }
+
+// CountByStatus returns non-archived task counts keyed by status.
+func (s *Service) CountByStatus(ctx context.Context) (map[string]int, error) {
+	return s.repo.CountByStatus(ctx)
+}
+
+// MigrateStatus moves every non-archived task from one status to another.
+// Uses SetStatus per task so transition effects (completed_at, board_rank) apply.
+func (s *Service) MigrateStatus(ctx context.Context, from, to Status) (int, error) {
+	if _, err := ParseStatus(string(from)); err != nil {
+		return 0, err
+	}
+	if _, err := ParseStatus(string(to)); err != nil {
+		return 0, err
+	}
+	if from == to {
+		return 0, nil
+	}
+	tasks, err := s.List(ctx, ListFilter{
+		Status:           from,
+		IncludeDone:      true,
+		IncludeHumanOnly: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, t := range tasks {
+		if _, err := s.SetStatus(ctx, t.ID, to); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
 
 // AddActivity records an agent/user-authored activity entry on a task.
 func (s *Service) AddActivity(ctx context.Context, taskRef string, in ActivityInput) (Activity, error) {

@@ -50,6 +50,14 @@
     attn: string
   }[] = [
     {
+      status: 'icebox',
+      label: 'Icebox',
+      dot: 'bg-st-icebox',
+      bar: 'bg-st-icebox',
+      edge: 'border-l-st-icebox',
+      attn: 'var(--color-st-icebox)'
+    },
+    {
       status: 'pending',
       label: 'Pending',
       dot: 'bg-st-pending',
@@ -99,13 +107,22 @@
     }
   ]
 
+  const laneVisible = $derived(
+    new Set(
+      settings?.visible_statuses?.length
+        ? settings.visible_statuses
+        : COLUMNS.map((c) => c.status)
+    )
+  )
+
   const visibleColumns = $derived(
     statusFilter
       ? COLUMNS.filter((c) => c.status === statusFilter)
-      : COLUMNS
+      : COLUMNS.filter((c) => laneVisible.has(c.status))
   )
 
   const childBar: Record<string, string> = {
+    icebox: 'bg-st-icebox',
     pending: 'bg-st-pending',
     wip: 'bg-st-wip',
     waiting: 'bg-st-waiting',
@@ -117,7 +134,15 @@
   const COLLAPSED_COL_W = 28
   const EXPANDED_COL_MIN = 200
   const COL_GAP = 12
-  const COLLAPSE_STATUSES: Status[] = ['pending', 'wip', 'waiting', 'review', 'pr', 'done']
+  const COLLAPSE_STATUSES: Status[] = [
+    'icebox',
+    'pending',
+    'wip',
+    'waiting',
+    'review',
+    'pr',
+    'done'
+  ]
   const COLLAPSE_STORAGE_KEY = 'mhtodo.collapsedColumns.v2'
   const DEFAULT_COLLAPSED: Status[] = ['pr']
 

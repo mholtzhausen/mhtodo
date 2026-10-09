@@ -669,3 +669,34 @@ func TestSetStatusAssignsEndRank(t *testing.T) {
 		t.Fatalf("moved should append after B: moved=%v b=%v", moved.BoardRank, b.BoardRank)
 	}
 }
+
+func TestMigrateStatusAndIceboxListDefault(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	_, _ = svc.Create(ctx, core.CreateInput{Title: "parked", Status: core.StatusIcebox})
+	_, _ = svc.Create(ctx, core.CreateInput{Title: "also", Status: core.StatusIcebox})
+	_, _ = svc.Create(ctx, core.CreateInput{Title: "active", Status: core.StatusPending})
+
+	list, err := svc.List(ctx, core.ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Title != "active" {
+		t.Fatalf("default list should hide icebox: %+v", list)
+	}
+
+	n, err := svc.MigrateStatus(ctx, core.StatusIcebox, core.StatusPending)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("migrated = %d, want 2", n)
+	}
+	list, err = svc.List(ctx, core.ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("after migrate want 3 pending, got %d", len(list))
+	}
+}

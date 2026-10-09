@@ -40,6 +40,7 @@ export const THEME_FIELDS: readonly ThemeFieldMeta[] = [
   { key: 'color.accent', category: 'Accent', label: 'Accent', kind: 'color' },
   { key: 'color.accentHi', category: 'Accent', label: 'Accent hover', kind: 'color' },
   { key: 'color.accentInk', category: 'Accent', label: 'Accent ink', kind: 'color' },
+  { key: 'color.stIcebox', category: 'Status', label: 'Icebox', kind: 'color' },
   { key: 'color.stPending', category: 'Status', label: 'Pending', kind: 'color' },
   { key: 'color.stWip', category: 'Status', label: 'WIP', kind: 'color' },
   { key: 'color.stWaiting', category: 'Status', label: 'Waiting', kind: 'color' },
@@ -82,6 +83,7 @@ export const SLATE_FACTORY_TOKENS: Record<string, string> = {
   'color.accent': '#7b8cff',
   'color.accentHi': '#93a0ff',
   'color.accentInk': '#0e1230',
+  'color.stIcebox': '#6d8a9e',
   'color.stPending': '#a3adbf',
   'color.stWip': '#7b8cff',
   'color.stWaiting': '#e8ab4a',
@@ -106,6 +108,22 @@ export const SLATE_FACTORY_TOKENS: Record<string, string> = {
 export const THEME_CATEGORIES: readonly string[] = [
   ...new Set(THEME_FIELDS.map((f) => f.category))
 ]
+
+/** Themes editor omits Status — those pickers live under Settings → Statuses/Lanes. */
+export const THEME_EDITOR_CATEGORIES: readonly string[] = THEME_CATEGORIES.filter(
+  (c) => c !== 'Status'
+)
+
+/** Theme token key for a board status color. */
+export const STATUS_COLOR_TOKEN: Record<string, string> = {
+  icebox: 'color.stIcebox',
+  pending: 'color.stPending',
+  wip: 'color.stWip',
+  waiting: 'color.stWaiting',
+  review: 'color.stReview',
+  pr: 'color.stPr',
+  done: 'color.stDone'
+}
 
 /** Map dotted token key → CSS custom property (mirrors core.TokenToCSSVar). */
 export function tokenToCSSVar(key: string): string {

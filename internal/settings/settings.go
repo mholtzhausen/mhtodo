@@ -48,8 +48,11 @@ type GUISettings struct {
 	DefaultIncludeInReport bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
 	ArchiveDoneSubtasks    bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
 	StartHidden            bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
-	Notifications          NotificationsConfig `json:"notifications" yaml:"notifications"`
-	Zed                    IntegrationConfig   `json:"zed" yaml:"zed"`
+	// VisibleStatuses controls which board lanes and StatusPicker options appear.
+	// Empty after normalize falls back to all statuses. At least one must remain.
+	VisibleStatuses []string            `json:"visible_statuses" yaml:"visible_statuses"`
+	Notifications   NotificationsConfig `json:"notifications" yaml:"notifications"`
+	Zed             IntegrationConfig   `json:"zed" yaml:"zed"`
 }
 
 type integrationFile struct {
@@ -79,8 +82,10 @@ type configFile struct {
 	DefaultIncludeInReport *bool             `yaml:"default_include_in_report,omitempty"`
 	ArchiveDoneSubtasks    bool              `yaml:"archive_done_subtasks"`
 	StartHidden            bool              `yaml:"start_hidden"`
-	Notifications          notificationsFile `yaml:"notifications"`
-	Zed                    integrationFile   `yaml:"zed"`
+	// VisibleStatuses nil → default all; empty after load is invalid and falls back.
+	VisibleStatuses []string          `yaml:"visible_statuses"`
+	Notifications   notificationsFile `yaml:"notifications"`
+	Zed             integrationFile   `yaml:"zed"`
 }
 
 // Default returns factory defaults for a fresh install.
@@ -97,7 +102,8 @@ func defaultConfigFile() configFile {
 	panelInterval := 5
 	panelIntensity := 40
 	return configFile{
-		StartHidden: defaultLaunchHidden(),
+		StartHidden:     defaultLaunchHidden(),
+		VisibleStatuses: append([]string(nil), DefaultVisibleStatuses...),
 		Notifications: notificationsFile{
 			TrayLabelStatuses:   []string{"waiting", "review"},
 			TrayMenuStatuses:    []string{"waiting", "review"},
@@ -114,14 +120,20 @@ func defaultConfigFile() configFile {
 	}
 }
 
-// allowedNotificationStatuses are valid values for tray label/menu status lists.
+// allowedNotificationStatuses are valid values for tray/panel/visibility lists.
 var allowedNotificationStatuses = map[string]bool{
+	"icebox":  true,
 	"pending": true,
 	"wip":     true,
 	"waiting": true,
 	"review":  true,
 	"pr":      true,
 	"done":    true,
+}
+
+// DefaultVisibleStatuses is board order with every lane shown.
+var DefaultVisibleStatuses = []string{
+	"icebox", "pending", "wip", "waiting", "review", "pr", "done",
 }
 
 func normalizeStatusList(in []string, fallback []string) []string {
@@ -431,10 +443,35 @@ func writeConfigFile(path string, cf configFile) error {
 	return nil
 }
 
+func normalizeVisibleStatuses(in []string) []string {
+	// nil (absent) → all lanes. Explicit empty / all-invalid → fall back to all
+	// so the board never has zero columns.
+	if in == nil {
+		return append([]string(nil), DefaultVisibleStatuses...)
+	}
+	out := normalizeStatusList(in, nil)
+	if len(out) == 0 {
+		return append([]string(nil), DefaultVisibleStatuses...)
+	}
+	// Keep board order, not user YAML order.
+	order := make([]string, 0, len(out))
+	seen := map[string]bool{}
+	for _, s := range out {
+		seen[s] = true
+	}
+	for _, s := range DefaultVisibleStatuses {
+		if seen[s] {
+			order = append(order, s)
+		}
+	}
+	return order
+}
+
 func normalizeConfigFile(cf *configFile) {
 	if cf.Zed.Binary == "" {
 		cf.Zed.Binary = "zed"
 	}
+	cf.VisibleStatuses = normalizeVisibleStatuses(cf.VisibleStatuses)
 	normalizeNotifications(&cf.Notifications)
 	expandIntegrationBinaries(cf)
 }
@@ -450,6 +487,7 @@ func toGUI(cf configFile) GUISettings {
 		DefaultIncludeInReport: includeInReport,
 		ArchiveDoneSubtasks:    cf.ArchiveDoneSubtasks,
 		StartHidden:            cf.StartHidden,
+		VisibleStatuses:        append([]string(nil), cf.VisibleStatuses...),
 		Notifications:          notificationsToGUI(cf.Notifications),
 		Zed: IntegrationConfig{
 			Enabled:  cf.Zed.Enabled,
@@ -466,6 +504,7 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultIncludeInReport = &include
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.StartHidden = s.StartHidden
+	cf.VisibleStatuses = append([]string(nil), s.VisibleStatuses...)
 	cf.Notifications = notificationsFromGUI(s.Notifications)
 	cf.Zed.Enabled = s.Zed.Enabled
 	cf.Zed.Binary = s.Zed.Binary

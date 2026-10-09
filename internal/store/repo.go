@@ -154,8 +154,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 		args = append(args, string(f.Status))
 	} else if !f.IncludeDone && !f.Archived {
 		// The archived view shows everything that is archived (almost always
-		// done), so the default done-exclusion does not apply there.
-		conds = append(conds, `status <> 'done'`)
+		// done), so the default done/icebox exclusion does not apply there.
+		// Icebox is parked outside the pipeline — hidden from default agent lists
+		// the same way done is (explicit --status icebox or --all / IncludeDone).
+		conds = append(conds, `status NOT IN ('done', 'icebox')`)
 	}
 	if f.Archived {
 		conds = append(conds, "archived_at IS NOT NULL")
@@ -260,11 +262,32 @@ func (r *TaskRepo) ArchiveDone(ctx context.Context, at time.Time, includeSubtask
 	return out, rows.Err()
 }
 
-// CountOpen counts tasks not in done status (tray tooltip; no CLI equivalent).
+// CountOpen counts non-archived tasks that are still in the pipeline
+// (excludes done and icebox). Tray tooltip only — no CLI equivalent.
 func (r *TaskRepo) CountOpen(ctx context.Context) (int, error) {
 	var n int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tasks WHERE status <> 'done'`).Scan(&n)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tasks WHERE status NOT IN ('done', 'icebox') AND archived_at IS NULL`).Scan(&n)
 	return n, err
+}
+
+// CountByStatus returns non-archived task counts keyed by status string.
+func (r *TaskRepo) CountByStatus(ctx context.Context) (map[string]int, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT status, COUNT(*) FROM tasks WHERE archived_at IS NULL GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]int)
+	for rows.Next() {
+		var st string
+		var n int
+		if err := rows.Scan(&st, &n); err != nil {
+			return nil, err
+		}
+		out[st] = n
+	}
+	return out, rows.Err()
 }
 
 func (r *TaskRepo) CountChildren(ctx context.Context, parentID string) (int, error) {
@@ -484,8 +507,8 @@ var sortColumns = map[string]string{
 }
 
 const boardStatusOrder = `CASE status
-  WHEN 'pending' THEN 0 WHEN 'wip' THEN 1 WHEN 'waiting' THEN 2
-  WHEN 'review' THEN 3 WHEN 'pr' THEN 4 WHEN 'done' THEN 5 ELSE 6
+  WHEN 'icebox' THEN 0 WHEN 'pending' THEN 1 WHEN 'wip' THEN 2 WHEN 'waiting' THEN 3
+  WHEN 'review' THEN 4 WHEN 'pr' THEN 5 WHEN 'done' THEN 6 ELSE 7
 END`
 
 // sortClause whitelists the sort field (no user SQL) and appends id as a

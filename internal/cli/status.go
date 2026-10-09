@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -31,7 +32,7 @@ func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "status ID STATUS",
 		Aliases: []string{"set"},
-		Short:   "Set a task's status (pending|wip|waiting|review|pr|done)",
+		Short:   "Set a task's status (icebox|pending|wip|waiting|review|pr|done)",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			st, err := core.ParseStatus(args[1])
@@ -41,7 +42,46 @@ func newStatusCmd() *cobra.Command {
 			return runSetStatus(cmd, args[0], st)
 		},
 	}
+	cmd.AddCommand(newStatusMigrateCmd())
 	return cmd
+}
+
+func newStatusMigrateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate FROM TO",
+		Short: "Move all non-archived tasks from one status to another",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			o, err := o(cmd)
+			if err != nil {
+				return err
+			}
+			from, err := core.ParseStatus(args[0])
+			if err != nil {
+				return mapError(err)
+			}
+			to, err := core.ParseStatus(args[1])
+			if err != nil {
+				return mapError(err)
+			}
+			svc, closeDB, err := openService()
+			if err != nil {
+				return err
+			}
+			defer closeDB()
+			n, err := svc.MigrateStatus(context.Background(), from, to)
+			if err != nil {
+				return mapError(err)
+			}
+			if o.json {
+				return o.printJSON(map[string]any{"migrated": n, "from": from, "to": to})
+			}
+			if !o.quiet {
+				fmt.Fprintf(o.out, "migrated %d task(s) from %s to %s\n", n, from, to)
+			}
+			return nil
+		},
+	}
 }
 
 // NotifyDone is the test seam for `done --notify` (cf. Stdin): golden tests

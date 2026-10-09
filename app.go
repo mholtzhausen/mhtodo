@@ -227,6 +227,21 @@ func (a *App) SetStatus(id string, status core.Status) (core.Task, error) {
 	return t, err
 }
 
+// MigrateStatus maps to CLI `status migrate FROM TO`: bulk-moves every
+// non-archived task from one lane to another.
+func (a *App) MigrateStatus(from, to core.Status) (int, error) {
+	n, err := a.svc.MigrateStatus(a.ctx, from, to)
+	if err == nil && n > 0 {
+		a.emitChanged("", "migrate")
+	}
+	return n, err
+}
+
+// CountByStatus returns non-archived task counts keyed by status (Settings → Lanes).
+func (a *App) CountByStatus() (map[string]int, error) {
+	return a.svc.CountByStatus(a.ctx)
+}
+
 // ReorderBoardTask moves a root task within its current status column.
 // beforeID empty appends to the column end.
 func (a *App) ReorderBoardTask(id string, beforeID string) (core.Task, error) {

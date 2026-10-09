@@ -6,11 +6,13 @@
     STATUS_OPTIONS,
     toggleStatusInOrder,
     type GUISettings,
-    type IntegrationConfig
+    type IntegrationConfig,
+    type TaskStatusId
   } from '../lib/settings'
   import { emptyValues, type TaskTemplate } from '../lib/templates'
   import { SLATE_FACTORY_TOKENS, type Theme } from '../lib/themes'
   import ClearableField from './ClearableField.svelte'
+  import SettingsStatuses from './SettingsStatuses.svelte'
   import SettingsTemplates from './SettingsTemplates.svelte'
   import SettingsThemes from './SettingsThemes.svelte'
   import { scheduleFocusFirstField } from '../lib/focusFirstField'
@@ -35,19 +37,34 @@
 
   let zedFound = $state(false)
 
-  type SettingsPage = 'general' | 'notifications' | 'integrations' | 'templates' | 'themes'
+  type SettingsPage =
+    | 'general'
+    | 'notifications'
+    | 'integrations'
+    | 'statuses'
+    | 'templates'
+    | 'themes'
   type NotificationsSub = 'tray' | 'panel'
   let activePage = $state<SettingsPage>('general')
   let notificationsSub = $state<NotificationsSub>('tray')
+  let statusesSub = $state<TaskStatusId>('icebox')
 
   const pages: { id: SettingsPage; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'notifications', label: 'Notifications' },
     { id: 'integrations', label: 'Integrations' },
+    { id: 'statuses', label: 'Statuses / Lanes' },
     { id: 'templates', label: 'Task Templates' },
     { id: 'themes', label: 'Themes' }
   ]
-  const pagesWithSubnav = new Set<SettingsPage>(['notifications', 'templates', 'themes'])
+  const pagesWithSubnav = new Set<SettingsPage>([
+    'notifications',
+    'statuses',
+    'templates',
+    'themes'
+  ])
+
+  const activeThemeForStatuses = $derived(themes.find((t) => t.active) ?? null)
 
   // --- task templates ---
   // Templates persist through their own bound methods, not the whole-settings
@@ -449,6 +466,29 @@
               </div>
             {/if}
 
+            {#if page.id === 'statuses' && activePage === 'statuses'}
+              <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
+                {#each STATUS_OPTIONS as opt (opt.id)}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      activePage = 'statuses'
+                      statusesSub = opt.id
+                    }}
+                    class="truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
+                      {statusesSub === opt.id
+                      ? 'bg-accent/10 text-ink'
+                      : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
+                  >
+                    {opt.label}
+                    {#if !settings.visible_statuses.includes(opt.id)}
+                      <span class="text-ink-3"> (hidden)</span>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+
             <!-- Task Templates second nav tier: shown only while this section is active. -->
             {#if page.id === 'templates' && activePage === 'templates'}
               <div class="mb-1 hidden flex-col gap-0.5 pl-3 @[560px]:flex">
@@ -837,6 +877,16 @@
               </div>
               </div>
             </section>
+          {:else if activePage === 'statuses'}
+            {#key statusesSub}
+              <SettingsStatuses
+                statusId={statusesSub}
+                bind:settings
+                activeTheme={activeThemeForStatuses}
+                onThemeSaved={onThemeSaved}
+                onError={(m) => onError?.(m)}
+              />
+            {/key}
           {:else if activePage === 'templates'}
             {#if activeTemplate}
               {#key activeTemplate.id}
@@ -886,8 +936,9 @@
               <section>
                 <h3 class="mb-2 text-sm font-semibold text-ink">Themes</h3>
                 <p class="mb-4 text-sm leading-relaxed text-ink-3">
-                  Customize colors, radii, and spacing. Slate, Paper, and Ember ship built-in;
-                  Duplicate any theme to start a custom one.
+                  Customize colors, radii, and spacing. Lane status colors live under Statuses /
+                  Lanes. Slate, Paper, and Ember ship built-in; Duplicate any theme to start a custom
+                  one.
                 </p>
                 <button
                   type="button"

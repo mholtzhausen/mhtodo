@@ -7,7 +7,7 @@ import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from 
 import { toGoTemplateInput, type TaskTemplate, type TemplateValues } from './templates'
 import { toGoThemeInput, type Theme } from './themes'
 
-export type Status = 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
+export type Status = 'icebox' | 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
 
 // JSON field names are a stable agent contract (internal/core/task.go).
 export interface Task {
@@ -146,6 +146,12 @@ export const api = {
   },
   setStatus(id: string, status: Status) {
     return App.SetStatus(id, status as unknown as string)
+  },
+  migrateStatus(from: Status, to: Status): Promise<number> {
+    return App.MigrateStatus(from as unknown as string, to as unknown as string)
+  },
+  countByStatus(): Promise<Record<string, number>> {
+    return App.CountByStatus().then((m) => m ?? {})
   },
   reorderTask(id: string, beforeId?: string | null) {
     return App.ReorderBoardTask(id, beforeId ?? '') as Promise<Task>

@@ -3,6 +3,7 @@
   import { api, errMsg, type Status } from '../lib/api'
   import { focusOnOpen } from '../lib/focusFirstField'
   import { openExternalUrl } from '../lib/openExternal'
+  import type { TaskStatusId } from '../lib/settings'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
   import TemplatePicker from './TemplatePicker.svelte'
@@ -17,6 +18,7 @@
     defaultHumanOnly = false,
     defaultIncludeInReport = true,
     defaultSlackThread = '',
+    visibleStatuses = null,
     /** Open with the template picker already showing and its filter focused. */
     openWithTemplatePicker = false,
     onClose,
@@ -30,6 +32,7 @@
     defaultHumanOnly?: boolean
     defaultIncludeInReport?: boolean
     defaultSlackThread?: string
+    visibleStatuses?: readonly TaskStatusId[] | null
     openWithTemplatePicker?: boolean
     onClose: () => void
     onError?: (msg: string) => void
@@ -302,7 +305,11 @@
 
         <div>
           <span class="micro mb-1.5">Status</span>
-          <StatusPicker value={status} onPick={(s) => (status = s)} />
+          <StatusPicker
+            value={status}
+            visibleStatuses={visibleStatuses}
+            onPick={(s) => (status = s)}
+          />
         </div>
       </div>
 

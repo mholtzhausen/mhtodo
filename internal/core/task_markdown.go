@@ -103,18 +103,20 @@ func sortTaskMarkdownChildren(children []Task) {
 
 func statusMarkdownOrder(st Status) int {
 	switch st {
-	case StatusPending:
+	case StatusIcebox:
 		return 0
-	case StatusWIP:
+	case StatusPending:
 		return 1
-	case StatusWaiting:
+	case StatusWIP:
 		return 2
-	case StatusReview:
+	case StatusWaiting:
 		return 3
-	case StatusPR:
+	case StatusReview:
 		return 4
-	case StatusDone:
+	case StatusPR:
 		return 5
+	case StatusDone:
+		return 6
 	default:
 		return 99
 	}
