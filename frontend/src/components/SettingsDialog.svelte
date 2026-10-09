@@ -425,6 +425,8 @@
                     <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
                   {/if}
                 </svg>
+              {:else}
+                <span class="h-3.5 w-3.5 flex-none" aria-hidden="true"></span>
               {/if}
               {page.label}
             </button>
@@ -487,12 +489,16 @@
                       activeThemeId = th.id
                     }}
                     title={th.name}
-                    class="truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
+                    class="inline-flex w-full items-center gap-1 truncate rounded-control px-3 py-1.5 text-left text-[12px] transition-colors
                       {activePage === 'themes' && activeThemeId === th.id
                       ? 'bg-accent/10 text-ink'
                       : 'text-ink-3 hover:bg-white/5 hover:text-ink-2'}"
                   >
-                    {th.active ? '● ' : ''}{th.name}
+                    <span
+                      class="w-2.5 flex-none text-center text-[10px] leading-none"
+                      aria-hidden="true"
+                    >{th.active ? '●' : ''}</span>
+                    <span class="truncate">{th.name}</span>
                   </button>
                 {/each}
                 <button
