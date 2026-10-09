@@ -11,6 +11,20 @@
 ### Deprecations
 - (none)
 
+## 3.3.0 (pending)
+
+### Features and Improvements
+- Icebox lane/status (leftmost): park tickets outside the pipeline; default CLI `list` hides icebox like done (`--status icebox` / `--all` to see them)
+- Settings → Statuses / Lanes: per-lane visibility, lane color on the active theme, and leave-or-migrate when hiding a lane with tickets; hidden lanes omitted from the StatusPicker
+- `mhtodo status migrate FROM TO` (+ GUI) bulk-moves non-archived tasks between statuses
+- Settings dialog: clearer sub-navigation and active-theme indicators
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.2.1 (ce2e0d9)
 
 ### Features and Improvements

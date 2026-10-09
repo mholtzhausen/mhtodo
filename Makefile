@@ -1,5 +1,5 @@
 APP        := mhtodo
-VERSION    ?= 3.2.1
+VERSION    ?= 3.3.0
 COMMIT     := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 BIN        := bin/$(APP)
 DIST       := dist
