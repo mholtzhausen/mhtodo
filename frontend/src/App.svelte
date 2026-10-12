@@ -721,7 +721,20 @@
           class="relative px-2 text-[13px] font-medium transition-colors [--wails-draggable:no-drag] sm:px-3
             {view === v ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}"
         >
-          {label}
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {#if v === 'board'}
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M8 7v7" />
+                <path d="M12 7v4" />
+                <path d="M16 7v9" />
+              {:else}
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              {/if}
+            </svg>
+            <span class={narrowChrome ? 'sr-only' : ''}>{label}</span>
+          </span>
           {#if view === v}<span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>{/if}
         </button>
       {/each}
@@ -736,7 +749,15 @@
         class="relative ml-auto px-2 text-[13px] font-medium transition-colors [--wails-draggable:no-drag] sm:ml-0 sm:px-3
           {view === 'archive' ? 'text-ink' : 'text-ink-3/30 hover:text-ink-3'}"
       >
-        Archived
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="3" width="20" height="5" rx="1" />
+            <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+            <path d="M10 12h4" />
+          </svg>
+          <span class={narrowChrome ? 'sr-only' : ''}>Archived</span>
+        </span>
         {#if view === 'archive'}
           <span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-accent"></span>
         {/if}

@@ -38,6 +38,10 @@ IDs: unique prefix of 4+ chars; show **13** chars in listings. Default `list` hi
 
 Read the board freely. **Never** adopt or start a task because it appeared in a list — including `human_only`. Work starts only when the user asks for something or points at a ticket (paste / id). Listing is not starting.
 
+## 1a. Hard rule — production is read-only
+
+While actioning any ticket, **never write to or change production** — no deploys, migrations, data edits, config/secret changes, restarts, or mutating API/CLI/DB calls against production systems. You may only **read** from production (logs, queries that select, status/inspect commands, GET requests). If a ticket seems to require a production change, stop, set `waiting` with the exact change described in `--feedback`, and let the user perform it.
+
 ## 2. Ticket reference handoff
 
 If the user pastes:
@@ -51,6 +55,7 @@ Instructions: (only if you start working on this task)
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
  - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
+ - never write to or change production while working this ticket (no deploys, migrations, data/config edits, restarts, or mutating calls); you may only read from production. If the work needs a production change, stop and hand it back to the user
  - when you open a pull request: put every PR URL on the root ticket with `mhtodo edit {rootShort8} --pr-url <url> [--pr-url <url>…]` (repeatable; each edit replaces the full list — `mhtodo show {rootShort8} --json` first if adding another). Never leave PR links only in feedback or comments.
  - (sub-task handoffs only) register pull requests against the main ticket `{rootShort8}`, not this sub-task id
 ---
@@ -133,6 +138,16 @@ When they ask what’s next / todos / pick a task:
 
 Share the parent ticket. Do not register a separate root per subagent. Each subagent drives its sub-task; the orchestrator owns parent `waiting` / `review` / `pr`, and registers any `--pr-url` on that parent.
 
-## 10. Housekeeping
+## 10. Opening a ticket
+
+When the user asks to open / show / jump to a ticket in the GUI:
+
+1. Resolve the id (prefix or `mhtodo://task/…` URL) and launch it detached so the shell returns immediately:
+   `mhtodo open ID >/dev/null 2>&1 & sleep 2`
+   (Any URL form works: `mhtodo open mhtodo://task/{id}`.)
+2. The `sleep 2` gives the window time to appear. Then end that shell: if you ran it as a background Bash task, stop it; otherwise let the one-shot command exit. Do not leave a terminal/session open on it.
+3. Reply with one line confirming it was opened — no `show` dump unless asked.
+
+## 11. Housekeeping
 
 Never unprompted `archive` or `rm`. You may `rm` a task you created in error.

@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 3.4.0 (HASH)
+### Features and Improvements
+- Skill + ticket reference Instructions: production is strictly read-only while actioning a ticket (hand back via `waiting` if a production change is needed)
+- Skill: opening a ticket runs `mhtodo open ID` detached, waits ~2s, then ends the shell
+- GUI header: icons on the Board / Activity / Archived tabs (label hidden on narrow windows)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.3.0 (000f228)
 
 ### Features and Improvements
