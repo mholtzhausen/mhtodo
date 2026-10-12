@@ -101,6 +101,20 @@
     })
   }
 
+  function onTitleKeydown(e: KeyboardEvent) {
+    // `/` as the very first character opens the template picker (which focuses
+    // its own filter) instead of typing a slash into the title.
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && title === '') {
+      e.preventDefault()
+      e.stopPropagation()
+      pickerOpen = true
+      return
+    }
+    if (e.key === 'Enter' && title.trim()) {
+      ;(e.currentTarget as HTMLInputElement).form?.requestSubmit()
+    }
+  }
+
   async function submit(e: Event) {
     e.preventDefault()
     if (!title.trim() || submitting) return
@@ -240,8 +254,8 @@
             data-focus-primary
             bind:this={titleEl}
             bind:value={title}
-            onkeydown={(e) => e.key === 'Enter' && title.trim() && (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
-            placeholder="What needs doing?"
+            onkeydown={onTitleKeydown}
+            placeholder="What needs doing? (/ for templates)"
             class="w-full rounded-control border border-line-soft bg-field px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
         </label>
