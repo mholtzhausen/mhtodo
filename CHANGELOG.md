@@ -12,6 +12,7 @@
 - (none)
 
 ## 3.4.0 (4d67832)
+
 ### Features and Improvements
 - Skill + ticket reference Instructions: production is strictly read-only while actioning a ticket (hand back via `waiting` if a production change is needed)
 - Skill: opening a ticket runs `mhtodo open ID` detached, waits ~2s, then ends the shell
