@@ -475,6 +475,67 @@ func TestReorderCLI(t *testing.T) {
 	}
 }
 
+func TestFocusCLI(t *testing.T) {
+	out, errb, run := newCLI(t)
+	if code := run("add", "Alpha"); code != 0 {
+		t.Fatal(code)
+	}
+	idA := strings.Fields(out.String())[0]
+	out.Reset()
+	if code := run("add", "Beta"); code != 0 {
+		t.Fatal(code)
+	}
+	idB := strings.Fields(out.String())[0]
+	out.Reset()
+
+	if code := run("focus", "add", idA); code != 0 {
+		t.Fatalf("focus add exit %d: %s", code, errb.String())
+	}
+	out.Reset()
+	if code := run("focus", "add", idB, "--before", idA, "--json"); code != 0 {
+		t.Fatalf("focus add --before exit %d: %s", code, errb.String())
+	}
+	var pinned core.Task
+	mustJSON(t, out.Bytes(), &pinned)
+	if pinned.FocusRank == nil {
+		t.Fatalf("focus add json missing focus_rank: %+v", pinned)
+	}
+
+	out.Reset()
+	if code := run("focus", "--json"); code != 0 {
+		t.Fatalf("focus list exit %d", code)
+	}
+	var lanes []core.Task
+	mustJSON(t, out.Bytes(), &lanes)
+	if len(lanes) != 2 || lanes[0].ID != idB || lanes[1].ID != idA {
+		t.Fatalf("focus lanes: %+v", lanes)
+	}
+
+	// Done auto-unpins; focusing a done task is a usage error.
+	out.Reset()
+	if code := run("done", idA); code != 0 {
+		t.Fatalf("done exit %d", code)
+	}
+	errb.Reset()
+	if code := run("focus", "add", idA); code != cli.ExitUsage || !strings.Contains(errb.String(), "cannot be focused") {
+		t.Fatalf("focus done task: exit %d stderr %q", code, errb.String())
+	}
+
+	out.Reset()
+	if code := run("focus", "rm", idB); code != 0 {
+		t.Fatalf("focus rm exit %d", code)
+	}
+	out.Reset()
+	run("focus", "list", "--json")
+	if strings.TrimSpace(out.String()) != "[]" {
+		t.Fatalf("focus list after rm: %q", out.String())
+	}
+	out.Reset()
+	if code := run("focus", "clear", "--json"); code != 0 || !strings.Contains(out.String(), `"cleared": 0`) {
+		t.Fatalf("focus clear: exit %d out %q", code, out.String())
+	}
+}
+
 // --- show ---------------------------------------------------------------------
 
 func TestShow(t *testing.T) {

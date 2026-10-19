@@ -94,7 +94,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
 `parent_is_child`, `not_root`,
-`reorder_status_mismatch`, `empty_activity`,
+`reorder_status_mismatch`, `empty_activity`, `focus_full`, `focus_closed`, `not_focused`,
 `usage`, `storage`, `update`, `service`, `install`.
 
 ### Commands
@@ -109,6 +109,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `status` (`set`) | `mhtodo status ID icebox\|pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `status migrate` | `mhtodo status migrate FROM TO` | bulk-moves every non-archived task from one status to another (JSON: `migrated`, `from`, `to`) |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
+| `focus` | `mhtodo focus [list]` · `focus add ID [--before ID]` · `focus rm ID` · `focus clear` | Focus view lanes (max 6, in order). A focused parent with a focused sub-task gets no lane of its own (only the sub-task shows; the parent's lane returns when the sub-task leaves focus). `add` pins or moves a task (`--before` omitted appends / moves to end); done or archived → exit 1 (`focus_closed`), a 7th lane → `focus_full`. `rm` is idempotent. `clear` unpins all (JSON: `cleared`). Marking done or archiving unpins automatically |
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
 | `archive` | `mhtodo archive [ID]` | with no ID, archives **all** currently-done tasks; with ID, archives that single done task only (must be done; already archived → `already_archived`); reversible via `unarchive` |
 | `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
@@ -155,6 +156,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "archived_at": null,
   "parent_id": null,
   "board_rank": 1.0,
+  "focus_rank": null,
   "cwd": "/home/me/projects/mhtodo",
   "human_only": false,
   "include_in_report": true,
@@ -178,7 +180,8 @@ Activity entry:
 `--json list` returns an array of task objects. Timestamps are RFC3339 UTC; `completed_at` is set on
 →done and cleared when leaving done; `archived_at` is set by `archive` and cleared by `unarchive`;
 `parent_id` is set for one-level sub-tasks; `board_rank` is set on root tasks for board ordering
-(lower = higher on the board). `cwd` is an optional absolute path to the task's project or working
+(lower = higher on the board). `focus_rank` is set while a task is pinned to the Focus view (lower =
+further left; `null` = not focused; cleared on done/archive). `cwd` is an optional absolute path to the task's project or working
 directory. `human_only` marks a task the user handles themselves — agents must not adopt or update
 such tasks; default `list` hides them unless `--human-only` is passed. IDs are UUIDv7 (time-ordered).
 `todo_session` holds the Claude session UUID linked when an agent adopts the ticket
@@ -243,6 +246,12 @@ status transitions → activity → delete) using only this CLI.
 
 ## GUI
 
+- **Focus view:** the leftmost tab (`f`). Shows only the tickets you pin (up to 6), one wide lane
+  each, sized to however many are pinned. Each card shows status, progress (editable), description, feedback,
+  sub-tasks, and the usual footer actions. Pin or unpin with the target icon on a board card or in the detail
+  modal header; drag a lane header to reorder. A ticket leaves focus automatically when it is marked
+  done, archived, or deleted. If a parent and one of its sub-tasks are both pinned, only the sub-task
+  gets a lane. Sub-task lanes look different: a sunken background, an accent left edge, and a parent breadcrumb. Pins live in the DB (`focus_rank`), so `mhtodo focus` sees and edits the same lanes.
 - **Board view (default):** seven kanban columns — icebox / pending / wip / waiting / review / pr / done — with live
   counts; root cards show title, progress, relative time; human-only / Slack-report flags live in the
   card footer actions (not duplicated in the title row). When `pr_url` is set, a pull-request icon
@@ -257,7 +266,7 @@ status transitions → activity → delete) using only this CLI.
   **Agents** (hide human-only) / **Human** (human-only only).
 - **Archived view:** table of archived tasks (status + progress, title, updated); sub-tasks indent
   under parents when shown (creation order). Same human filter as the board. Open a row to unarchive
-  from the detail modal. Tabs: Board / Activity / Archived (`b` / `a` / `r`, or `7` for Archived);
+  from the detail modal. Tabs: Focus / Board / Activity / Archived (`f` / `b` / `a` / `r`, or `7` for Archived);
   choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
@@ -341,6 +350,10 @@ status transitions → activity → delete) using only this CLI.
 | `MigrateStatus(from, to)` | `status migrate` | bulk-move non-archived tasks between statuses |
 | `CountByStatus()` | — | Settings → Statuses/Lanes ticket counts |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
+| `ListFocus()` | `focus list` | Focus lanes in order (pinned parent hidden behind a pinned sub-task) |
+| `FocusTask(id, beforeID)` | `focus add` | pin / move; empty `beforeID` appends |
+| `UnfocusTask(id)` | `focus rm` | |
+| `ClearFocus()` | `focus clear` | |
 | `Archive(id)` | `archive ID` | single done task → archive |
 | `ArchiveDone()` | `archive` | bulk done → archive |
 | `Unarchive(id)` | `unarchive` | |

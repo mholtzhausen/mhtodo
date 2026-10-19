@@ -4,7 +4,7 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|open|edit|status|done|reorder|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|open|edit|status|done|reorder|focus|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
  `mhtodo ai` installs/updates `~/.claude/skills/mhtodo/SKILL.md` (workflow skill) and strips
  legacy hooks/settings/integration manifests; `--check` reports only.
@@ -117,6 +117,16 @@ Working directory fields (detail + new task) use a warm typeahead: template name
 and previously used ticket cwds, fuzzy-ranked (template names preferred), with folder picker
 and free-typed path still available. Detail-pane description & feedback grow with content up
 to 500px, then scroll.
+
+**Focus view:** a Focus tab to the left of Board shows only hand-pinned tickets (max 6 lanes),
+one large card per lane. Pins are `tasks.focus_rank` (migration v16, nullable REAL, fractional
+like `board_rank`; pinning does not bump `updated_at`). Core: `internal/core/focus.go`
+(`ListFocus` / `Focus` / `Unfocus` / `ClearFocus`); CLI: `mhtodo focus [list|add|rm|clear]`.
+If a parent and its sub-task are both pinned, only the sub-task gets a lane: the parent stays
+pinned and its lane comes back when the sub-task leaves focus. The cap counts visible lanes.
+`SetStatus(done)` and `Archive` clear the pin. Sub-task lanes are styled distinctly (`bg-field`,
+accent left edge, parent breadcrumb). Legacy localStorage pins
+(`mhtodo.focusIds`) are imported once on GUI start when the DB has no focus.
 
 **GUI window / responsiveness (desktop):** Frameless Wails window (800×560 floor, default
 1100×720); drag the header to move, double-click header (outside tabs/actions) to toggle

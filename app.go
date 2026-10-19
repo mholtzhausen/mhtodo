@@ -257,6 +257,43 @@ func (a *App) ReorderBoardTask(id string, beforeID string) (core.Task, error) {
 	return t, err
 }
 
+// ListFocus maps to CLI `focus list`: Focus view lanes in order.
+func (a *App) ListFocus() ([]core.Task, error) {
+	return a.svc.ListFocus(a.ctx)
+}
+
+// FocusTask maps to CLI `focus add ID [--before BEFORE]`.
+func (a *App) FocusTask(id string, beforeID string) (core.Task, error) {
+	var beforeRef *string
+	if strings.TrimSpace(beforeID) != "" {
+		b := strings.TrimSpace(beforeID)
+		beforeRef = &b
+	}
+	t, err := a.svc.Focus(a.ctx, id, beforeRef)
+	if err == nil {
+		a.emitChanged(t.ID, "focus")
+	}
+	return t, err
+}
+
+// UnfocusTask maps to CLI `focus rm ID`.
+func (a *App) UnfocusTask(id string) (core.Task, error) {
+	t, err := a.svc.Unfocus(a.ctx, id)
+	if err == nil {
+		a.emitChanged(t.ID, "focus")
+	}
+	return t, err
+}
+
+// ClearFocus maps to CLI `focus clear`.
+func (a *App) ClearFocus() (int, error) {
+	n, err := a.svc.ClearFocus(a.ctx)
+	if err == nil {
+		a.emitChanged("", "focus")
+	}
+	return n, err
+}
+
 // Archive maps to CLI `archive ID`: archives a single done task.
 func (a *App) Archive(id string) (core.Task, error) {
 	t, err := a.svc.Archive(a.ctx, id)

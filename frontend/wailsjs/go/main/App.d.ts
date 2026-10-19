@@ -99,3 +99,11 @@ export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core
 export function UpdateTheme(arg1:string,arg2:core.ThemeInput):Promise<core.Theme>;
 
 export function ZedTicketCommand(arg1:string):Promise<string>;
+
+export function ClearFocus():Promise<number>;
+
+export function FocusTask(arg1:string,arg2:string):Promise<core.Task>;
+
+export function ListFocus():Promise<Array<core.Task>>;
+
+export function UnfocusTask(arg1:string):Promise<core.Task>;

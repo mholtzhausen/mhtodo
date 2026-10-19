@@ -62,6 +62,7 @@ type Task struct {
 	PRURL           string `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
 	TodoSession     string `json:"todo_session"` // Claude session UUID linked to this ticket (set via edit --session)
 	TerminalPID     int    `json:"terminal_pid"` // legacy column (unused; kept for schema stability)
+	FocusRank   *float64   `json:"focus_rank"` // nil = not in Focus view; lower = further left; cleared on done/archive
 
 }
 

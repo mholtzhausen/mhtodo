@@ -23,6 +23,7 @@ export interface Task {
   archived_at: string | null
   parent_id: string | null
   board_rank: number | null
+  focus_rank: number | null
   cwd: string
   human_only: boolean
   include_in_report: boolean
@@ -155,6 +156,18 @@ export const api = {
   },
   reorderTask(id: string, beforeId?: string | null) {
     return App.ReorderBoardTask(id, beforeId ?? '') as Promise<Task>
+  },
+  listFocus(): Promise<Task[]> {
+    return App.ListFocus().then((t) => t ?? []) as Promise<Task[]>
+  },
+  focusTask(id: string, beforeId?: string | null) {
+    return App.FocusTask(id, beforeId ?? '') as Promise<Task>
+  },
+  unfocusTask(id: string) {
+    return App.UnfocusTask(id) as Promise<Task>
+  },
+  clearFocus(): Promise<number> {
+    return App.ClearFocus()
   },
   archiveDone(): Promise<Task[]> {
     return App.ArchiveDone().then((t) => t ?? []) as Promise<Task[]>

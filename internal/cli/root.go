@@ -71,6 +71,12 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "not_root", msg: err.Error()}
 		case errors.Is(err, core.ErrReorderStatusMismatch):
 			return &errExit{code: ExitUsage, name: "reorder_status_mismatch", msg: err.Error()}
+		case errors.Is(err, core.ErrFocusFull):
+			return &errExit{code: ExitUsage, name: "focus_full", msg: err.Error()}
+		case errors.Is(err, core.ErrFocusClosed):
+			return &errExit{code: ExitUsage, name: "focus_closed", msg: err.Error()}
+		case errors.Is(err, core.ErrNotFocused):
+			return &errExit{code: ExitUsage, name: "not_focused", msg: err.Error()}
 		case errors.Is(err, core.ErrEmptyActivity):
 			return &errExit{code: ExitUsage, name: "empty_activity", msg: err.Error()}
 		case errors.Is(err, core.ErrTemplateNotFound):
@@ -289,7 +295,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newOpenCmd(), newEditCmd(),
 		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
-		newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
+		newFocusCmd(), newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(),
 	} {
 		root.AddCommand(c)

@@ -8,6 +8,8 @@
     type GUISettings
   } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
+  import FocusIcon from './FocusIcon.svelte'
+  import { FOCUS_MAX } from '../lib/focus'
 
   let {
     tasks,
@@ -19,6 +21,8 @@
     archiveDoneSubtasks = false,
     settings = null,
     zedBinaryOk = false,
+    focusFull = false,
+    onToggleFocus,
     onSelect,
     onQuickAdd,
     onArchived,
@@ -34,6 +38,8 @@
     archiveDoneSubtasks?: boolean
     settings?: GUISettings | null
     zedBinaryOk?: boolean
+    focusFull?: boolean
+    onToggleFocus?: (id: string) => void
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
     onArchived?: (n: number) => void
@@ -655,6 +661,33 @@
                   class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1"
                   onmousedown={(e) => e.stopPropagation()}
                 >
+                  {#if onToggleFocus && t.status !== 'done'}
+                    {@const pinned = t.focus_rank != null}
+                    <button
+                      type="button"
+                      title={pinned
+                        ? 'Remove from focus'
+                        : focusFull
+                          ? `Focus is full (${FOCUS_MAX})`
+                          : 'Add to focus'}
+                      aria-label={pinned ? `Remove “${t.title}” from focus` : `Add “${t.title}” to focus`}
+                      aria-pressed={pinned}
+                      onclick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onToggleFocus(t.id)
+                      }}
+                      ondragstart={(e) => e.preventDefault()}
+                      class="flex h-3.5 w-3.5 items-center justify-center transition-colors
+                        {pinned
+                          ? 'text-accent hover:text-ink-3'
+                          : focusFull
+                            ? 'cursor-default text-ink-3/25'
+                            : 'text-ink-3/40 hover:text-accent'}"
+                    >
+                      <FocusIcon class="h-3.5 w-3.5" filled={pinned} />
+                    </button>
+                  {/if}
                   <button
                     type="button"
                     tabindex={t.status === 'done' ? -1 : 0}
@@ -678,7 +711,7 @@
                   type="button"
                   onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 pr-6 text-left focus:outline-none"
+                  class="w-full cursor-grab p-2.5 {onToggleFocus && t.status !== 'done' ? 'pr-11' : 'pr-6'} text-left focus:outline-none"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   <div class="flex items-center gap-2">

@@ -5,6 +5,7 @@
   import FilterBar from './components/FilterBar.svelte'
   import Archive from './components/Archive.svelte'
   import ActivityView from './components/ActivityView.svelte'
+  import FocusView from './components/FocusView.svelte'
   import TaskDetail from './components/TaskDetail.svelte'
   import NewTaskDialog from './components/NewTaskDialog.svelte'
   import SettingsDialog from './components/SettingsDialog.svelte'
@@ -22,15 +23,16 @@
     setIntegrationSettings
   } from './lib/integrationStatus'
   import { refreshCwdSuggestions } from './lib/cwdSuggestions'
+  import { FOCUS_MAX, migrateLegacyFocus } from './lib/focus'
 
   const inWails = typeof window !== 'undefined' && !!(window as any).runtime
 
-  type View = 'board' | 'archive' | 'activity'
+  type View = 'focus' | 'board' | 'archive' | 'activity'
 
   function loadStoredView(): View {
     try {
       const stored = localStorage.getItem('mhtodo.view')
-      if (stored === 'archive' || stored === 'activity') return stored
+      if (stored === 'focus' || stored === 'archive' || stored === 'activity') return stored
       // Legacy list view → archive (archived browsing lived there).
       if (stored === 'list') {
         try {
@@ -66,6 +68,10 @@
   let tasks = $state<any[]>([])
   let activities = $state<Activity[]>([])
   let activityFilterIds = $state<string[]>([])
+  // Focus lane ids in order (core.ListFocus — a pinned parent with a pinned
+  // sub-task has no lane). Pin state per task is `focus_rank != null`.
+  let focusIds = $state<string[]>([])
+  let focusSeq = 0
   let loading = $state(true)
   let loadSeq = 0
   let loadTimer: ReturnType<typeof setTimeout> | undefined
@@ -268,11 +274,12 @@
     }, 200)
   }
 
-  const PATCH_OPS = new Set(['update', 'status', 'reorder', 'edit', 'activity'])
+  const PATCH_OPS = new Set(['update', 'status', 'reorder', 'edit', 'activity', 'focus'])
 
   function onTasksChanged(payload?: { id?: string; op?: string }) {
     const id = (payload?.id ?? '').trim()
     const op = (payload?.op ?? '').trim()
+    void refreshFocus()
     if (view === 'activity' || !id || !PATCH_OPS.has(op)) {
       scheduleLoad(op === 'external' ? 150 : 100)
       return
@@ -301,6 +308,47 @@
 
   function selectTask(id: string) {
     selectedId = id
+  }
+
+  async function refreshFocus() {
+    const seq = ++focusSeq
+    try {
+      const lanes = await api.listFocus()
+      if (seq === focusSeq) focusIds = lanes.map((t) => t.id)
+    } catch {
+      /* keep last known lanes */
+    }
+  }
+
+  function isPinned(id: string): boolean {
+    return focusIds.includes(id) || tasks.find((t) => t.id === id)?.focus_rank != null
+  }
+
+  async function toggleFocusTask(id: string) {
+    try {
+      if (isPinned(id)) {
+        await api.unfocusTask(id)
+      } else {
+        await api.focusTask(id)
+      }
+    } catch (e) {
+      showToast(errMsg(e), 'info')
+    }
+  }
+
+  async function moveFocus(id: string, beforeId: string | null) {
+    const prev = focusIds
+    // Optimistic order so the lane doesn't snap back while the event round-trips.
+    const next = prev.filter((x) => x !== id)
+    const at = beforeId ? next.indexOf(beforeId) : -1
+    next.splice(at < 0 ? next.length : at, 0, id)
+    focusIds = next
+    try {
+      await api.focusTask(id, beforeId)
+    } catch (e) {
+      focusIds = prev
+      showToast(errMsg(e))
+    }
   }
 
   /**
@@ -341,6 +389,9 @@
     let nextId: string | null = null
     if (view === 'board') {
       nextId = boardAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
+    } else if (view === 'focus') {
+      const i = focusIds.indexOf(selectedId)
+      if (i >= 0) nextId = focusIds[i + dir] ?? null
     } else if (view === 'archive') {
       nextId = archiveAdjacentTaskId(displayTasks, showSubtasks, selectedId, dir)
     } else if (view === 'activity') {
@@ -398,6 +449,15 @@
         if (seq !== loadSeq) return
         tasks = t
         activities = a
+      } else if (view === 'focus') {
+        // Unfiltered so board status/search never hides a lane's parent or
+        // sub-tasks; done included for sub-task progress.
+        const [t] = await Promise.all([
+          api.list({ sort: 'board', includeDone: true }),
+          refreshFocus()
+        ])
+        if (seq !== loadSeq) return
+        tasks = t
       } else {
         const filter =
           view === 'board'
@@ -411,6 +471,7 @@
         const t = await api.list(filter)
         if (seq !== loadSeq) return
         tasks = t
+        if (view === 'board') void refreshFocus()
       }
     } catch (e) {
       if (seq !== loadSeq) return
@@ -531,6 +592,9 @@
           requestDelete(selectedTask)
         }
         break
+      case 'f':
+        setView('focus')
+        break
       case 'b':
         setView('board')
         break
@@ -591,6 +655,12 @@
     }
     const { EventsOn } = await import('../wailsjs/runtime/runtime.js')
     dbPath = await api.dbPath()
+    try {
+      const lanes = await api.listFocus()
+      await migrateLegacyFocus(lanes.length === 0, (id) => api.focusTask(id))
+    } catch {
+      /* ignore */
+    }
     try {
       alwaysOnTop = await api.getAlwaysOnTop()
     } catch {
@@ -712,7 +782,7 @@
       role="tablist"
       aria-label="View"
     >
-      {#each [['board', 'Board'], ['activity', 'Activity']] as [v, label] (v)}
+      {#each [['focus', 'Focus'], ['board', 'Board'], ['activity', 'Activity']] as [v, label] (v)}
         <button
           role="tab"
           aria-selected={view === v}
@@ -724,7 +794,11 @@
           <span class="inline-flex items-center gap-1.5">
             <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              {#if v === 'board'}
+              {#if v === 'focus'}
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="12" cy="12" r="1.5" />
+              {:else if v === 'board'}
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <path d="M8 7v7" />
                 <path d="M12 7v4" />
@@ -1031,10 +1105,24 @@
 
   <div class="flex min-h-0 flex-1">
     <main
-      class="min-h-0 flex-1 {view === 'board' ? '' : 'overflow-y-auto'} px-5 py-4"
+      class="min-h-0 flex-1 {view === 'board' || view === 'focus' ? '' : 'overflow-y-auto'} px-5 py-4"
     >
       {#if loading}
         <p class="text-sm text-ink-3">Loading…</p>
+      {:else if view === 'focus'}
+        <FocusView
+          {tasks}
+          {focusIds}
+          {selectedId}
+          settings={guiSettings}
+          {zedBinaryOk}
+          onSelect={selectTask}
+          onUnpin={toggleFocusTask}
+          onMove={moveFocus}
+          onGoToBoard={() => setView('board')}
+          onError={showToast}
+          onToast={showToast}
+        />
       {:else if view === 'board'}
         <Board
           tasks={displayTasks}
@@ -1048,6 +1136,8 @@
           {zedBinaryOk}
           onSelect={selectTask}
           onQuickAdd={(s: Status) => openNewTask({ status: s })}
+          focusFull={focusIds.length >= FOCUS_MAX}
+          onToggleFocus={toggleFocusTask}
           onArchived={(n: number) => showToast(`Archived ${n} task${n === 1 ? '' : 's'}`, 'info')}
           onError={showToast}
           onToast={showToast}
@@ -1089,7 +1179,7 @@
     <div class="flex-1"></div>
     {#if !narrowChrome}
       <span class="flex-none whitespace-nowrap"
-        ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>b</kbd>/<kbd>a</kbd> view · <kbd>r</kbd>/<kbd>7</kbd> archived ·
+        ><kbd>/</kbd> search · <kbd>n</kbd> new · <kbd>f</kbd>/<kbd>b</kbd>/<kbd>a</kbd> view · <kbd>r</kbd>/<kbd>7</kbd> archived ·
         <kbd>0–6</kbd> status · <kbd>←</kbd>/<kbd>→</kbd> modal ·
         <kbd>del</kbd> delete · <kbd>esc</kbd> dismiss/hide · <kbd>ctrl+shift+alt+t</kbd> toggle ·
         <kbd>ctrl+q</kbd> / <kbd>ctrl+click</kbd> × quit</span
@@ -1115,6 +1205,8 @@
         onToast={showToast}
         onDelete={(t: any) => requestDelete(t)}
         onSelectParent={selectTask}
+        focused={selectedTask.focus_rank != null}
+        onToggleFocus={toggleFocusTask}
         onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
       />
     </div>

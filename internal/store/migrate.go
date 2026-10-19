@@ -32,6 +32,7 @@ var migrations = []migration{
 	{version: 13, fn: seedThemesV13},
 	{version: 14, up: schemaV14},
 	{version: 15, up: schemaV15},
+	{version: 16, fn: addFocusRankColumn},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -319,6 +320,36 @@ func addTerminalPIDColumn(tx *sql.Tx) error {
 	}
 	if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN terminal_pid INTEGER NOT NULL DEFAULT 0`); err != nil {
 		return fmt.Errorf("add terminal_pid: %w", err)
+	}
+	return nil
+}
+
+// v16: focus_rank pins a task to the Focus view (nil = not focused; lower =
+// further left). Idempotent like v12 — the backfill test re-runs v11+ after
+// v15's table rebuild has dropped the column.
+func addFocusRankColumn(tx *sql.Tx) error {
+	rows, err := tx.Query(`PRAGMA table_info(tasks)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "focus_rank" {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN focus_rank REAL`); err != nil {
+		return fmt.Errorf("add focus_rank: %w", err)
 	}
 	return nil
 }

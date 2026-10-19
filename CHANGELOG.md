@@ -11,6 +11,21 @@
 ### Deprecations
 - (none)
 
+## 3.5.0 (HASH)
+
+### Features and Improvements
+- Focus view: new leftmost tab (`f`) showing up to 6 hand-pinned tickets, one wide lane each with a rich card (progress, description, feedback, sub-tasks, actions); drag lane headers to reorder
+- Pin/unpin from board cards and the task detail header; marking done or archiving unpins automatically
+- Pins are stored in the DB (`focus_rank`, migration v16) with full CLI parity: `mhtodo focus [list]`, `focus add ID [--before ID]`, `focus rm ID`, `focus clear` (new error codes `focus_full`, `focus_closed`, `not_focused`)
+- A pinned parent with a pinned sub-task shows only the sub-task's lane; sub-task lanes are visually distinct (sunken background, accent edge, parent breadcrumb)
+- Skill: agents read `mhtodo focus` for the user's current focus and change it only when asked
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.4.0 (4d67832)
 
 ### Features and Improvements

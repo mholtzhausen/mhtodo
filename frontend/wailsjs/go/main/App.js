@@ -193,3 +193,19 @@ export function UpdateTheme(arg1, arg2) {
 export function ZedTicketCommand(arg1) {
   return window['go']['main']['App']['ZedTicketCommand'](arg1);
 }
+
+export function ClearFocus() {
+  return window['go']['main']['App']['ClearFocus']();
+}
+
+export function FocusTask(arg1, arg2) {
+  return window['go']['main']['App']['FocusTask'](arg1, arg2);
+}
+
+export function ListFocus() {
+  return window['go']['main']['App']['ListFocus']();
+}
+
+export function UnfocusTask(arg1) {
+  return window['go']['main']['App']['UnfocusTask'](arg1);
+}

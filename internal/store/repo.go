@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url, focus_rank`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -46,11 +46,12 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		archived  sql.NullString
 		parent    sql.NullString
 		boardRank sql.NullFloat64
+		focusRank sql.NullFloat64
 		humanOnly int
 		includeInReport int
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL); err != nil {
+		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL, &focusRank); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
@@ -85,6 +86,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		r := boardRank.Float64
 		t.BoardRank = &r
 	}
+	if focusRank.Valid {
+		r := focusRank.Float64
+		t.FocusRank = &r
+	}
 	return t, nil
 }
 
@@ -92,10 +97,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
-		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL)
+		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank))
 	return err
 }
 
@@ -207,10 +212,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
-		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, focus_rank = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), nullFloat(t.BoardRank),
-		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, formatTS(t.UpdatedAt), t.ID)
+		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
@@ -338,6 +343,54 @@ func (r *TaskRepo) UpdateBoardRank(ctx context.Context, id string, rank float64)
 		return core.ErrNotFound
 	}
 	return nil
+}
+
+// ListFocused returns non-archived tasks with a focus_rank, in focus order.
+func (r *TaskRepo) ListFocused(ctx context.Context) ([]core.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks
+		 WHERE focus_rank IS NOT NULL AND archived_at IS NULL
+		 ORDER BY focus_rank ASC, id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []core.Task
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// UpdateFocusRank sets (or clears, rank nil) focus_rank without touching
+// updated_at — pinning is a view preference, not a task edit.
+func (r *TaskRepo) UpdateFocusRank(ctx context.Context, id string, rank *float64) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE tasks SET focus_rank = ? WHERE id = ?`, nullFloat(rank), id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return core.ErrNotFound
+	}
+	return nil
+}
+
+// ClearFocus unpins every task in one statement and returns how many were pinned.
+func (r *TaskRepo) ClearFocus(ctx context.Context) (int, error) {
+	res, err := r.db.ExecContext(ctx, `UPDATE tasks SET focus_rank = NULL WHERE focus_rank IS NOT NULL`)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return int(n), err
 }
 
 // --- activity ----------------------------------------------------------------

@@ -27,6 +27,8 @@ mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
 mhtodo activity add ID --activity "Label" --comment "…"
 mhtodo activity list --task ID [--json]
 mhtodo template search --cwd "$PWD"
+mhtodo focus [--json]                      # the user's Focus lanes (read freely)
+mhtodo focus add ID [--before ID] | focus rm ID | focus clear   # only when asked
 mhtodo done ID
 ```
 
@@ -130,7 +132,7 @@ mhtodo show <root-id> --json                        # confirm status is "pr" and
 
 When they ask what’s next / todos / pick a task:
 
-1. `mhtodo list --roots --json` (board order; do not re-sort or omit rows).
+1. `mhtodo list --roots --json` (board order; do not re-sort or omit rows). If `mhtodo focus --json` returns lanes, list those first as the user’s current focus. Focus is curated by the user; change it (`focus add/rm/clear`) only when they ask. Done/archive unpins on its own.
 2. Present every row with the host picker (`AskUserQuestion` / `AskQuestion`): status, updated date, title, helpful description — **no ids in labels**. Include “none / something else”.
 3. Adopt only after an explicit pick. Empty list → ask if they want a new root (still ask before creating).
 

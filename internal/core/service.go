@@ -23,6 +23,9 @@ type TaskRepository interface {
 	UpdateBoardRank(ctx context.Context, id string, rank float64) error
 	MaxBoardRank(ctx context.Context, status Status) (max float64, ok bool, err error)
 	ListRootsInStatus(ctx context.Context, status Status) ([]Task, error)
+	ListFocused(ctx context.Context) ([]Task, error) // non-archived, focus_rank order
+	UpdateFocusRank(ctx context.Context, id string, rank *float64) error
+	ClearFocus(ctx context.Context) (int, error)
 	Delete(ctx context.Context, id string) (Task, error)
 	// ArchiveDone archives non-archived done tasks in one statement and returns
 	// them (v0.2). When includeSubtasks is false, only root tasks are archived.
@@ -340,6 +343,7 @@ func (s *Service) SetStatus(ctx context.Context, ref string, st Status) (Task, e
 	case st == StatusDone && t.Status != StatusDone:
 		t.Progress = 100
 		t.CompletedAt = &now
+		t.FocusRank = nil // done tickets leave the Focus view
 	case t.Status == StatusDone && st != StatusDone:
 		t.CompletedAt = nil // progress left as-is per spec
 	}
@@ -443,6 +447,7 @@ func (s *Service) Archive(ctx context.Context, ref string) (Task, error) {
 	now := s.now()
 	t.ArchivedAt = &now
 	t.UpdatedAt = now
+	t.FocusRank = nil
 	if err := s.repo.Update(ctx, t); err != nil {
 		return Task{}, err
 	}

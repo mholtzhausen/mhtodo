@@ -10,6 +10,7 @@
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
   import CwdField from './CwdField.svelte'
   import TaskActivityActions from './TaskActivityActions.svelte'
+  import FocusIcon from './FocusIcon.svelte'
   import { focusOnOpen } from '../lib/focusFirstField'
 
   let {
@@ -23,7 +24,9 @@
     onToast,
     onDelete,
     onAddSubtask,
-    onSelectParent
+    onSelectParent,
+    focused = false,
+    onToggleFocus
   }: {
     task: any
     parentTitle?: string | null
@@ -36,6 +39,8 @@
     onDelete: (task: any) => void
     onAddSubtask: (parentId: string) => void
     onSelectParent?: (parentId: string) => void
+    focused?: boolean
+    onToggleFocus?: (id: string) => void
   } = $props()
 
   type ModalSection = 'task' | 'subtasks' | 'activity'
@@ -430,6 +435,19 @@
         </button>
       </div>
     </div>
+    {#if onToggleFocus && (focused || (task.status !== 'done' && !archived))}
+      <button
+        type="button"
+        onclick={() => onToggleFocus(task.id)}
+        title={focused ? 'Remove from focus' : 'Add to focus'}
+        aria-label={focused ? 'Remove from focus' : 'Add to focus'}
+        aria-pressed={focused}
+        class="rounded-control p-1.5 transition-colors hover:bg-white/5
+          {focused ? 'text-accent hover:text-ink-3' : 'text-ink-3 hover:text-accent'}"
+      >
+        <FocusIcon class="h-3.5 w-3.5" filled={focused} />
+      </button>
+    {/if}
     <button
       type="button"
       onclick={() => (saveAsOpen = true)}
