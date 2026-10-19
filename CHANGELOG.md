@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.5.0 (HASH)
+## 3.5.0 (44852f0)
 
 ### Features and Improvements
 - Focus view: new leftmost tab (`f`) showing up to 6 hand-pinned tickets, one wide lane each with a rich card (progress, description, feedback, sub-tasks, actions); drag lane headers to reorder
