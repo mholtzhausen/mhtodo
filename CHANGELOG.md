@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.5.1 (HASH)
+## 3.5.1 (bb87daf)
 
 ### Features and Improvements
 - Focus view: sub-tasks expand inline (status, editable progress, description, feedback, Open button)
