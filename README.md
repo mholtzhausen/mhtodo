@@ -248,7 +248,8 @@ status transitions → activity → delete) using only this CLI.
 
 - **Focus view:** the leftmost tab (`f`). Shows only the tickets you pin (up to 6), one wide lane
   each, sized to however many are pinned. Each card shows status, progress (editable), description, feedback,
-  sub-tasks, and the usual footer actions. Pin or unpin with the target icon on a board card or in the detail
+  sub-tasks (click to expand inline: progress, description, feedback), activity for the ticket and its
+  sub-tasks (newest first), and the usual footer actions. Each lane scrolls vertically when content is taller than the window. Pin or unpin with the target icon on a board card or in the detail
   modal header; drag a lane header to reorder. A ticket leaves focus automatically when it is marked
   done, archived, or deleted. If a parent and one of its sub-tasks are both pinned, only the sub-task
   gets a lane. Sub-task lanes look different: a sunken background, an accent left edge, and a parent breadcrumb. Pins live in the DB (`focus_rank`), so `mhtodo focus` sees and edits the same lanes.

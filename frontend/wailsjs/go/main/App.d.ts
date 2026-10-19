@@ -16,6 +16,8 @@ export function ArchiveDone():Promise<Array<core.Task>>;
 
 export function CheckBinary(arg1:string):Promise<boolean>;
 
+export function ClearFocus():Promise<number>;
+
 export function ConsumePendingFocus():Promise<string>;
 
 export function CountByStatus():Promise<Record<string, number>>;
@@ -40,6 +42,8 @@ export function DeleteTheme(arg1:string):Promise<core.Theme>;
 
 export function DuplicateTheme(arg1:string,arg2:string):Promise<core.Theme>;
 
+export function FocusTask(arg1:string,arg2:string):Promise<core.Task>;
+
 export function GetActiveTheme():Promise<core.Theme>;
 
 export function GetAlwaysOnTop():Promise<boolean>;
@@ -57,6 +61,8 @@ export function GetTheme(arg1:string):Promise<core.Theme>;
 export function HideWindow():Promise<void>;
 
 export function ListActivity(arg1:core.ActivityFilter):Promise<Array<core.Activity>>;
+
+export function ListFocus():Promise<Array<core.Task>>;
 
 export function ListTasks(arg1:core.ListFilter):Promise<Array<core.Task>>;
 
@@ -92,6 +98,8 @@ export function TaskMarkdownReport(arg1:string):Promise<string>;
 
 export function Unarchive(arg1:string):Promise<core.Task>;
 
+export function UnfocusTask(arg1:string):Promise<core.Task>;
+
 export function UpdateTask(arg1:string,arg2:core.UpdateInput):Promise<core.Task>;
 
 export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core.Template>;
@@ -99,11 +107,3 @@ export function UpdateTemplate(arg1:string,arg2:core.TemplateInput):Promise<core
 export function UpdateTheme(arg1:string,arg2:core.ThemeInput):Promise<core.Theme>;
 
 export function ZedTicketCommand(arg1:string):Promise<string>;
-
-export function ClearFocus():Promise<number>;
-
-export function FocusTask(arg1:string,arg2:string):Promise<core.Task>;
-
-export function ListFocus():Promise<Array<core.Task>>;
-
-export function UnfocusTask(arg1:string):Promise<core.Task>;

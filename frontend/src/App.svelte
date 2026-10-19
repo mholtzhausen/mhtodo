@@ -280,7 +280,7 @@
     const id = (payload?.id ?? '').trim()
     const op = (payload?.op ?? '').trim()
     void refreshFocus()
-    if (view === 'activity' || !id || !PATCH_OPS.has(op)) {
+    if (view === 'activity' || !id || !PATCH_OPS.has(op) || (view === 'focus' && op === 'activity')) {
       scheduleLoad(op === 'external' ? 150 : 100)
       return
     }
@@ -452,12 +452,14 @@
       } else if (view === 'focus') {
         // Unfiltered so board status/search never hides a lane's parent or
         // sub-tasks; done included for sub-task progress.
-        const [t] = await Promise.all([
+        const [t, a] = await Promise.all([
           api.list({ sort: 'board', includeDone: true }),
+          api.listActivity({}),
           refreshFocus()
         ])
         if (seq !== loadSeq) return
         tasks = t
+        activities = a
       } else {
         const filter =
           view === 'board'
@@ -1112,6 +1114,7 @@
       {:else if view === 'focus'}
         <FocusView
           {tasks}
+          {activities}
           {focusIds}
           {selectedId}
           settings={guiSettings}

@@ -150,7 +150,6 @@ export namespace core {
 	    archived_at?: any;
 	    parent_id?: string;
 	    board_rank?: number;
-	    focus_rank?: number;
 	    cwd: string;
 	    human_only: boolean;
 	    include_in_report: boolean;
@@ -158,6 +157,7 @@ export namespace core {
 	    pr_url: string;
 	    todo_session: string;
 	    terminal_pid: number;
+	    focus_rank?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -177,7 +177,6 @@ export namespace core {
 	        this.archived_at = this.convertValues(source["archived_at"], null);
 	        this.parent_id = source["parent_id"];
 	        this.board_rank = source["board_rank"];
-	        this.focus_rank = source["focus_rank"];
 	        this.cwd = source["cwd"];
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
@@ -185,6 +184,7 @@ export namespace core {
 	        this.pr_url = source["pr_url"];
 	        this.todo_session = source["todo_session"];
 	        this.terminal_pid = source["terminal_pid"];
+	        this.focus_rank = source["focus_rank"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

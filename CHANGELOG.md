@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 3.5.1 (HASH)
+
+### Features and Improvements
+- Focus view: sub-tasks expand inline (status, editable progress, description, feedback, Open button)
+- Focus view: per-lane activity timeline for the ticket and its sub-tasks (newest first, live-updates)
+
+### Bugfixes
+- Focus view: lanes scroll vertically instead of growing past the window
+
+### Deprecations
+- (none)
+
 ## 3.5.0 (44852f0)
 
 ### Features and Improvements

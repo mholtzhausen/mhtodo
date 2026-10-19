@@ -26,6 +26,10 @@ export function CheckBinary(arg1) {
   return window['go']['main']['App']['CheckBinary'](arg1);
 }
 
+export function ClearFocus() {
+  return window['go']['main']['App']['ClearFocus']();
+}
+
 export function ConsumePendingFocus() {
   return window['go']['main']['App']['ConsumePendingFocus']();
 }
@@ -74,6 +78,10 @@ export function DuplicateTheme(arg1, arg2) {
   return window['go']['main']['App']['DuplicateTheme'](arg1, arg2);
 }
 
+export function FocusTask(arg1, arg2) {
+  return window['go']['main']['App']['FocusTask'](arg1, arg2);
+}
+
 export function GetActiveTheme() {
   return window['go']['main']['App']['GetActiveTheme']();
 }
@@ -108,6 +116,10 @@ export function HideWindow() {
 
 export function ListActivity(arg1) {
   return window['go']['main']['App']['ListActivity'](arg1);
+}
+
+export function ListFocus() {
+  return window['go']['main']['App']['ListFocus']();
 }
 
 export function ListTasks(arg1) {
@@ -178,6 +190,10 @@ export function Unarchive(arg1) {
   return window['go']['main']['App']['Unarchive'](arg1);
 }
 
+export function UnfocusTask(arg1) {
+  return window['go']['main']['App']['UnfocusTask'](arg1);
+}
+
 export function UpdateTask(arg1, arg2) {
   return window['go']['main']['App']['UpdateTask'](arg1, arg2);
 }
@@ -192,20 +208,4 @@ export function UpdateTheme(arg1, arg2) {
 
 export function ZedTicketCommand(arg1) {
   return window['go']['main']['App']['ZedTicketCommand'](arg1);
-}
-
-export function ClearFocus() {
-  return window['go']['main']['App']['ClearFocus']();
-}
-
-export function FocusTask(arg1, arg2) {
-  return window['go']['main']['App']['FocusTask'](arg1, arg2);
-}
-
-export function ListFocus() {
-  return window['go']['main']['App']['ListFocus']();
-}
-
-export function UnfocusTask(arg1) {
-  return window['go']['main']['App']['UnfocusTask'](arg1);
 }
