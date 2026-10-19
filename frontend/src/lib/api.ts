@@ -235,6 +235,12 @@ export const api = {
   zedTicketCommand(taskId: string): Promise<string> {
     return App.ZedTicketCommand(taskId)
   },
+  claudeLauncher(): Promise<string> {
+    return App.ClaudeLauncher()
+  },
+  openClaude(taskId: string, prompt: string): Promise<string> {
+    return App.OpenClaude(taskId, prompt)
+  },
   slackReport(): Promise<string> {
     return App.SlackReport()
   },

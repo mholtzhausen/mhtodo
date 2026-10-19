@@ -4,7 +4,13 @@
   import { shortId } from '../lib/format'
   import { type GUISettings } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
+  import {
+    getClaudeLauncher,
+    loadClaudeLauncher,
+    subscribeIntegrationStatus
+  } from '../lib/integrationStatus'
   import { parsePRURLs, prURLLabel } from '../lib/prUrl'
+  import ClaudeIcon from './ClaudeIcon.svelte'
   import HumanIcon from './HumanIcon.svelte'
   import PullRequestIcon from './PullRequestIcon.svelte'
   import SlackIcon from './SlackIcon.svelte'
@@ -28,6 +34,7 @@
       parent_id?: string | null
       slack_thread?: string
       pr_url?: string
+      todo_session?: string
     }
     settings?: GUISettings | null
     zedBinaryOk?: boolean
@@ -48,6 +55,8 @@
   let prMenuBtn = $state<HTMLButtonElement | null>(null)
   let prMenuStyle = $state('')
   let openingZed = $state(false)
+  let openingClaude = $state(false)
+  let claudeLauncher = $state(getClaudeLauncher())
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
   let archiving = $state(false)
@@ -61,6 +70,19 @@
   )
   const zedTitle = $derived(
     `${zedCommand || 'Open in Zed'} — also copies ticket reference`
+  )
+  const hasSession = $derived(!!(task.todo_session ?? '').trim())
+  const showClaude = $derived(
+    !!claudeLauncher && !task.human_only && !!(task.cwd ?? '').trim()
+  )
+  // The backend resumes todo_session only when its transcript exists, so
+  // the tooltip can't promise a resume from the field alone.
+  const claudeTitle = $derived(
+    hasSession
+      ? `Open Claude in ${claudeLauncher} (resumes linked session if found)`
+      : claudeLauncher === 'herdr'
+        ? 'Start Claude in herdr (ticket reference prefilled)'
+        : `Start Claude in ${claudeLauncher} — also copies ticket reference`
   )
   const slackURL = $derived((task.slack_thread ?? '').trim())
   const prURLs = $derived(parsePRURLs(task.pr_url))
@@ -274,6 +296,14 @@
 
   // Lane overflow scrolls don't bubble to window — capture so the fixed menu closes.
   onMount(() => {
+    const unsub = subscribeIntegrationStatus(() => {
+      claudeLauncher = getClaudeLauncher()
+    })
+    void loadClaudeLauncher()
+    return unsub
+  })
+
+  onMount(() => {
     const close = () => {
       if (prMenuOpen) prMenuOpen = false
     }
@@ -302,6 +332,28 @@
       reportError(errMsg(err))
     } finally {
       openingZed = false
+    }
+  }
+
+  async function openClaude(e: MouseEvent) {
+    stop(e)
+    if (openingClaude || !showClaude) return
+    openingClaude = true
+    try {
+      let refCopied = false
+      try {
+        refCopied = await copyTicketReference()
+      } catch {
+        refCopied = false
+      }
+      const kind = await api.openClaude(task.id, ticketReference())
+      if (refCopied && kind !== 'herdr') {
+        toast('Ticket reference copied — paste into Claude', 'info')
+      }
+    } catch (err) {
+      reportError(errMsg(err))
+    } finally {
+      openingClaude = false
     }
   }
 
@@ -414,6 +466,19 @@
       </svg>
     {/if}
   </button>
+
+  {#if showClaude}
+    <button
+      type="button"
+      onclick={openClaude}
+      disabled={openingClaude}
+      title={claudeTitle}
+      aria-label={claudeTitle}
+      class="{actionBtn} text-ink-3 hover:text-ink"
+    >
+      <ClaudeIcon class="h-3 w-3 {openingClaude ? 'animate-spin' : ''}" title="" />
+    </button>
+  {/if}
 
   {#if slackURL}
     <button

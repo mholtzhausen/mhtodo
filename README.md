@@ -193,9 +193,18 @@ to set multiple. Legacy `terminal_pid` may still appear as `0` — ignore it.
 
 When Zed is enabled and found on PATH, board/archive cards show an Open-in-Zed action for tasks that
 have a working directory. It runs the configured binary with the task `cwd` (optional `env_start`
-prefix) and copies the same **ticket reference** block to the clipboard. There is no direct
-Claude/Herdr/terminal spawn in the app; agent hosts still install via `mhtodo ai`
+prefix) and copies the same **ticket reference** block to the clipboard. Agent hosts still install via `mhtodo ai`
 (installs/updates the Claude skill under `~/.claude/skills/mhtodo/`; no hooks).
+
+### Claude Code launcher
+
+When `claude` is on PATH, cards with a working directory (and not human-only) show a Claude icon
+next to the ticket-reference copy action. With [herdr](https://herdr.dev) installed it splits the
+focused herdr pane in the task `cwd` and starts Claude there: `claude --resume <todo_session>` when the
+ticket has a linked session whose transcript exists for that `cwd`, otherwise a fresh Claude with the ticket reference pasted into the input
+box (not sent, so you can add to it). If the ticket already has a live Claude pane, that pane is
+focused instead. Without herdr it opens a new ghostty (then x-terminal-emulator, then gnome-terminal)
+window in the `cwd`; the ticket reference is on the clipboard to paste.
 
 Card actions also copy a paste-ready **markdown report** or a **ticket reference** block
 (deep link + status/title + agent Instructions):

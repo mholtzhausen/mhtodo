@@ -60,3 +60,26 @@ export async function refreshBinaryReadiness(s: GUISettings = settings): Promise
   notify()
   return out
 }
+
+// Claude launcher kind ("herdr", a terminal name, or "" when unavailable).
+// Detected once per GUI session; shared by every TaskActivityActions.
+let claudeLauncher = ''
+let claudeLauncherLoad: Promise<string> | null = null
+
+export function getClaudeLauncher(): string {
+  return claudeLauncher
+}
+
+export function loadClaudeLauncher(): Promise<string> {
+  if (!claudeLauncherLoad) {
+    claudeLauncherLoad = api
+      .claudeLauncher()
+      .catch(() => '')
+      .then((kind) => {
+        claudeLauncher = kind
+        notify()
+        return kind
+      })
+  }
+  return claudeLauncherLoad
+}

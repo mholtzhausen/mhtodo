@@ -16,6 +16,8 @@ export function ArchiveDone():Promise<Array<core.Task>>;
 
 export function CheckBinary(arg1:string):Promise<boolean>;
 
+export function ClaudeLauncher():Promise<string>;
+
 export function ClearFocus():Promise<number>;
 
 export function ConsumePendingFocus():Promise<string>;
@@ -71,6 +73,8 @@ export function ListTemplates():Promise<Array<core.Template>>;
 export function ListThemes():Promise<Array<core.Theme>>;
 
 export function MigrateStatus(arg1:core.Status,arg2:core.Status):Promise<number>;
+
+export function OpenClaude(arg1:string,arg2:string):Promise<string>;
 
 export function OpenZedTicket(arg1:string):Promise<void>;
 

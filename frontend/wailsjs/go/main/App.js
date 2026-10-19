@@ -26,6 +26,10 @@ export function CheckBinary(arg1) {
   return window['go']['main']['App']['CheckBinary'](arg1);
 }
 
+export function ClaudeLauncher() {
+  return window['go']['main']['App']['ClaudeLauncher']();
+}
+
 export function ClearFocus() {
   return window['go']['main']['App']['ClearFocus']();
 }
@@ -136,6 +140,10 @@ export function ListThemes() {
 
 export function MigrateStatus(arg1, arg2) {
   return window['go']['main']['App']['MigrateStatus'](arg1, arg2);
+}
+
+export function OpenClaude(arg1, arg2) {
+  return window['go']['main']['App']['OpenClaude'](arg1, arg2);
 }
 
 export function OpenZedTicket(arg1) {

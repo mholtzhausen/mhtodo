@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Claude icon on task cards (next to copy-reference) when `claude` is installed: opens a herdr pane in the task cwd resuming the linked `todo_session` (only when its transcript exists in the cwd's Claude project), or a fresh Claude with the ticket reference prefilled unsent; falls back to ghostty / x-terminal-emulator / gnome-terminal without herdr
 
 ### Bugfixes
 - (none)

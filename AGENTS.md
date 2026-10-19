@@ -69,8 +69,12 @@ before creating root tasks and reopen `review` → `wip` with new sub-tasks when
 running binary (from-source bootstrap remains `make service-install`).
 `mhtodo install` is the user-facing folder install (`~/.local`) with optional service prompt.
 **Zed** (Settings → Integrations) opens the task working directory when enabled and copies the
-ticket reference to the clipboard on the same click; there is no direct Claude/Herdr/terminal
-spawn. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
+ticket reference to the clipboard on the same click. **Claude** (no settings): when `claude` is on
+PATH, cards with a cwd (not human-only) show a Claude icon next to copy-reference
+(`internal/integrations/claude.go`, `App.OpenClaude`). It splits the focused herdr pane
+(`herdr agent start mhtodo-<shortid> --kind claude`, focusing an existing live agent of that name instead),
+resumes `todo_session` when its transcript exists under `~/.claude/projects/<cwd>`, else pastes the ticket reference unsent (bracketed paste).
+Without herdr it opens ghostty → x-terminal-emulator → gnome-terminal in the cwd. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
 (`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`,
  clean `master`/`main` before a new branch, ask the user if the tree is dirty, never write to production (read-only), and register
  pull requests on the root via `edit … --pr-url` — never on a sub-task id).

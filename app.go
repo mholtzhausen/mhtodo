@@ -591,6 +591,35 @@ func (a *App) OpenZedTicket(ref string) error {
 	return nil
 }
 
+// ClaudeLauncher reports how OpenClaude would start Claude ("herdr", a
+// terminal name, or "" when claude or every launcher is missing).
+func (a *App) ClaudeLauncher() string {
+	l, ok := integrations.DetectClaudeLauncher()
+	if !ok {
+		return ""
+	}
+	return l.Kind
+}
+
+// OpenClaude starts Claude in the task working directory, resuming the linked
+// todo_session when set. prompt (the ticket reference) is prefilled unsent in
+// herdr when there is no session. Returns the launcher kind used.
+func (a *App) OpenClaude(ref, prompt string) (string, error) {
+	l, ok := integrations.DetectClaudeLauncher()
+	if !ok {
+		return "", fmt.Errorf("claude or a terminal launcher is not available")
+	}
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	if err := l.Launch(core.ShortID(t.ID), t.Cwd, t.TodoSession, prompt); err != nil {
+		return "", err
+	}
+	a.hideIfAlwaysOnTop()
+	return l.Kind, nil
+}
+
 // ZedTicketCommand returns the shell-equivalent Zed launch line for tooltips.
 func (a *App) ZedTicketCommand(ref string) (string, error) {
 	s, err := settings.Load(a.repo)
