@@ -79,3 +79,26 @@ func TestResumableSession(t *testing.T) {
 		t.Fatalf("other project: got %q", got)
 	}
 }
+
+func TestResumeCommand(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", dir)
+	proj := filepath.Join(dir, "projects", "-mnt-code-my-app")
+	if err := os.MkdirAll(proj, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(proj, "abc.jsonl"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ cwd, session, want string }{
+		{"/mnt/code/my.app", "abc", "cd /mnt/code/my.app && claude --resume abc"},
+		{"/mnt/code/my.app", "missing", "cd /mnt/code/my.app && claude"},
+		{"/mnt/code/it's here", "", `cd '/mnt/code/it'\''s here' && claude`},
+		{"", "abc", "claude"},
+	}
+	for _, c := range cases {
+		if got := ResumeCommand(c.cwd, c.session); got != c.want {
+			t.Errorf("ResumeCommand(%q, %q) = %q, want %q", c.cwd, c.session, got, c.want)
+		}
+	}
+}

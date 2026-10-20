@@ -613,11 +613,35 @@ func (a *App) OpenClaude(ref, prompt string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := l.Launch(core.ShortID(t.ID), t.Cwd, t.TodoSession, prompt); err != nil {
+	finish, err := l.Launch(core.ShortID(t.ID), t.Cwd, t.TodoSession, prompt)
+	if err != nil {
 		return "", err
+	}
+	if finish != nil {
+		// herdr's agent start waits for Claude to be ready; don't hold the
+		// button's promise (and spinner) on it — report late failures as a toast.
+		go func() {
+			if err := finish(); err != nil {
+				log.Printf("claude launch: %v", err)
+				if a.ctx != nil {
+					wruntime.EventsEmit(a.ctx, "claude:error", err.Error())
+				}
+			}
+		}()
 	}
 	a.hideIfAlwaysOnTop()
 	return l.Kind, nil
+}
+
+// ClaudeResumeCommand returns the shell line that resumes the task's linked
+// Claude session in its working directory (plain `claude` when no transcript
+// exists), for the Claude button's Ctrl+click copy.
+func (a *App) ClaudeResumeCommand(ref string) (string, error) {
+	t, err := a.svc.Get(a.ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	return integrations.ResumeCommand(t.Cwd, t.TodoSession), nil
 }
 
 // ZedTicketCommand returns the shell-equivalent Zed launch line for tooltips.

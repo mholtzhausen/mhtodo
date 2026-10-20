@@ -489,6 +489,7 @@
   let unbindTrayNewTask: (() => void) | undefined
   let unbindTrayNewTaskTemplate: (() => void) | undefined
   let unbindTrayOpenSettings: (() => void) | undefined
+  let unbindClaudeError: (() => void) | undefined
   let unbindFocusTask: (() => void) | undefined
   let cwdSuggestTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -700,6 +701,10 @@
     unbindTrayNewTaskTemplate = EventsOn('tray:new-task-template', () =>
       openNewTask({ template: true })
     )
+    // OpenClaude returns once the herdr pane exists; agent start finishes in the background.
+    unbindClaudeError = EventsOn('claude:error', (...data: unknown[]) => {
+      showToast(`Claude launch failed: ${String(data[0] ?? 'unknown error')}`)
+    })
     unbindTrayOpenSettings = EventsOn('tray:open-settings', () => {
       settingsOpen = true
     })
@@ -743,6 +748,7 @@
     unbindTrayNewTask?.()
     unbindTrayNewTaskTemplate?.()
     unbindTrayOpenSettings?.()
+    unbindClaudeError?.()
     unbindFocusTask?.()
     window.removeEventListener('keydown', onKeydown)
     window.removeEventListener('keydown', onCtrlKeydown)

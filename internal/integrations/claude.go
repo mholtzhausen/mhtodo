@@ -79,13 +79,39 @@ func ResumableSession(cwd, session string) string {
 	return session
 }
 
+// ResumeCommand is the shell line that reopens the ticket's Claude in cwd:
+// `claude --resume <session>` when the transcript exists, else plain `claude`.
+func ResumeCommand(cwd, session string) string {
+	cwd = strings.TrimSpace(cwd)
+	args := ClaudeArgs(ResumableSession(cwd, session))
+	if cwd == "" {
+		return strings.Join(args, " ")
+	}
+	return "cd " + shellQuote(cwd) + " && " + strings.Join(args, " ")
+}
+
+var shellSafeRe = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./~-]+$`)
+
+// shellQuote single-quotes s for POSIX shells unless it is already safe.
+func shellQuote(s string) string {
+	if shellSafeRe.MatchString(s) {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 // Launch starts claude in cwd. For herdr with no session, prompt is pasted
 // into Claude's input box without submitting; terminal launchers ignore it
 // (the caller copies it to the clipboard instead).
-func (l ClaudeLauncher) Launch(shortID, cwd, session, prompt string) error {
+//
+// Launch returns once the pane or terminal exists. When finish is non-nil the
+// launch is not complete: herdr's `agent start` blocks until Claude is ready
+// for input (up to its 30s timeout), so callers run finish in the background
+// rather than holding the UI on it.
+func (l ClaudeLauncher) Launch(shortID, cwd, session, prompt string) (finish func() error, err error) {
 	cwd = strings.TrimSpace(cwd)
 	if cwd == "" {
-		return fmt.Errorf("task has no working directory")
+		return nil, fmt.Errorf("task has no working directory")
 	}
 	session = ResumableSession(cwd, session)
 	if l.Kind == LauncherHerdr {
@@ -93,15 +119,15 @@ func (l ClaudeLauncher) Launch(shortID, cwd, session, prompt string) error {
 	}
 	args, dir := TerminalArgs(l.Kind, l.Bin, cwd, ClaudeArgs(session))
 	if args == nil {
-		return fmt.Errorf("unknown claude launcher %q", l.Kind)
+		return nil, fmt.Errorf("unknown claude launcher %q", l.Kind)
 	}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	if err := platform.StartDetached(cmd); err != nil {
-		return fmt.Errorf("start %s: %w", l.Kind, err)
+		return nil, fmt.Errorf("start %s: %w", l.Kind, err)
 	}
-	return nil
+	return nil, nil
 }
 
 // TerminalArgs builds the argv (and process dir) that opens a terminal window
@@ -134,41 +160,45 @@ func HerdrAgentName(shortID string) string {
 	return name
 }
 
-func (l ClaudeLauncher) launchHerdr(shortID, cwd, session, prompt string) error {
+func (l ClaudeLauncher) launchHerdr(shortID, cwd, session, prompt string) (func() error, error) {
 	name := HerdrAgentName(shortID)
 	// Ticket already has a live Claude pane: focus it instead of splitting again.
 	if _, err := l.herdr("agent", "get", name); err == nil {
 		_, err = l.herdr("agent", "focus", name)
-		return err
+		return nil, err
 	}
 	raw, err := l.herdr("pane", "split", "--direction", "right", "--cwd", cwd, "--focus")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	paneID, err := parseHerdrPaneID(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	start := []string{"agent", "start", name, "--kind", claudeBinaryName, "--pane", paneID}
 	if s := strings.TrimSpace(session); s != "" {
 		start = append(start, "--", "--resume", s)
 	}
-	// The new pane's shell may still be loading its rc files; agent start
-	// refuses until the prompt is up, so retry briefly.
-	for i := 0; ; i++ {
-		if _, err = l.herdr(start...); err == nil {
-			break
+	finish := func() error {
+		// The new pane's shell may still be loading its rc files; agent start
+		// refuses until the prompt is up, so retry briefly.
+		var err error
+		for i := 0; ; i++ {
+			if _, err = l.herdr(start...); err == nil {
+				break
+			}
+			if i >= herdrAgentStartRetries {
+				return err
+			}
+			time.Sleep(300 * time.Millisecond)
 		}
-		if i >= herdrAgentStartRetries {
-			return err
+		if strings.TrimSpace(session) != "" || strings.TrimSpace(prompt) == "" {
+			return nil
 		}
-		time.Sleep(300 * time.Millisecond)
+		_, err = l.herdr("pane", "send-text", paneID, BracketedPaste(prompt))
+		return err
 	}
-	if strings.TrimSpace(session) != "" || strings.TrimSpace(prompt) == "" {
-		return nil
-	}
-	_, err = l.herdr("pane", "send-text", paneID, BracketedPaste(prompt))
-	return err
+	return finish, nil
 }
 
 // BracketedPaste wraps text in paste markers so a multi-line prompt lands in
