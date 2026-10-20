@@ -63,6 +63,7 @@
 - [x] Detect install path + optional user systemd unit
 - [x] GitHub Releases latest + sha256 verify + in-place install
 - [x] Service stop / rewrite unit / enable --now when attached
+- [x] In-service updates hand off to a transient `systemd-run` unit (GUI Install button no longer kills the updater); window position saved on quit, restarted GUI reopens
 - [x] CLI flags `--check` / `--force` / `--json` + unit tests
 - [x] Docs (README, AGENTS, CHANGELOG)
 

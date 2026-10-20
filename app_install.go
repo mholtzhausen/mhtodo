@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"mhtodo/internal/store"
 	"mhtodo/internal/update"
 )
 
@@ -158,6 +161,11 @@ func (a *App) RunInstallActions(in InstallActionsInput) (InstallActionsResult, e
 		if checkErr == nil && check.UpToDate {
 			args = append(args, "--force")
 		}
+		if info, derr := update.DetectInstall(); derr == nil && info.HasService {
+			// The updater stops (kills) this GUI: save position now and ask
+			// the restarted instance to come back visible.
+			a.prepareForServiceRestart()
+		}
 		raw, err := execSelfCLI(args...)
 		if err != nil {
 			return out, err
@@ -205,6 +213,20 @@ func (a *App) RunInstallActions(in InstallActionsInput) (InstallActionsResult, e
 		out.Message = "done"
 	}
 	return out, nil
+}
+
+// prepareForServiceRestart persists the window position and, when the window
+// is up, the one-shot show-on-next-start flag.
+func (a *App) prepareForServiceRestart() {
+	if !a.visible.Load() || a.repo == nil {
+		return
+	}
+	a.captureWindowPos()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := a.repo.SetMeta(ctx, store.MetaShowOnNextStart, "true"); err != nil {
+		log.Printf("set show_on_next_start: %v", err)
+	}
 }
 
 func firstLine(s string) string {

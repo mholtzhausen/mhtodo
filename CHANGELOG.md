@@ -6,7 +6,8 @@
 - (none)
 
 ### Bugfixes
-- (none)
+- In-app upgrade while running as `mhtodo.service` no longer kills itself: `mhtodo update` detects it is inside the service cgroup and hands the install to a transient `systemd-run` unit (`update --json` gains `handed_off` / `handoff_unit`). The restarted GUI reopens its window.
+- Window position is saved on quit (including SIGTERM from a service stop) instead of during teardown, where a bogus read could overwrite it.
 
 ### Deprecations
 - (none)

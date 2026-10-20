@@ -1010,6 +1010,35 @@ func TestUpdateCheckJSON(t *testing.T) {
 	}
 }
 
+func TestUpdateHandsOffInsideService(t *testing.T) {
+	restoreRun := cli.UpdateRunForTest(func(opts update.Options) (update.Result, error) {
+		if !opts.CheckOnly {
+			t.Fatalf("inside the service the inline run must be check-only: %+v", opts)
+		}
+		return update.Result{CurrentVersion: "test", LatestVersion: "9.9.9", CheckOnly: true, Service: true}, nil
+	})
+	defer restoreRun()
+	var gotArgs []string
+	restoreHandoff := cli.UpdateHandoffForTest(
+		func() bool { return true },
+		func(args []string) (string, error) { gotArgs = args; return "mhtodo-update-1", nil },
+	)
+	defer restoreHandoff()
+
+	out, errb, run := newCLI(t)
+	if code := run("update", "--json", "--no-skill-refresh"); code != 0 {
+		t.Fatalf("exit %d (%s)", code, errb.String())
+	}
+	var res update.Result
+	mustJSON(t, out.Bytes(), &res)
+	if !res.HandedOff || res.HandoffUnit != "mhtodo-update-1" || res.Updated || res.CheckOnly {
+		t.Fatalf("json: %+v", res)
+	}
+	if strings.Join(gotArgs, " ") != "update --no-skill-refresh" {
+		t.Fatalf("handoff args: %q", gotArgs)
+	}
+}
+
 func TestUpdateInstallsSkill(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

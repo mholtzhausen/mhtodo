@@ -116,6 +116,8 @@ func (a *App) domReady(_ context.Context) {
 	a.applyAlwaysOnTop()
 	if a.visible.Load() {
 		a.restoreWindowPos()
+	} else if a.takeShowOnNextStart() {
+		a.showWindow() // restarted by an in-app update while the window was up
 	}
 	a.startPosCapture()
 	a.refreshTray()
@@ -124,10 +126,9 @@ func (a *App) domReady(_ context.Context) {
 }
 
 func (a *App) shutdown(_ context.Context) {
+	// No position capture here: the window is already being torn down and
+	// can report a bogus position. Quit/hide/the ticker persist it instead.
 	a.stopPosCapture()
-	if a.visible.Load() {
-		a.captureWindowPos()
-	}
 	if a.hotkey != nil {
 		a.hotkey.Close()
 		a.hotkey = nil
@@ -852,6 +853,24 @@ func (a *App) hideIfAlwaysOnTop() {
 	}
 }
 
+// takeShowOnNextStart consumes the one-shot meta flag set before an in-app
+// service update, so the restarted GUI comes back visible.
+func (a *App) takeShowOnNextStart() bool {
+	if a.repo == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	v, ok, err := a.repo.GetMeta(ctx, store.MetaShowOnNextStart)
+	if err != nil || !ok {
+		return false
+	}
+	if err := a.repo.DeleteMeta(ctx, store.MetaShowOnNextStart); err != nil {
+		log.Printf("clear show_on_next_start: %v", err)
+	}
+	return v == "true"
+}
+
 // captureWindowPos reads the current position into memory and persists it.
 func (a *App) captureWindowPos() {
 	if a.ctx == nil {
@@ -1000,6 +1019,12 @@ func (a *App) registerGlobalHotkey() {
 // tray, then removes the indicator and quits Wails on the shared GTK loop.
 func (a *App) Quit() {
 	a.quitting.Store(true)
+	// Persist position while the window is still mapped (SIGTERM from a
+	// service stop also lands here).
+	a.stopPosCapture()
+	if a.visible.Load() {
+		a.captureWindowPos()
+	}
 	if a.hotkey != nil {
 		a.hotkey.Close()
 		a.hotkey = nil

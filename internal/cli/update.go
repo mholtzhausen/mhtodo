@@ -20,6 +20,20 @@ func UpdateRunForTest(f func(update.Options) (update.Result, error)) (restore fu
 	return func() { updateRun = prev }
 }
 
+// Handoff seams: an updater running inside mhtodo.service re-launches itself
+// in a transient unit (see update.InServiceCgroup).
+var (
+	inServiceCgroup = update.InServiceCgroup
+	updateHandoff   = update.Handoff
+)
+
+// UpdateHandoffForTest swaps the cgroup check and handoff launcher.
+func UpdateHandoffForTest(inCgroup func() bool, handoff func([]string) (string, error)) (restore func()) {
+	prevIn, prevH := inServiceCgroup, updateHandoff
+	inServiceCgroup, updateHandoff = inCgroup, handoff
+	return func() { inServiceCgroup, updateHandoff = prevIn, prevH }
+}
+
 // updateJSON is the --json envelope: binary update result plus optional skill refresh.
 type updateJSON struct {
 	update.Result
@@ -56,14 +70,43 @@ Flags: --check reports only; --force reinstalls even when already current;
 			if err != nil {
 				return err
 			}
+			handoff := !checkOnly && inServiceCgroup()
 			res, err := updateRun(update.Options{
 				CurrentVersion: version,
-				CheckOnly:      checkOnly,
+				CheckOnly:      checkOnly || handoff,
 				Force:          force,
 			})
 			if err != nil {
 				return &errExit{code: ExitStorage, name: "update", msg: err.Error()}
 			}
+			if handoff && !res.UpToDate {
+				// Stopping mhtodo.service would kill us mid-install: re-run in
+				// a transient unit that survives the stop and re-enables it.
+				args := []string{"update"}
+				if force {
+					args = append(args, "--force")
+				}
+				if noSkillRefresh {
+					args = append(args, "--no-skill-refresh")
+				}
+				unit, herr := updateHandoff(args)
+				if herr != nil {
+					return &errExit{code: ExitStorage, name: "update", msg: herr.Error()}
+				}
+				res.CheckOnly = false
+				res.HandedOff = true
+				res.HandoffUnit = unit
+				res.Message = fmt.Sprintf("updating to v%s in background (%s); %s will restart",
+					res.LatestVersion, unit, update.ServiceUnit)
+				if o.json {
+					return o.printJSON(res)
+				}
+				if !o.quiet {
+					_, err = fmt.Fprintln(o.out, res.Message)
+				}
+				return err
+			}
+			res.CheckOnly = checkOnly
 
 			env := updateJSON{Result: res}
 			human := !o.json && !o.quiet

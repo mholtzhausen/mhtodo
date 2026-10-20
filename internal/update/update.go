@@ -29,7 +29,11 @@ type Result struct {
 	Service        bool   `json:"service"`
 	Asset          string `json:"asset,omitempty"`
 	ReleaseURL     string `json:"release_url,omitempty"`
-	Message        string `json:"message"`
+	// HandedOff is true when the install was started in a transient systemd
+	// unit (caller ran inside mhtodo.service) instead of inline.
+	HandedOff   bool   `json:"handed_off,omitempty"`
+	HandoffUnit string `json:"handoff_unit,omitempty"`
+	Message     string `json:"message"`
 }
 
 // Run checks GitHub for a newer release and optionally installs it.
