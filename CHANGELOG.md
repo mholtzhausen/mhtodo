@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.7.0 (HASH)
+## 3.7.0 (c369f9e)
 
 ### Features and Improvements
 - Focus view: lanes are editable in place — title, status, progress, description, feedback (click to edit; Ctrl+Enter / blur saves, Esc cancels), quick-add sub-task (seeds cwd / Slack thread / human-only from the parent), and post activity + comment; expanded sub-tasks edit the same fields; header expand icon opens the detail modal
