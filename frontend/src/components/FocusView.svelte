@@ -1,6 +1,6 @@
 <script lang="ts">
   import { relTime, STATUS_LABELS } from '../lib/format'
-  import { api, errMsg, type Activity } from '../lib/api'
+  import { api, errMsg, type Activity, type Status } from '../lib/api'
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import { FOCUS_MAX } from '../lib/focus'
   import type { GUISettings } from '../lib/settings'
@@ -8,6 +8,8 @@
   import ProgressControl from './ProgressControl.svelte'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import InlineEdit from './InlineEdit.svelte'
+  import StatusPicker from './StatusPicker.svelte'
 
   let {
     tasks,
@@ -144,6 +146,73 @@
       onError?.(errMsg(err))
     }
   }
+
+  async function saveField(t: any, patch: { title?: string; description?: string; feedback?: string }) {
+    try {
+      await api.update(t.id, patch)
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
+  async function setStatus(t: any, s: Status) {
+    if (s === t.status) return
+    try {
+      await api.setStatus(t.id, s)
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
+  // Per-lane drafts for the quick-add sub-task and activity forms.
+  let subDraft = $state<Record<string, string>>({})
+  let actDraft = $state<Record<string, string>>({})
+  let commentDraft = $state<Record<string, string>>({})
+  let posting = $state<Record<string, boolean>>({})
+
+  // Seeds cwd, Slack thread and human-only from the parent; not in the report
+  // (same defaults as the new-task dialog's sub-task mode).
+  async function addSubtask(t: any) {
+    const title = (subDraft[t.id] ?? '').trim()
+    if (!title || posting[t.id]) return
+    posting = { ...posting, [t.id]: true }
+    try {
+      await api.create({
+        title,
+        parentId: t.id,
+        status: 'pending',
+        cwd: t.cwd ?? '',
+        slackThread: t.slack_thread || undefined,
+        humanOnly: !!t.human_only,
+        includeInReport: false
+      })
+      subDraft = { ...subDraft, [t.id]: '' }
+    } catch (err) {
+      onError?.(errMsg(err))
+    } finally {
+      posting = { ...posting, [t.id]: false }
+    }
+  }
+
+  async function postActivity(t: any) {
+    const activity = (actDraft[t.id] ?? '').trim()
+    const comment = (commentDraft[t.id] ?? '').trim()
+    if ((!activity && !comment) || posting[t.id]) return
+    posting = { ...posting, [t.id]: true }
+    try {
+      await api.addActivity(t.id, { activity, comment })
+      actDraft = { ...actDraft, [t.id]: '' }
+      commentDraft = { ...commentDraft, [t.id]: '' }
+    } catch (err) {
+      onError?.(errMsg(err))
+    } finally {
+      posting = { ...posting, [t.id]: false }
+    }
+  }
+
+  const sectionLabel = 'mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-3'
+  const fieldClass =
+    'w-full rounded-control border border-line-soft bg-field px-2 py-1 text-[12px] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
 </script>
 
 {#if pinned.length === 0}
@@ -203,6 +272,20 @@
             <div class="flex-1"></div>
             <button
               type="button"
+              onclick={() => onSelect(t.id)}
+              title="Open task details"
+              aria-label={`Open “${t.title}” details`}
+              class="rounded-control p-0.5 text-ink-3 transition-colors hover:bg-white/5 hover:text-ink"
+            >
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 3h6v6" />
+                <path d="M9 21H3v-6" />
+                <path d="M21 3l-7 7" />
+                <path d="M3 21l7-7" />
+              </svg>
+            </button>
+            <button
+              type="button"
               onclick={() => void markDone(t)}
               title="Mark done (leaves focus)"
               aria-label={`Mark “${t.title}” done`}
@@ -241,34 +324,52 @@
                   {/if}
                 </button>
               {/if}
-              <button
-                type="button"
-                onclick={() => onSelect(t.id)}
-                class="text-left text-[15px] font-semibold leading-snug text-ink hover:text-accent-hi"
-              >
-                {t.title}
-              </button>
+              <InlineEdit
+                value={t.title}
+                onSave={(v) => saveField(t, { title: v })}
+                class="text-[15px] font-semibold leading-snug text-ink"
+                inputClass="text-[15px] font-semibold"
+              />
             </div>
+
+            <StatusPicker
+              value={t.status}
+              visibleStatuses={settings?.visible_statuses}
+              onPick={(s) => void setStatus(t, s)}
+            />
 
             <ProgressControl value={t.progress} onCommit={(p) => void saveProgress(t, p)} />
 
-            {#if (t.description ?? '').trim()}
-              <Markdown source={t.description} class="text-[13px] text-ink-2" />
-            {/if}
+            <div>
+              <p class={sectionLabel}>Description</p>
+              <InlineEdit
+                markdown
+                value={t.description}
+                onSave={(v) => saveField(t, { description: v })}
+                empty="Add a description…"
+                placeholder="Notes, links, context… (markdown)"
+                class="py-0.5 text-[13px] text-ink-2"
+                inputClass="text-[13px]"
+              />
+            </div>
 
-            {#if (t.feedback ?? '').trim()}
-              <div class="rounded-control border border-line-soft bg-field/40 px-2.5 py-2">
-                <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-3">
-                  Feedback
-                </p>
-                <Markdown source={t.feedback} class="text-[12.5px] text-ink-2" />
-              </div>
-            {/if}
+            <div class="rounded-control border border-line-soft bg-field/40 px-2.5 py-2">
+              <p class={sectionLabel}>Feedback</p>
+              <InlineEdit
+                markdown
+                value={t.feedback}
+                onSave={(v) => saveField(t, { feedback: v })}
+                empty="No feedback yet."
+                placeholder="Feedback… (markdown)"
+                class="text-[12.5px] text-ink-2"
+                inputClass="text-[12.5px]"
+              />
+            </div>
 
-            {#if kids.length > 0}
+            {#if !isSub}
               <div>
-                <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-3">
-                  Sub-tasks · {kids.filter((c) => c.status === 'done').length}/{kids.length}
+                <p class={sectionLabel}>
+                  Sub-tasks{#if kids.length > 0}&nbsp;· {kids.filter((c) => c.status === 'done').length}/{kids.length}{/if}
                 </p>
                 <ul class="space-y-1">
                   {#each kids as c (c.id)}
@@ -321,34 +422,120 @@
                               Open
                             </button>
                           </div>
+                          <InlineEdit
+                            value={c.title}
+                            onSave={(v) => saveField(c, { title: v })}
+                            class="text-[12.5px] font-medium text-ink"
+                            inputClass="text-[12.5px]"
+                          />
+                          <StatusPicker
+                            value={c.status}
+                            visibleStatuses={settings?.visible_statuses}
+                            onPick={(s) => void setStatus(c, s)}
+                          />
                           <ProgressControl value={c.progress} onCommit={(p) => void saveProgress(c, p)} />
-                          {#if (c.description ?? '').trim()}
-                            <Markdown source={c.description} class="text-[12.5px] text-ink-2" />
-                          {/if}
-                          {#if (c.feedback ?? '').trim()}
-                            <div class="rounded-control border border-line-soft bg-card/50 px-2 py-1.5">
-                              <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-3">
-                                Feedback
-                              </p>
-                              <Markdown source={c.feedback} class="text-[12px] text-ink-2" />
-                            </div>
-                          {/if}
-                          {#if !(c.description ?? '').trim() && !(c.feedback ?? '').trim()}
-                            <p class="text-[11px] italic text-ink-3/70">No description.</p>
-                          {/if}
+                          <InlineEdit
+                            markdown
+                            value={c.description}
+                            onSave={(v) => saveField(c, { description: v })}
+                            empty="Add a description…"
+                            placeholder="Notes, links, context… (markdown)"
+                            class="py-0.5 text-[12.5px] text-ink-2"
+                            inputClass="text-[12.5px]"
+                          />
+                          <div class="rounded-control border border-line-soft bg-card/50 px-2 py-1.5">
+                            <p class={sectionLabel}>Feedback</p>
+                            <InlineEdit
+                              markdown
+                              value={c.feedback}
+                              onSave={(v) => saveField(c, { feedback: v })}
+                              empty="No feedback yet."
+                              placeholder="Feedback… (markdown)"
+                              class="text-[12px] text-ink-2"
+                              inputClass="text-[12px]"
+                            />
+                          </div>
                         </div>
                       {/if}
                     </li>
                   {/each}
                 </ul>
+                <form
+                  class="mt-1.5"
+                  onsubmit={(e) => {
+                    e.preventDefault()
+                    void addSubtask(t)
+                  }}
+                >
+                  <input
+                    bind:value={subDraft[t.id]}
+                    disabled={posting[t.id]}
+                    placeholder="+ Add sub-task (Enter)"
+                    onkeydown={(e) => {
+                      if (e.key === 'Escape') {
+                        e.stopPropagation()
+                        subDraft = { ...subDraft, [t.id]: '' }
+                        ;(e.currentTarget as HTMLInputElement).blur()
+                      }
+                    }}
+                    class={fieldClass}
+                  />
+                </form>
               </div>
             {/if}
 
-            {#if acts.length > 0}
-              <div>
-                <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-3">
-                  Activity · {acts.length}
-                </p>
+            <div>
+              <p class={sectionLabel}>
+                Activity{#if acts.length > 0}&nbsp;· {acts.length}{/if}
+              </p>
+              <form
+                class="mb-2 space-y-1.5"
+                onsubmit={(e) => {
+                  e.preventDefault()
+                  void postActivity(t)
+                }}
+              >
+                <input
+                  bind:value={actDraft[t.id]}
+                  disabled={posting[t.id]}
+                  placeholder="Activity summary… (Enter to post)"
+                  onkeydown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      ;(e.currentTarget as HTMLInputElement).blur()
+                    }
+                  }}
+                  class={fieldClass}
+                />
+                {#if (actDraft[t.id] ?? '').trim() || (commentDraft[t.id] ?? '').trim()}
+                  <textarea
+                    bind:value={commentDraft[t.id]}
+                    disabled={posting[t.id]}
+                    rows="2"
+                    placeholder="Optional comment… (markdown, Ctrl+Enter to post)"
+                    onkeydown={(e) => {
+                      if (e.key === 'Escape') {
+                        e.stopPropagation()
+                        ;(e.currentTarget as HTMLTextAreaElement).blur()
+                      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault()
+                        void postActivity(t)
+                      }
+                    }}
+                    class="{fieldClass} resize-y"
+                  ></textarea>
+                  <div class="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={posting[t.id]}
+                      class="rounded-control bg-accent px-2.5 py-1 text-[11px] font-medium text-accent-ink disabled:opacity-40"
+                    >
+                      Post
+                    </button>
+                  </div>
+                {/if}
+              </form>
+              {#if acts.length > 0}
                 <ul class="space-y-2 border-l border-line-soft pl-2.5">
                   {#each acts as a (a.id)}
                     <li class="text-[12px] leading-snug">
@@ -374,8 +561,8 @@
                     </li>
                   {/each}
                 </ul>
-              </div>
-            {/if}
+              {/if}
+            </div>
           </div>
 
           <div class="flex flex-none justify-end border-t border-line-soft px-2 py-1.5">
