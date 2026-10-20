@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.7.1 (HASH)
+## 3.7.1 (9d0d479)
 
 ### Features and Improvements
 - (none)
