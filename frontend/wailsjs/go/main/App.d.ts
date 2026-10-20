@@ -18,6 +18,8 @@ export function CheckBinary(arg1:string):Promise<boolean>;
 
 export function ClaudeLauncher():Promise<string>;
 
+export function ClaudeResumeCommand(arg1:string):Promise<string>;
+
 export function ClearFocus():Promise<number>;
 
 export function ConsumePendingFocus():Promise<string>;

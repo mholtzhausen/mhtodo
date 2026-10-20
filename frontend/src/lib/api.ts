@@ -238,6 +238,9 @@ export const api = {
   claudeLauncher(): Promise<string> {
     return App.ClaudeLauncher()
   },
+  claudeResumeCommand(taskId: string): Promise<string> {
+    return App.ClaudeResumeCommand(taskId)
+  },
   openClaude(taskId: string, prompt: string): Promise<string> {
     return App.OpenClaude(taskId, prompt)
   },

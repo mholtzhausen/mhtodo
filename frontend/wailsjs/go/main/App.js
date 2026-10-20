@@ -30,6 +30,10 @@ export function ClaudeLauncher() {
   return window['go']['main']['App']['ClaudeLauncher']();
 }
 
+export function ClaudeResumeCommand(arg1) {
+  return window['go']['main']['App']['ClaudeResumeCommand'](arg1);
+}
+
 export function ClearFocus() {
   return window['go']['main']['App']['ClearFocus']();
 }

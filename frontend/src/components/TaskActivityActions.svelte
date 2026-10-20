@@ -56,6 +56,10 @@
   let prMenuStyle = $state('')
   let openingZed = $state(false)
   let openingClaude = $state(false)
+  let claudeHover = $state(false)
+  let claudeCtrl = $state(false)
+  let copiedClaudeCmd = $state(false)
+  let copyClaudeTimer: ReturnType<typeof setTimeout> | undefined
   let claudeLauncher = $state(getClaudeLauncher())
   let togglingHuman = $state(false)
   let togglingReport = $state(false)
@@ -83,6 +87,15 @@
       : claudeLauncher === 'herdr'
         ? 'Start Claude in herdr (ticket reference prefilled)'
         : `Start Claude in ${claudeLauncher} — also copies ticket reference`
+  )
+  /** Ctrl+hover swaps the action to copying the resume command. */
+  const claudeCopyMode = $derived(claudeHover && claudeCtrl)
+  const claudeLabel = $derived(
+    copiedClaudeCmd
+      ? 'Copied Claude resume command'
+      : claudeCopyMode
+        ? 'Copy Claude resume command (cd + claude --resume)'
+        : `${claudeTitle} — Ctrl+click to copy resume command`
   )
   const slackURL = $derived((task.slack_thread ?? '').trim())
   const prURLs = $derived(parsePRURLs(task.pr_url))
@@ -335,9 +348,30 @@
     }
   }
 
+  function onClaudeCtrlKey(e: KeyboardEvent) {
+    if (e.key === 'Control') claudeCtrl = e.type === 'keydown'
+  }
+
+  async function copyClaudeResumeCommand() {
+    try {
+      const cmd = await api.claudeResumeCommand(task.id)
+      await navigator.clipboard.writeText(cmd)
+      copiedClaudeCmd = true
+      clearTimeout(copyClaudeTimer)
+      copyClaudeTimer = setTimeout(() => (copiedClaudeCmd = false), 1500)
+      toast('Claude resume command copied', 'info')
+    } catch (err) {
+      reportError(errMsg(err))
+    }
+  }
+
   async function openClaude(e: MouseEvent) {
     stop(e)
     if (openingClaude || !showClaude) return
+    if (e.ctrlKey || e.metaKey) {
+      await copyClaudeResumeCommand()
+      return
+    }
     openingClaude = true
     try {
       let refCopied = false
@@ -414,7 +448,12 @@
 
 <svelte:window
   onpointerdown={onPRMenuPointerDown}
-  onkeydown={onPRMenuKeydown}
+  onkeydown={(e) => {
+    onClaudeCtrlKey(e)
+    onPRMenuKeydown(e)
+  }}
+  onkeyup={onClaudeCtrlKey}
+  onblur={() => (claudeCtrl = false)}
   onscroll={onPRMenuScrollOrResize}
   onresize={onPRMenuScrollOrResize}
 />
@@ -471,12 +510,24 @@
     <button
       type="button"
       onclick={openClaude}
+      onpointerenter={(e) => {
+        claudeHover = true
+        claudeCtrl = e.ctrlKey
+      }}
+      onpointermove={(e) => (claudeCtrl = e.ctrlKey)}
+      onpointerleave={() => (claudeHover = false)}
       disabled={openingClaude}
-      title={claudeTitle}
-      aria-label={claudeTitle}
-      class="{actionBtn} text-ink-3 hover:text-ink"
+      title={claudeLabel}
+      aria-label={claudeLabel}
+      class="{actionBtn} {copiedClaudeCmd || claudeCopyMode ? toggleOn : 'text-ink-3 hover:text-ink'}"
     >
-      <ClaudeIcon class="h-3 w-3 {openingClaude ? 'animate-spin' : ''}" title="" />
+      {#if copiedClaudeCmd}
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 6 9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      {:else}
+        <ClaudeIcon class="h-3 w-3 {openingClaude ? 'animate-spin' : ''}" title="" />
+      {/if}
     </button>
   {/if}
 

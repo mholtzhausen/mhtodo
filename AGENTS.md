@@ -74,7 +74,11 @@ PATH, cards with a cwd (not human-only) show a Claude icon next to copy-referenc
 (`internal/integrations/claude.go`, `App.OpenClaude`). It splits the focused herdr pane
 (`herdr agent start mhtodo-<shortid> --kind claude`, focusing an existing live agent of that name instead),
 resumes `todo_session` when its transcript exists under `~/.claude/projects/<cwd>`, else pastes the ticket reference unsent (bracketed paste).
-Without herdr it opens ghostty → x-terminal-emulator → gnome-terminal in the cwd. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
+`OpenClaude` returns once the pane is split; `agent start` (blocks until Claude is ready) and the
+paste run in a goroutine, with failures emitted as `claude:error` → GUI toast.
+Without herdr it opens ghostty → x-terminal-emulator → gnome-terminal in the cwd. Ctrl+click
+copies the resume command instead (`cd <cwd> && claude --resume <session>`, plain `claude` when
+no transcript; `App.ClaudeResumeCommand`); Ctrl+hover swaps its title/aria-label to say so. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
 (`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`,
  clean `master`/`main` before a new branch, ask the user if the tree is dirty, never write to production (read-only), and register
  pull requests on the root via `edit … --pr-url` — never on a sub-task id).
@@ -128,7 +132,10 @@ like `board_rank`; pinning does not bump `updated_at`). Core: `internal/core/foc
 (`ListFocus` / `Focus` / `Unfocus` / `ClearFocus`); CLI: `mhtodo focus [list|add|rm|clear]`.
 If a parent and its sub-task are both pinned, only the sub-task gets a lane: the parent stays
 pinned and its lane comes back when the sub-task leaves focus. The cap counts visible lanes.
-`SetStatus(done)` and `Archive` clear the pin. Sub-task lanes are styled distinctly (`bg-field`,
+`SetStatus(done)` and `Archive` clear the pin. Lanes are editable in place
+(`InlineEdit.svelte`): title, status, progress, description, feedback, quick-add sub-task (root
+lanes; seeds cwd/Slack/human-only from the parent, not in report), and post activity/comment;
+expanded sub-tasks edit the same fields. The header expand icon opens the detail modal. Sub-task lanes are styled distinctly (`bg-field`,
 accent left edge, parent breadcrumb). Legacy localStorage pins
 (`mhtodo.focusIds`) are imported once on GUI start when the DB has no focus.
 
