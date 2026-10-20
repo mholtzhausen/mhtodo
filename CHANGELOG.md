@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 3.7.0 (HASH)
+
+### Features and Improvements
+- Focus view: lanes are editable in place — title, status, progress, description, feedback (click to edit; Ctrl+Enter / blur saves, Esc cancels), quick-add sub-task (seeds cwd / Slack thread / human-only from the parent), and post activity + comment; expanded sub-tasks edit the same fields; header expand icon opens the detail modal
+- Claude button: Ctrl+click copies the resume command (`cd <cwd> && claude --resume <session>`, plain `claude` when no transcript exists); Ctrl+hover updates the title / aria-label
+
+### Bugfixes
+- Claude button no longer spins until herdr's `agent start` readiness wait finishes; the launch returns once the pane is split and late failures show as a toast
+
+### Deprecations
+- (none)
+
 ## 3.6.0 (e494f1d)
 
 ### Features and Improvements
