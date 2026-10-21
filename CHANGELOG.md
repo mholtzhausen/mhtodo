@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 3.8.0 (HASH)
+
+### Features and Improvements
+- Settings → General → "Hide after opening Zed / Claude" (config `hide_on_external_open`, default on): turn off to keep an always-on-top window visible after a card's Zed or Claude button opens the editor or terminal
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.7.1 (9d0d479)
 
 ### Features and Improvements
