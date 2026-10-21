@@ -43,26 +43,26 @@ func ParseStatus(s string) (Status, error) {
 // Task is the canonical task object. JSON field names are a stable agent
 // contract — do not rename.
 type Task struct {
-	ID          string     `json:"id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Feedback    string     `json:"feedback"` // agent-authored; GUI shows only when non-empty
-	Status      Status     `json:"status"`
-	Progress    int        `json:"progress"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	CompletedAt *time.Time `json:"completed_at"`
-	ArchivedAt  *time.Time `json:"archived_at"` // set on archive, cleared on unarchive (v0.2)
-	ParentID    *string    `json:"parent_id"`   // nil = root; one-level children only (v0.3)
-	BoardRank   *float64   `json:"board_rank"`  // nil = unset; root tasks only; lower = higher on board
-	Cwd             string `json:"cwd"`               // optional project/working directory for the task
-	HumanOnly       bool   `json:"human_only"`        // when true, agents must not adopt or work the task
-	IncludeInReport bool   `json:"include_in_report"` // when false, excluded from Slack board report
-	SlackThread     string `json:"slack_thread"`      // optional Slack thread URL for this ticket
-	PRURL           string `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
-	TodoSession     string `json:"todo_session"` // Claude session UUID linked to this ticket (set via edit --session)
-	TerminalPID     int    `json:"terminal_pid"` // legacy column (unused; kept for schema stability)
-	FocusRank   *float64   `json:"focus_rank"` // nil = not in Focus view; lower = further left; cleared on done/archive
+	ID              string     `json:"id"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	Feedback        string     `json:"feedback"` // agent-authored; GUI shows only when non-empty
+	Status          Status     `json:"status"`
+	Progress        int        `json:"progress"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	CompletedAt     *time.Time `json:"completed_at"`
+	ArchivedAt      *time.Time `json:"archived_at"`       // set on archive, cleared on unarchive (v0.2)
+	ParentID        *string    `json:"parent_id"`         // nil = root; one-level children only (v0.3)
+	BoardRank       *float64   `json:"board_rank"`        // nil = unset; root tasks only; lower = higher on board
+	Cwd             string     `json:"cwd"`               // optional project/working directory for the task
+	HumanOnly       bool       `json:"human_only"`        // when true, agents must not adopt or work the task
+	IncludeInReport bool       `json:"include_in_report"` // when false, excluded from Slack board report
+	SlackThread     string     `json:"slack_thread"`      // optional Slack thread URL for this ticket
+	PRURL           string     `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
+	TodoSession     string     `json:"todo_session"`      // Claude session UUID linked to this ticket (set via edit --session)
+	TerminalPID     int        `json:"terminal_pid"`      // legacy column (unused; kept for schema stability)
+	FocusRank       *float64   `json:"focus_rank"`        // nil = not in Focus view; lower = further left; cleared on done/archive
 
 }
 
@@ -95,10 +95,10 @@ type CreateInput struct {
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
 // nil pointers mean "leave unchanged". At least one must be set.
 type UpdateInput struct {
-	Title    *string
-	Desc     *string
-	Feedback *string
-	Progress  *int
+	Title           *string
+	Desc            *string
+	Feedback        *string
+	Progress        *int
 	Cwd             *string
 	HumanOnly       *bool
 	IncludeInReport *bool
@@ -116,16 +116,16 @@ func (in UpdateInput) hasFields() bool {
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
 // exclude done, sort board order, no limit.
 type ListFilter struct {
-	Status      Status // "" = any (subject to IncludeDone)
-	Search      string // case-insensitive substring over title+description
-	Limit       int    // 0 = unlimited
-	Sort        string // board|created|updated|status|progress|title; default "board"
-	Ascending   bool   // false = descending (CLI: --sort field- for ascending)
-	IncludeDone bool   // default false → done and icebox are hidden unless matched by Status
-	Archived    bool   // true → archived tasks only; default false → archived tasks excluded
-	RootsOnly         bool   // true → parent_id IS NULL only (v0.3)
-	ParentID          string // if set, only direct children of this parent (ignores RootsOnly)
-	IncludeHumanOnly  bool   // false (default) → human_only tasks are hidden; true → include them
+	Status           Status // "" = any (subject to IncludeDone)
+	Search           string // case-insensitive substring over title+description
+	Limit            int    // 0 = unlimited
+	Sort             string // board|created|updated|status|progress|title; default "board"
+	Ascending        bool   // false = descending (CLI: --sort field- for ascending)
+	IncludeDone      bool   // default false → done and icebox are hidden unless matched by Status
+	Archived         bool   // true → archived tasks only; default false → archived tasks excluded
+	RootsOnly        bool   // true → parent_id IS NULL only (v0.3)
+	ParentID         string // if set, only direct children of this parent (ignores RootsOnly)
+	IncludeHumanOnly bool   // false (default) → human_only tasks are hidden; true → include them
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

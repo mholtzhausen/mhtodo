@@ -38,16 +38,16 @@ func parseTS(s string) (time.Time, error) {
 
 func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 	var (
-		t         core.Task
-		status    string
-		createdAt string
-		updatedAt string
-		completed sql.NullString
-		archived  sql.NullString
-		parent    sql.NullString
-		boardRank sql.NullFloat64
-		focusRank sql.NullFloat64
-		humanOnly int
+		t               core.Task
+		status          string
+		createdAt       string
+		updatedAt       string
+		completed       sql.NullString
+		archived        sql.NullString
+		parent          sql.NullString
+		boardRank       sql.NullFloat64
+		focusRank       sql.NullFloat64
+		humanOnly       int
 		includeInReport int
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,

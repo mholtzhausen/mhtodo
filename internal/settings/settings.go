@@ -29,25 +29,25 @@ type IntegrationConfig struct {
 // NotificationsConfig drives tray label / status submenus, notify-send toggles,
 // and collapsed board-lane occupancy pulses (panel notifications).
 type NotificationsConfig struct {
-	TrayLabelStatuses   []string `json:"tray_label_statuses" yaml:"tray_label_statuses"`     // drive icon label summary
-	TrayMenuStatuses    []string `json:"tray_menu_statuses" yaml:"tray_menu_statuses"`       // status submenu order
+	TrayLabelStatuses    []string `json:"tray_label_statuses" yaml:"tray_label_statuses"` // drive icon label summary
+	TrayMenuStatuses     []string `json:"tray_menu_statuses" yaml:"tray_menu_statuses"`   // status submenu order
 	MaxItemsPerStatus    int      `json:"max_items_per_status" yaml:"max_items_per_status"`
-	NotifySendWIP        bool     `json:"notify_send_wip" yaml:"notify_send_wip"`               // →wip (default off)
-	NotifySendWaiting    bool     `json:"notify_send_waiting" yaml:"notify_send_waiting"`       // →waiting (default off)
-	NotifySendReview     bool     `json:"notify_send_review" yaml:"notify_send_review"`         // →review (default on)
-	NotifySendDone       bool     `json:"notify_send_done" yaml:"notify_send_done"`             // →done (default off)
-	PanelAttnStatuses   []string `json:"panel_attn_statuses" yaml:"panel_attn_statuses"`       // collapsed lanes that pulse
+	NotifySendWIP        bool     `json:"notify_send_wip" yaml:"notify_send_wip"`                 // →wip (default off)
+	NotifySendWaiting    bool     `json:"notify_send_waiting" yaml:"notify_send_waiting"`         // →waiting (default off)
+	NotifySendReview     bool     `json:"notify_send_review" yaml:"notify_send_review"`           // →review (default on)
+	NotifySendDone       bool     `json:"notify_send_done" yaml:"notify_send_done"`               // →done (default off)
+	PanelAttnStatuses    []string `json:"panel_attn_statuses" yaml:"panel_attn_statuses"`         // collapsed lanes that pulse
 	PanelAttnIntervalSec int      `json:"panel_attn_interval_sec" yaml:"panel_attn_interval_sec"` // pulse period (default 5)
-	PanelAttnIntensity   int      `json:"panel_attn_intensity" yaml:"panel_attn_intensity"`     // 1–100 (default 40)
+	PanelAttnIntensity   int      `json:"panel_attn_intensity" yaml:"panel_attn_intensity"`       // 1–100 (default 40)
 }
 
 // GUISettings are user preferences exposed to the GUI.
 type GUISettings struct {
-	DefaultCwd             string              `json:"default_cwd" yaml:"default_cwd"`
-	DefaultHumanOnly       bool                `json:"default_human_only" yaml:"default_human_only"`
-	DefaultIncludeInReport bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
-	ArchiveDoneSubtasks    bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
-	StartHidden            bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	DefaultCwd             string `json:"default_cwd" yaml:"default_cwd"`
+	DefaultHumanOnly       bool   `json:"default_human_only" yaml:"default_human_only"`
+	DefaultIncludeInReport bool   `json:"default_include_in_report" yaml:"default_include_in_report"`
+	ArchiveDoneSubtasks    bool   `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
+	StartHidden            bool   `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
 	// HideOnExternalOpen hides to tray after a Zed/Claude open while always-on-top is on.
 	HideOnExternalOpen bool `json:"hide_on_external_open" yaml:"hide_on_external_open"`
 	// VisibleStatuses controls which board lanes and StatusPicker options appear.
@@ -65,26 +65,26 @@ type integrationFile struct {
 }
 
 type notificationsFile struct {
-	TrayLabelStatuses   []string `yaml:"tray_label_statuses,omitempty"`
-	TrayMenuStatuses    []string `yaml:"tray_menu_statuses,omitempty"`
-	MaxItemsPerStatus    *int     `yaml:"max_items_per_status,omitempty"`
-	NotifySendWIP        *bool    `yaml:"notify_send_wip,omitempty"`
-	NotifySendWaiting    *bool    `yaml:"notify_send_waiting,omitempty"`
-	NotifySendReview     *bool    `yaml:"notify_send_review,omitempty"`
-	NotifySendDone       *bool    `yaml:"notify_send_done,omitempty"`
+	TrayLabelStatuses []string `yaml:"tray_label_statuses,omitempty"`
+	TrayMenuStatuses  []string `yaml:"tray_menu_statuses,omitempty"`
+	MaxItemsPerStatus *int     `yaml:"max_items_per_status,omitempty"`
+	NotifySendWIP     *bool    `yaml:"notify_send_wip,omitempty"`
+	NotifySendWaiting *bool    `yaml:"notify_send_waiting,omitempty"`
+	NotifySendReview  *bool    `yaml:"notify_send_review,omitempty"`
+	NotifySendDone    *bool    `yaml:"notify_send_done,omitempty"`
 	// No omitempty: empty list means all pulses off and must round-trip.
-	PanelAttnStatuses   []string `yaml:"panel_attn_statuses"`
+	PanelAttnStatuses    []string `yaml:"panel_attn_statuses"`
 	PanelAttnIntervalSec *int     `yaml:"panel_attn_interval_sec,omitempty"`
 	PanelAttnIntensity   *int     `yaml:"panel_attn_intensity,omitempty"`
 }
 
 type configFile struct {
-	DefaultCwd             string            `yaml:"default_cwd"`
-	DefaultHumanOnly       bool              `yaml:"default_human_only"`
-	DefaultIncludeInReport *bool             `yaml:"default_include_in_report,omitempty"`
-	ArchiveDoneSubtasks    bool              `yaml:"archive_done_subtasks"`
-	StartHidden            bool              `yaml:"start_hidden"`
-	HideOnExternalOpen     *bool             `yaml:"hide_on_external_open,omitempty"` // nil → true
+	DefaultCwd             string `yaml:"default_cwd"`
+	DefaultHumanOnly       bool   `yaml:"default_human_only"`
+	DefaultIncludeInReport *bool  `yaml:"default_include_in_report,omitempty"`
+	ArchiveDoneSubtasks    bool   `yaml:"archive_done_subtasks"`
+	StartHidden            bool   `yaml:"start_hidden"`
+	HideOnExternalOpen     *bool  `yaml:"hide_on_external_open,omitempty"` // nil → true
 	// VisibleStatuses nil → default all; empty after load is invalid and falls back.
 	VisibleStatuses []string          `yaml:"visible_statuses"`
 	Notifications   notificationsFile `yaml:"notifications"`
@@ -108,14 +108,14 @@ func defaultConfigFile() configFile {
 		StartHidden:     defaultLaunchHidden(),
 		VisibleStatuses: append([]string(nil), DefaultVisibleStatuses...),
 		Notifications: notificationsFile{
-			TrayLabelStatuses:   []string{"waiting", "review"},
-			TrayMenuStatuses:    []string{"waiting", "review"},
+			TrayLabelStatuses:    []string{"waiting", "review"},
+			TrayMenuStatuses:     []string{"waiting", "review"},
 			MaxItemsPerStatus:    &maxItems,
 			NotifySendWIP:        &notifyWIP,
 			NotifySendWaiting:    &notifyWaiting,
 			NotifySendReview:     &notifyReview,
 			NotifySendDone:       &notifyDone,
-			PanelAttnStatuses:   []string{"pending", "wip", "waiting", "review", "pr"},
+			PanelAttnStatuses:    []string{"pending", "wip", "waiting", "review", "pr"},
 			PanelAttnIntervalSec: &panelInterval,
 			PanelAttnIntensity:   &panelIntensity,
 		},
@@ -213,14 +213,14 @@ func normalizeNotifications(nf *notificationsFile) {
 func notificationsToGUI(nf notificationsFile) NotificationsConfig {
 	normalizeNotifications(&nf)
 	return NotificationsConfig{
-		TrayLabelStatuses:   append([]string(nil), nf.TrayLabelStatuses...),
-		TrayMenuStatuses:    append([]string(nil), nf.TrayMenuStatuses...),
+		TrayLabelStatuses:    append([]string(nil), nf.TrayLabelStatuses...),
+		TrayMenuStatuses:     append([]string(nil), nf.TrayMenuStatuses...),
 		MaxItemsPerStatus:    *nf.MaxItemsPerStatus,
 		NotifySendWIP:        *nf.NotifySendWIP,
 		NotifySendWaiting:    *nf.NotifySendWaiting,
 		NotifySendReview:     *nf.NotifySendReview,
 		NotifySendDone:       *nf.NotifySendDone,
-		PanelAttnStatuses:   append([]string(nil), nf.PanelAttnStatuses...),
+		PanelAttnStatuses:    append([]string(nil), nf.PanelAttnStatuses...),
 		PanelAttnIntervalSec: *nf.PanelAttnIntervalSec,
 		PanelAttnIntensity:   *nf.PanelAttnIntensity,
 	}
@@ -240,14 +240,14 @@ func notificationsFromGUI(n NotificationsConfig) notificationsFile {
 		panel = []string{}
 	}
 	nf := notificationsFile{
-		TrayLabelStatuses:   n.TrayLabelStatuses,
-		TrayMenuStatuses:    n.TrayMenuStatuses,
+		TrayLabelStatuses:    n.TrayLabelStatuses,
+		TrayMenuStatuses:     n.TrayMenuStatuses,
 		MaxItemsPerStatus:    &max,
 		NotifySendWIP:        &wip,
 		NotifySendWaiting:    &waiting,
 		NotifySendReview:     &review,
 		NotifySendDone:       &done,
-		PanelAttnStatuses:   panel,
+		PanelAttnStatuses:    panel,
 		PanelAttnIntervalSec: &interval,
 		PanelAttnIntensity:   &intensity,
 	}

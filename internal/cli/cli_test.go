@@ -955,9 +955,9 @@ func TestAI(t *testing.T) {
 		t.Fatalf("ai --json: exit %d", code)
 	}
 	var doc struct {
-		Path   string   `json:"path"`
-		Action string   `json:"action"`
-		Hash   string   `json:"hash"`
+		Path    string   `json:"path"`
+		Action  string   `json:"action"`
+		Hash    string   `json:"hash"`
 		Removed []string `json:"removed"`
 	}
 	mustJSON(t, out.Bytes(), &doc)
@@ -1839,4 +1839,3 @@ func TestThemeCRUDActivateDuplicateReset(t *testing.T) {
 		t.Fatalf("missing show exit %d, want 2", code)
 	}
 }
-

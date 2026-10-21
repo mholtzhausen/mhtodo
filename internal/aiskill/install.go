@@ -29,11 +29,11 @@ func EmbeddedHash() (string, error) {
 
 // Result is the outcome of Install (also the --json envelope for `mhtodo ai`).
 type Result struct {
-	Path     string   `json:"path"`
-	Action   string   `json:"action"` // installed | updated
-	Hash     string   `json:"hash"`
-	Removed  []string `json:"removed"`
-	CheckOnly bool    `json:"check_only,omitempty"`
+	Path      string   `json:"path"`
+	Action    string   `json:"action"` // installed | updated
+	Hash      string   `json:"hash"`
+	Removed   []string `json:"removed"`
+	CheckOnly bool     `json:"check_only,omitempty"`
 	// Check fields (when CheckOnly or after Install for reporting)
 	SkillPresent bool     `json:"skill_present,omitempty"`
 	SkillStale   bool     `json:"skill_stale,omitempty"`

@@ -66,7 +66,7 @@ func newListCmd() *cobra.Command {
 				Ascending:        ascending,
 				IncludeDone:      all || status != "",
 				Archived:         archived, // --archived shows only archived tasks (incl. done)
-				RootsOnly:          roots,
+				RootsOnly:        roots,
 				IncludeHumanOnly: humanOnly,
 			})
 			if err != nil {

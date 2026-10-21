@@ -27,23 +27,23 @@ func TestFormatTaskMarkdown(t *testing.T) {
 		UpdatedAt:   updated,
 	}
 	childWIP := core.Task{
-		ID:    "01900000-0000-7000-8000-000000000003",
-		Title: "Request quotes from installers",
-		Status: core.StatusWIP,
-		Progress: 60,
+		ID:        "01900000-0000-7000-8000-000000000003",
+		Title:     "Request quotes from installers",
+		Status:    core.StatusWIP,
+		Progress:  60,
 		UpdatedAt: updated,
 	}
 	activities := []core.Activity{
 		{
-			TaskID:   root.ID,
-			Activity: "Fabric Shortlist",
-			Comment:  "ShadePro sample book: Sandstone 320.",
+			TaskID:    root.ID,
+			Activity:  "Fabric Shortlist",
+			Comment:   "ShadePro sample book: Sandstone 320.",
 			CreatedAt: updated,
 		},
 		{
-			TaskID:   childWIP.ID,
-			Activity: "Quotes Requested",
-			Comment:  "Emailed ShadePro and SunStop.",
+			TaskID:    childWIP.ID,
+			Activity:  "Quotes Requested",
+			Comment:   "Emailed ShadePro and SunStop.",
 			CreatedAt: updated,
 		},
 	}

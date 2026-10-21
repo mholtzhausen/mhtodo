@@ -18,10 +18,10 @@ import (
 // goroutine (not the GTK main thread); they must only touch Go state and Wails
 // runtime APIs, which are safe from any goroutine.
 type Handlers struct {
-	ToggleWindow        func() // Show / Hide mhtodo
-	NewTask             func() // show window + open create dialog
-	NewTaskFromTemplate func() // show window + open create dialog with the template picker
-	OpenSettings        func() // show window + open Settings
+	ToggleWindow        func()          // Show / Hide mhtodo
+	NewTask             func()          // show window + open create dialog
+	NewTaskFromTemplate func()          // show window + open create dialog with the template picker
+	OpenSettings        func()          // show window + open Settings
 	FocusTask           func(id string) // show window + focus task from a status submenu
 	Quit                func()          // real exit (systray.Quit + wails quit)
 }
