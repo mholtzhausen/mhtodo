@@ -846,11 +846,16 @@ func (a *App) hideWindow() {
 }
 
 // hideIfAlwaysOnTop hides to tray after Claude/Zed open so the activated
-// terminal or IDE is not covered by a pinned mhtodo window.
+// terminal or IDE is not covered by a pinned mhtodo window. Settings →
+// General → "Hide after opening Zed / Claude" turns it off.
 func (a *App) hideIfAlwaysOnTop() {
-	if a.alwaysOnTop.Load() {
-		a.hideWindow()
+	if !a.alwaysOnTop.Load() {
+		return
 	}
+	if s, err := settings.Load(a.repo); err == nil && !s.HideOnExternalOpen {
+		return
+	}
+	a.hideWindow()
 }
 
 // takeShowOnNextStart consumes the one-shot meta flag set before an in-app

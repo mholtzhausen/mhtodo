@@ -41,7 +41,8 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   Exit and Ctrl+click (or Ctrl+Q) to quit. Also
   supports always-on-top (persisted in DB `meta`), Esc-to-hide, and a global X11 hotkey
   (`Ctrl+Shift+Alt+T`, hardcoded for now) to toggle show/hide and raise the window.
-  With always-on-top on, a successful Zed open hides the window to tray.
+  With always-on-top on, a successful Zed or Claude open hides the window to tray
+  (Settings → General → "Hide after opening Zed / Claude", default on; config `hide_on_external_open`).
   Tray label shows attention summaries (configurable statuses); status submenus list root tasks
   and focus them on click (Settings → Notifications).
 - Desktop notifications (`notify-send`) on status transitions, toggleable in Settings → Notifications

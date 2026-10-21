@@ -37,6 +37,8 @@ export interface GUISettings {
   default_include_in_report: boolean
   archive_done_subtasks: boolean
   start_hidden: boolean
+  /** Hide to tray after opening Zed/Claude while always-on-top is on. */
+  hide_on_external_open: boolean
   /** Board lanes + StatusPicker options that are shown. At least one. */
   visible_statuses: TaskStatusId[]
   notifications: NotificationsConfig
@@ -130,6 +132,7 @@ export const defaultSettings = (): GUISettings => ({
   default_include_in_report: true,
   archive_done_subtasks: false,
   start_hidden: false,
+  hide_on_external_open: true,
   visible_statuses: [...DEFAULT_VISIBLE_STATUSES],
   notifications: defaultNotifications(),
   zed: { enabled: false, binary: 'zed', env_start: '' }
@@ -172,6 +175,7 @@ export function fromGoSettings(s: goSettings.GUISettings): GUISettings {
     default_include_in_report: s.default_include_in_report !== false,
     archive_done_subtasks: !!s.archive_done_subtasks,
     start_hidden: !!s.start_hidden,
+    hide_on_external_open: s.hide_on_external_open !== false,
     visible_statuses: normalizeVisibleStatuses(s.visible_statuses),
     notifications: fromGoNotifications(s.notifications),
     zed: {
@@ -190,6 +194,7 @@ export function toGoSettings(s: GUISettings): goSettings.GUISettings {
     default_include_in_report: s.default_include_in_report,
     archive_done_subtasks: s.archive_done_subtasks,
     start_hidden: s.start_hidden,
+    hide_on_external_open: s.hide_on_external_open,
     visible_statuses: s.visible_statuses?.length
       ? s.visible_statuses
       : [...DEFAULT_VISIBLE_STATUSES],

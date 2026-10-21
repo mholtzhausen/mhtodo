@@ -21,6 +21,7 @@ func TestLoadSaveYAMLRoundTrip(t *testing.T) {
 	want.DefaultIncludeInReport = false
 	want.ArchiveDoneSubtasks = true
 	want.StartHidden = true
+	want.HideOnExternalOpen = false
 	want.Notifications.TrayLabelStatuses = []string{"waiting"}
 	want.Notifications.TrayMenuStatuses = []string{"waiting", "review", "wip"}
 	want.Notifications.MaxItemsPerStatus = 7
@@ -65,6 +66,9 @@ func TestNotificationsDefaultsWhenAbsent(t *testing.T) {
 	got, err := Load(nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !got.HideOnExternalOpen {
+		t.Fatal("hide_on_external_open default should be true")
 	}
 	def := Default().Notifications
 	if !reflect.DeepEqual(got.Notifications.TrayLabelStatuses, def.TrayLabelStatuses) {

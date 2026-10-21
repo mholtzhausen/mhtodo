@@ -323,6 +323,7 @@
       default_include_in_report,
       archive_done_subtasks,
       start_hidden,
+      hide_on_external_open,
       notifications,
       zed
     } = settings
@@ -331,6 +332,7 @@
     void default_include_in_report
     void archive_done_subtasks
     void start_hidden
+    void hide_on_external_open
     void notifications.tray_label_statuses
     void notifications.tray_menu_statuses
     void notifications.max_items_per_status
@@ -641,6 +643,20 @@
                   <span class="text-sm text-ink-2">Start hidden in system tray</span>
                   <span class="text-xs italic text-ink-3/75"
                     >When off, the window is shown on launch; when on, only the tray icon appears until you open it. Takes effect on next launch.</span
+                  >
+                </span>
+              </label>
+
+              <label class="flex cursor-pointer items-start gap-gap-md">
+                <input
+                  type="checkbox"
+                  bind:checked={settings.hide_on_external_open}
+                  class="mt-0.5 h-4 w-4 rounded-control border-line-soft bg-field text-accent focus:ring-accent/25"
+                />
+                <span class="flex flex-col gap-0.5">
+                  <span class="text-sm text-ink-2">Hide after opening Zed / Claude</span>
+                  <span class="text-xs italic text-ink-3/75"
+                    >While always-on-top is on, hide the window to the tray after a card's Zed or Claude button opens, so it doesn't cover the editor or terminal.</span
                   >
                 </span>
               </label>

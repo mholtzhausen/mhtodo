@@ -48,6 +48,8 @@ type GUISettings struct {
 	DefaultIncludeInReport bool                `json:"default_include_in_report" yaml:"default_include_in_report"`
 	ArchiveDoneSubtasks    bool                `json:"archive_done_subtasks" yaml:"archive_done_subtasks"`
 	StartHidden            bool                `json:"start_hidden" yaml:"start_hidden"` // launch to tray without showing the window
+	// HideOnExternalOpen hides to tray after a Zed/Claude open while always-on-top is on.
+	HideOnExternalOpen bool `json:"hide_on_external_open" yaml:"hide_on_external_open"`
 	// VisibleStatuses controls which board lanes and StatusPicker options appear.
 	// Empty after normalize falls back to all statuses. At least one must remain.
 	VisibleStatuses []string            `json:"visible_statuses" yaml:"visible_statuses"`
@@ -82,6 +84,7 @@ type configFile struct {
 	DefaultIncludeInReport *bool             `yaml:"default_include_in_report,omitempty"`
 	ArchiveDoneSubtasks    bool              `yaml:"archive_done_subtasks"`
 	StartHidden            bool              `yaml:"start_hidden"`
+	HideOnExternalOpen     *bool             `yaml:"hide_on_external_open,omitempty"` // nil → true
 	// VisibleStatuses nil → default all; empty after load is invalid and falls back.
 	VisibleStatuses []string          `yaml:"visible_statuses"`
 	Notifications   notificationsFile `yaml:"notifications"`
@@ -481,12 +484,17 @@ func toGUI(cf configFile) GUISettings {
 	if cf.DefaultIncludeInReport != nil {
 		includeInReport = *cf.DefaultIncludeInReport
 	}
+	hideOnExternalOpen := true
+	if cf.HideOnExternalOpen != nil {
+		hideOnExternalOpen = *cf.HideOnExternalOpen
+	}
 	return GUISettings{
 		DefaultCwd:             cf.DefaultCwd,
 		DefaultHumanOnly:       cf.DefaultHumanOnly,
 		DefaultIncludeInReport: includeInReport,
 		ArchiveDoneSubtasks:    cf.ArchiveDoneSubtasks,
 		StartHidden:            cf.StartHidden,
+		HideOnExternalOpen:     hideOnExternalOpen,
 		VisibleStatuses:        append([]string(nil), cf.VisibleStatuses...),
 		Notifications:          notificationsToGUI(cf.Notifications),
 		Zed: IntegrationConfig{
@@ -504,6 +512,8 @@ func applyGUI(cf *configFile, s GUISettings) {
 	cf.DefaultIncludeInReport = &include
 	cf.ArchiveDoneSubtasks = s.ArchiveDoneSubtasks
 	cf.StartHidden = s.StartHidden
+	hide := s.HideOnExternalOpen
+	cf.HideOnExternalOpen = &hide
 	cf.VisibleStatuses = append([]string(nil), s.VisibleStatuses...)
 	cf.Notifications = notificationsFromGUI(s.Notifications)
 	cf.Zed.Enabled = s.Zed.Enabled
