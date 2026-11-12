@@ -27,6 +27,7 @@ type Template struct {
 	Status          *Status   `json:"status"`
 	Cwd             *string   `json:"cwd"`
 	SlackThread     *string   `json:"slack_thread"`
+	GitRepo         *string   `json:"git_repo"`
 	HumanOnly       *bool     `json:"human_only"`
 	IncludeInReport *bool     `json:"include_in_report"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -44,6 +45,7 @@ type TemplateInput struct {
 	Status          *Status
 	Cwd             *string
 	SlackThread     *string
+	GitRepo         *string
 	HumanOnly       *bool
 	IncludeInReport *bool
 }
@@ -66,6 +68,9 @@ func (t Template) Apply(in CreateInput) CreateInput {
 	}
 	if t.SlackThread != nil {
 		in.SlackThread = *t.SlackThread
+	}
+	if t.GitRepo != nil {
+		in.GitRepo = *t.GitRepo
 	}
 	if t.HumanOnly != nil {
 		in.HumanOnly = *t.HumanOnly
@@ -123,6 +128,10 @@ func (in *TemplateInput) normalize() error {
 	// fresh pointer so the caller's string is never mutated in place.
 	in.Cwd = trimmed(in.Cwd)
 	in.SlackThread = trimmed(in.SlackThread)
+	if in.GitRepo != nil {
+		v := NormalizeGitRepo(*in.GitRepo)
+		in.GitRepo = &v
+	}
 	return nil
 }
 
@@ -369,6 +378,7 @@ func (t Template) AsInput() TemplateInput {
 		Status:          clonePtr(t.Status),
 		Cwd:             clonePtr(t.Cwd),
 		SlackThread:     clonePtr(t.SlackThread),
+		GitRepo:         clonePtr(t.GitRepo),
 		HumanOnly:       clonePtr(t.HumanOnly),
 		IncludeInReport: clonePtr(t.IncludeInReport),
 	}
@@ -385,6 +395,7 @@ func templateFrom(id string, in TemplateInput) Template {
 		Status:          clonePtr(in.Status),
 		Cwd:             clonePtr(in.Cwd),
 		SlackThread:     clonePtr(in.SlackThread),
+		GitRepo:         clonePtr(in.GitRepo),
 		HumanOnly:       clonePtr(in.HumanOnly),
 		IncludeInReport: clonePtr(in.IncludeInReport),
 	}

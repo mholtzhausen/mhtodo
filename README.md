@@ -93,7 +93,7 @@ concurrently with the GUI.
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
-`parent_is_child`, `not_root`,
+`parent_is_child`, `not_root`, `git_detect`, `git_repo_mismatch`,
 `reorder_status_mismatch`, `empty_activity`, `focus_full`, `focus_closed`, `not_focused`,
 `usage`, `storage`, `update`, `service`, `install`.
 
@@ -101,11 +101,11 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status icebox\|pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only]` | default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status icebox\|pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--git-repo` optional repository and `--git-branch` optional branch name(s), repeatable, stored one-per-line in `git_branches`; `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only] [--git-repo REPO] [--git-branch NAME \| --git-current]` | `--git-repo` matches the normalized repo (case-insensitive); `--git-branch` matches one recorded branch exactly; `--git-current` uses the repo + current branch of the working directory; `--search` also matches git repo/branches; default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--git-detect[=DIR]] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--git-branch` is repeatable (full replacement list); `--git-detect` reads the repo + current branch from the working directory (or `--git-detect=DIR`; note the `=`), sets `git_repo` when empty and appends the branch (exit 1 `git_repo_mismatch` if a different repo is recorded, `git_detect` if not a git work tree / detached HEAD); combinable with other flags; `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--git-repo ""` / `--git-branch ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
 | `status` (`set`) | `mhtodo status ID icebox\|pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
 | `status migrate` | `mhtodo status migrate FROM TO` | bulk-moves every non-archived task from one status to another (JSON: `migrated`, `from`, `to`) |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
@@ -126,8 +126,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `template list` | `mhtodo template list` | all templates, name order |
 | `template search` | `mhtodo template search [QUERY] [--mode fuzzy\|regex] [--cwd PATH]` | fuzzy (default) or regex over name/title_prefix/description/cwd; `--cwd` exact path match; query and/or `--cwd` required |
 | `template show` | `mhtodo template show REF` | one template by id or name |
-| `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
-| `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
+| `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--git-repo REPO] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
+| `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-git-repo\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
 | `template rm` | `mhtodo template rm REF [--yes]` | non-TTY requires `--yes`; prints deleted id |
 | `theme list` | `mhtodo theme list` | all themes, name order (`*` = active) |
 | `theme search` | `mhtodo theme search QUERY [--mode fuzzy\|regex]` | fuzzy (default) or regex over name |
@@ -161,7 +161,9 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "human_only": false,
   "include_in_report": true,
   "slack_thread": "",
-  "pr_url": ""
+  "pr_url": "",
+  "git_repo": "github.com/me/mhtodo",
+  "git_branches": "feat/git-fields"
 }
 ```
 
@@ -187,7 +189,10 @@ such tasks; default `list` hides them unless `--human-only` is passed. IDs are U
 `todo_session` holds the Claude session UUID linked when an agent adopts the ticket
 (`mhtodo edit ID --session …`). `pr_url` holds optional pull-request URL(s), one per line;
 setting the field empty→non-empty advances status to `pr`. Repeat `--pr-url` on `add`/`edit`
-to set multiple. Legacy `terminal_pid` may still appear as `0` — ignore it.
+to set multiple. `git_repo` records the git repository the ticket involves; `git_branches` lists its
+branch name(s), one per line (trimmed, duplicates dropped); repeat `--git-branch` on `add`/`edit` to
+set multiple. Repos are normalized to `host/path` (`git@github.com:org/x.git`, `https://github.com/org/x.git`
+and `org/x` all become `github.com/org/x`; local paths stay paths). Templates can preset `git_repo`. Legacy `terminal_pid` may still appear as `0` — ignore it.
 
 ### Zed (Settings → Integrations)
 
@@ -218,6 +223,7 @@ Instructions: (only if you start working on this task)
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
  - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
+ - after creating the branch: record it on the root ticket with `mhtodo edit {rootShort8} --git-detect` (run in the repo; sets the repo if empty and appends the current branch — or `--git-repo <repo> --git-branch <branch>`, which replaces the branch list)
  - never write to or change production while working this ticket (no deploys, migrations, data/config edits, restarts, or mutating calls); you may only read from production. If the work needs a production change, stop and hand it back to the user
  - when you open a pull request: put every PR URL on the root ticket with `mhtodo edit {rootShort8} --pr-url <url> [--pr-url <url>…]` (repeatable; each edit replaces the full list — `mhtodo show {rootShort8} --json` first if adding another). Never leave PR links only in feedback or comments.
  - (sub-task handoffs only) register pull requests against the main ticket `{rootShort8}`, not this sub-task id
@@ -351,10 +357,11 @@ status transitions → activity → delete) using only this CLI.
 
 | Bound method (GUI) | CLI command | Notes |
 |---|---|---|
-| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, parentId (direct children), includeHumanOnly (GUI defaults true; CLI default excludes human-only) |
+| `ListTasks(filter)` | `list` | filter: status, search, limit, sort, includeDone, archived, rootsOnly, parentId (direct children), includeHumanOnly (GUI defaults true; CLI default excludes human-only), gitRepo, gitBranch |
+| `DetectGit(id)` | `edit --git-detect` | records repo + current branch from the task's cwd (detail pane "Detect from cwd") |
 | `GetTask(id)` | `show` | prefix match allowed |
 | `CreateTask(in)` | `add` | optional ParentID, Cwd, HumanOnly, IncludeInReport (*bool, default true), SlackThread, TodoSession |
-| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/todo_session; `pr_url` is newline-separated URL(s); empty→non-empty advances to `pr` |
+| `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/git_repo/git_branches/todo_session; `pr_url` is newline-separated URL(s); empty→non-empty advances to `pr` |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | optional notify-send per Settings (wip/waiting/review/done); assigns end rank on column change |
 | `MigrateStatus(from, to)` | `status migrate` | bulk-move non-archived tasks between statuses |

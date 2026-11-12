@@ -128,6 +128,7 @@
       ` - record your current claude session against the ticket: \`mhtodo edit ${id} --session <claude-session-uuid>\``,
       ' - remember to update subtasks and activity comments if you do work on this',
       ' - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work',
+      ` - after creating the branch: record it on the root ticket with \`mhtodo edit ${rootId} --git-detect\` (run in the repo; sets the repo if empty and appends the current branch — or \`--git-repo <repo> --git-branch <branch>\`, which replaces the branch list)`,
       ' - never write to or change production while working this ticket (no deploys, migrations, data/config edits, restarts, or mutating calls); you may only read from production. If the work needs a production change, stop and hand it back to the user',
       ` - when you open a pull request: put every PR URL on the root ticket with \`mhtodo edit ${rootId} --pr-url <url> [--pr-url <url>…]\` (repeatable; each edit replaces the full list — \`mhtodo show ${rootId} --json\` first if adding another). Never leave PR links only in feedback or comments.`
     ]

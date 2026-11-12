@@ -13,7 +13,7 @@ import (
 
 // --- task templates (v0.5) ---------------------------------------------------
 
-const templateColumns = `id, name, title_prefix, description, status, cwd, slack_thread, human_only, include_in_report, created_at, updated_at`
+const templateColumns = `id, name, title_prefix, description, status, cwd, slack_thread, human_only, include_in_report, created_at, updated_at, git_repo`
 
 func scanTemplate(row interface{ Scan(...any) error }) (core.Template, error) {
 	var (
@@ -23,13 +23,14 @@ func scanTemplate(row interface{ Scan(...any) error }) (core.Template, error) {
 		status          sql.NullString
 		cwd             sql.NullString
 		slackThread     sql.NullString
+		gitRepo         sql.NullString
 		humanOnly       sql.NullInt64
 		includeInReport sql.NullInt64
 		createdAt       string
 		updatedAt       string
 	)
 	if err := row.Scan(&t.ID, &t.Name, &titlePrefix, &description, &status, &cwd, &slackThread,
-		&humanOnly, &includeInReport, &createdAt, &updatedAt); err != nil {
+		&humanOnly, &includeInReport, &createdAt, &updatedAt, &gitRepo); err != nil {
 		return core.Template{}, err
 	}
 	t.TitlePrefix = strPtr(titlePrefix)
@@ -40,6 +41,7 @@ func scanTemplate(row interface{ Scan(...any) error }) (core.Template, error) {
 	}
 	t.Cwd = strPtr(cwd)
 	t.SlackThread = strPtr(slackThread)
+	t.GitRepo = strPtr(gitRepo)
 	t.HumanOnly = intBoolPtr(humanOnly)
 	t.IncludeInReport = intBoolPtr(includeInReport)
 	var err error
@@ -69,9 +71,9 @@ func templateArgs(t core.Template) []any {
 
 func (r *TaskRepo) CreateTemplate(ctx context.Context, t core.Template) error {
 	args := append([]any{t.ID}, templateArgs(t)...)
-	args = append(args, formatTS(t.CreatedAt), formatTS(t.UpdatedAt))
+	args = append(args, formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullStr(t.GitRepo))
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO task_templates (`+templateColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO task_templates (`+templateColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		args...)
 	if isUniqueViolation(err) {
 		return &core.DuplicateTemplateNameError{Name: t.Name}
@@ -122,10 +124,11 @@ func (r *TaskRepo) ListTemplates(ctx context.Context) ([]core.Template, error) {
 
 // UpdateTemplate replaces every preset field (nil clears it) by t.ID.
 func (r *TaskRepo) UpdateTemplate(ctx context.Context, t core.Template) error {
-	args := append(templateArgs(t), formatTS(t.UpdatedAt), t.ID)
+	args := append(templateArgs(t), formatTS(t.UpdatedAt), nullStr(t.GitRepo), t.ID)
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE task_templates SET name = ?, title_prefix = ?, description = ?, status = ?,
-		 cwd = ?, slack_thread = ?, human_only = ?, include_in_report = ?, updated_at = ?
+		 cwd = ?, slack_thread = ?, human_only = ?, include_in_report = ?, updated_at = ?,
+		 git_repo = ?
 		 WHERE id = ?`, args...)
 	if isUniqueViolation(err) {
 		return &core.DuplicateTemplateNameError{Name: t.Name}

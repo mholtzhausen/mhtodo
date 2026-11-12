@@ -33,6 +33,9 @@ var migrations = []migration{
 	{version: 14, up: schemaV14},
 	{version: 15, up: schemaV15},
 	{version: 16, fn: addFocusRankColumn},
+	{version: 17, fn: addGitColumns},
+	{version: 18, fn: addGitColumns}, // repairs DBs that ran an early v17 which added only git_refs (now unused)
+	{version: 19, fn: addTemplateGitRepoColumn},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -352,6 +355,61 @@ func addFocusRankColumn(tx *sql.Tx) error {
 		return fmt.Errorf("add focus_rank: %w", err)
 	}
 	return nil
+}
+
+// v17: git_repo (single repository) + git_branches (one branch per line) the
+// ticket involves. Idempotent like v12/v16.
+func addGitColumns(tx *sql.Tx) error {
+	have, err := tableColumns(tx, "tasks")
+	if err != nil {
+		return err
+	}
+	for _, col := range []string{"git_repo", "git_branches"} {
+		if have[col] {
+			continue
+		}
+		if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add %s: %w", col, err)
+		}
+	}
+	return nil
+}
+
+// v19: git_repo preset on task templates. NULL = not part of the template,
+// like every other preset column.
+func addTemplateGitRepoColumn(tx *sql.Tx) error {
+	have, err := tableColumns(tx, "task_templates")
+	if err != nil {
+		return err
+	}
+	if have["git_repo"] {
+		return nil
+	}
+	if _, err := tx.Exec(`ALTER TABLE task_templates ADD COLUMN git_repo TEXT`); err != nil {
+		return fmt.Errorf("add task_templates.git_repo: %w", err)
+	}
+	return nil
+}
+
+// tableColumns returns the set of column names on table.
+func tableColumns(tx *sql.Tx, table string) (map[string]bool, error) {
+	rows, err := tx.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return nil, fmt.Errorf("pragma table_info(%s): %w", table, err)
+	}
+	defer rows.Close()
+	have := map[string]bool{}
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return nil, err
+		}
+		have[name] = true
+	}
+	return have, rows.Err()
 }
 
 // seedThemesV13 creates the themes table, inserts Slate/Paper/Ember, and sets

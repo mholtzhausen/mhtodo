@@ -11,7 +11,8 @@ import (
 
 func newAddCmd() *cobra.Command {
 	var desc, feedback, status, parent, cwd, slackThread, template string
-	var prURLs []string
+	var prURLs, gitBranches []string
+	var gitRepo string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -59,6 +60,10 @@ func newAddCmd() *cobra.Command {
 				if cmd.Flags().Changed("pr-url") {
 					in.PRURL = core.JoinPRURLs(prURLs)
 				}
+				if cmd.Flags().Changed("git-repo") {
+					in.GitRepo = gitRepo
+				}
+				in.GitBranches = core.JoinGitBranches(gitBranches)
 				if cmd.Flags().Changed("human-only") {
 					in.HumanOnly = humanOnly
 				}
@@ -77,6 +82,8 @@ func newAddCmd() *cobra.Command {
 				in.HumanOnly = humanOnly
 				in.SlackThread = slackThread
 				in.PRURL = core.JoinPRURLs(prURLs)
+				in.GitRepo = gitRepo
+				in.GitBranches = core.JoinGitBranches(gitBranches)
 				switch {
 				case cmd.Flags().Changed("include-in-report"):
 					v := includeInReport
@@ -111,6 +118,8 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "relevant working directory path")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL for this ticket")
 	cmd.Flags().StringArrayVar(&prURLs, "pr-url", nil, "pull request URL(s); repeatable; non-empty advances status to pr")
+	cmd.Flags().StringVar(&gitRepo, "git-repo", "", "git repository (URL or owner/name)")
+	cmd.Flags().StringArrayVar(&gitBranches, "git-branch", nil, "git branch name(s); repeatable")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")

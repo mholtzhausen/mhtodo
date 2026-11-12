@@ -195,6 +195,16 @@ func (a *App) UpdateTask(id string, patch core.UpdateInput) (core.Task, error) {
 	return t, err
 }
 
+// DetectGit maps to CLI `edit --git-detect`: records the repo and current
+// branch of the task's cwd (repo set when empty, branch appended).
+func (a *App) DetectGit(id string) (core.Task, error) {
+	t, err := a.svc.DetectGit(a.ctx, id, "")
+	if err == nil {
+		a.emitChanged(t.ID, "update")
+	}
+	return t, err
+}
+
 // SetStatus maps to CLI `status` / `done`. Notifies on real →done/→waiting
 // transitions when enabled in Settings → Notifications; no-op re-sets and
 // plain edits stay silent.

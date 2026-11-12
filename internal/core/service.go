@@ -146,6 +146,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		SlackThread:     strings.TrimSpace(in.SlackThread),
 		PRURL:           prURL,
 		TodoSession:     strings.TrimSpace(in.TodoSession), // not auto-seeded; agents set via edit --session
+		GitRepo:         NormalizeGitRepo(in.GitRepo),
+		GitBranches:     NormalizeGitBranches(in.GitBranches),
 	}
 	if st == StatusDone {
 		t.Progress = 100
@@ -169,6 +171,8 @@ func (s *Service) List(ctx context.Context, f ListFilter) ([]Task, error) {
 			return nil, err
 		}
 	}
+	f.GitRepo = NormalizeGitRepo(f.GitRepo)
+	f.GitBranch = strings.TrimSpace(f.GitBranch)
 	return s.repo.List(ctx, f)
 }
 
@@ -257,6 +261,12 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	}
 	if in.SlackThread != nil {
 		t.SlackThread = strings.TrimSpace(*in.SlackThread)
+	}
+	if in.GitRepo != nil {
+		t.GitRepo = NormalizeGitRepo(*in.GitRepo)
+	}
+	if in.GitBranches != nil {
+		t.GitBranches = NormalizeGitBranches(*in.GitBranches)
 	}
 	advanceToPR := false
 	if in.PRURL != nil {

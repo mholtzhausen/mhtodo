@@ -119,7 +119,7 @@ func newTemplateShowCmd() *cobra.Command {
 }
 
 func newTemplateCreateCmd() *cobra.Command {
-	var titlePrefix, desc, status, cwd, slackThread string
+	var titlePrefix, desc, status, cwd, slackThread, gitRepo string
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
 	cmd := &cobra.Command{
@@ -131,7 +131,7 @@ func newTemplateCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			in, err := templateInputFromFlags(cmd, args[0], titlePrefix, desc, status, cwd, slackThread,
+			in, err := templateInputFromFlags(cmd, args[0], titlePrefix, desc, status, cwd, slackThread, gitRepo,
 				humanOnly, includeInReport)
 			if err != nil {
 				return err
@@ -148,16 +148,16 @@ func newTemplateCreateCmd() *cobra.Command {
 			return o.printTemplate(tpl)
 		},
 	}
-	bindTemplatePresetFlags(cmd, &titlePrefix, &desc, &status, &cwd, &slackThread,
+	bindTemplatePresetFlags(cmd, &titlePrefix, &desc, &status, &cwd, &slackThread, &gitRepo,
 		&humanOnly, &noHumanOnly, &includeInReport, &noIncludeInReport)
 	return cmd
 }
 
 func newTemplateUpdateCmd() *cobra.Command {
-	var name, titlePrefix, desc, status, cwd, slackThread string
+	var name, titlePrefix, desc, status, cwd, slackThread, gitRepo string
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
-	var clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread bool
+	var clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread, clearGitRepo bool
 	var clearHumanOnly, clearIncludeInReport bool
 	cmd := &cobra.Command{
 		Use:   "update REF",
@@ -185,9 +185,9 @@ func newTemplateUpdateCmd() *cobra.Command {
 				in.Name = name
 				changed = true
 			}
-			patch, err := applyTemplatePresetPatches(cmd, &in, titlePrefix, desc, status, cwd, slackThread,
+			patch, err := applyTemplatePresetPatches(cmd, &in, titlePrefix, desc, status, cwd, slackThread, gitRepo,
 				humanOnly, includeInReport,
-				clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread,
+				clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread, clearGitRepo,
 				clearHumanOnly, clearIncludeInReport)
 			if err != nil {
 				return err
@@ -205,13 +205,14 @@ func newTemplateUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "rename the template")
-	bindTemplatePresetFlags(cmd, &titlePrefix, &desc, &status, &cwd, &slackThread,
+	bindTemplatePresetFlags(cmd, &titlePrefix, &desc, &status, &cwd, &slackThread, &gitRepo,
 		&humanOnly, &noHumanOnly, &includeInReport, &noIncludeInReport)
 	cmd.Flags().BoolVar(&clearTitlePrefix, "clear-title-prefix", false, "unset title_prefix preset")
 	cmd.Flags().BoolVar(&clearDesc, "clear-desc", false, "unset description preset")
 	cmd.Flags().BoolVar(&clearStatus, "clear-status", false, "unset status preset")
 	cmd.Flags().BoolVar(&clearCwd, "clear-cwd", false, "unset cwd preset")
 	cmd.Flags().BoolVar(&clearSlackThread, "clear-slack-thread", false, "unset slack_thread preset")
+	cmd.Flags().BoolVar(&clearGitRepo, "clear-git-repo", false, "unset git_repo preset")
 	cmd.Flags().BoolVar(&clearHumanOnly, "clear-human-only", false, "unset human_only preset")
 	cmd.Flags().BoolVar(&clearIncludeInReport, "clear-include-in-report", false, "unset include_in_report preset")
 	return cmd
@@ -266,13 +267,14 @@ func newTemplateRmCmd() *cobra.Command {
 	return cmd
 }
 
-func bindTemplatePresetFlags(cmd *cobra.Command, titlePrefix, desc, status, cwd, slackThread *string,
+func bindTemplatePresetFlags(cmd *cobra.Command, titlePrefix, desc, status, cwd, slackThread, gitRepo *string,
 	humanOnly, noHumanOnly, includeInReport, noIncludeInReport *bool) {
 	cmd.Flags().StringVar(titlePrefix, "title-prefix", "", "title prefix applied on create")
 	cmd.Flags().StringVar(desc, "desc", "", "description preset")
 	cmd.Flags().StringVar(status, "status", "", "status preset (icebox|pending|wip|waiting|review|pr|done)")
 	cmd.Flags().StringVar(cwd, "cwd", "", "working directory preset")
 	cmd.Flags().StringVar(slackThread, "slack-thread", "", "Slack thread URL preset")
+	cmd.Flags().StringVar(gitRepo, "git-repo", "", "git repository preset (URL or owner/name)")
 	cmd.Flags().BoolVar(humanOnly, "human-only", false, "set human_only preset to true")
 	cmd.Flags().BoolVar(noHumanOnly, "no-human-only", false, "set human_only preset to false")
 	cmd.Flags().BoolVar(includeInReport, "include-in-report", false, "set include_in_report preset to true")
@@ -281,7 +283,7 @@ func bindTemplatePresetFlags(cmd *cobra.Command, titlePrefix, desc, status, cwd,
 
 // templateInputFromFlags builds a create TemplateInput from only the flags that
 // were explicitly passed (omitted → unset/nil).
-func templateInputFromFlags(cmd *cobra.Command, name, titlePrefix, desc, status, cwd, slackThread string,
+func templateInputFromFlags(cmd *cobra.Command, name, titlePrefix, desc, status, cwd, slackThread, gitRepo string,
 	humanOnly, includeInReport bool) (core.TemplateInput, error) {
 	in := core.TemplateInput{Name: name}
 	if cmd.Flags().Changed("title-prefix") {
@@ -303,6 +305,10 @@ func templateInputFromFlags(cmd *cobra.Command, name, titlePrefix, desc, status,
 	if cmd.Flags().Changed("slack-thread") {
 		v := slackThread
 		in.SlackThread = &v
+	}
+	if cmd.Flags().Changed("git-repo") {
+		v := gitRepo
+		in.GitRepo = &v
 	}
 	switch {
 	case cmd.Flags().Changed("human-only") && cmd.Flags().Changed("no-human-only"):
@@ -328,9 +334,9 @@ func templateInputFromFlags(cmd *cobra.Command, name, titlePrefix, desc, status,
 }
 
 func applyTemplatePresetPatches(cmd *cobra.Command, in *core.TemplateInput,
-	titlePrefix, desc, status, cwd, slackThread string,
+	titlePrefix, desc, status, cwd, slackThread, gitRepo string,
 	humanOnly, includeInReport bool,
-	clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread,
+	clearTitlePrefix, clearDesc, clearStatus, clearCwd, clearSlackThread, clearGitRepo,
 	clearHumanOnly, clearIncludeInReport bool) (bool, error) {
 	changed := false
 
@@ -362,6 +368,9 @@ func applyTemplatePresetPatches(cmd *cobra.Command, in *core.TemplateInput,
 		return false, err
 	}
 	if err := setStr("slack-thread", "clear-slack-thread", clearSlackThread, slackThread, &in.SlackThread); err != nil {
+		return false, err
+	}
+	if err := setStr("git-repo", "clear-git-repo", clearGitRepo, gitRepo, &in.GitRepo); err != nil {
 		return false, err
 	}
 
@@ -433,6 +442,7 @@ func (o opts) printTemplate(t core.Template) error {
 		}
 		writeOptString(w, "Cwd", t.Cwd)
 		writeOptString(w, "Slack thread", t.SlackThread)
+		writeOptString(w, "Git repo", t.GitRepo)
 		writeOptBool(w, "Human only", t.HumanOnly)
 		writeOptBool(w, "Include in report", t.IncludeInReport)
 		fmt.Fprintf(w, "Created    \t%s\n", absTS(t.CreatedAt))

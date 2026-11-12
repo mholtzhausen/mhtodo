@@ -44,6 +44,7 @@
   let status = $state<Status>('pending')
   let cwd = $state('')
   let slackThread = $state('')
+  let gitRepo = $state('')
   let humanOnly = $state(false)
   let includeInReport = $state(true)
 
@@ -69,6 +70,7 @@
     status = initialStatus
     cwd = defaultCwd
     slackThread = defaultSlackThread
+    gitRepo = ''
     humanOnly = defaultHumanOnly
     includeInReport = defaultIncludeInReport
     dialogInitialized = true
@@ -78,7 +80,7 @@
   function onTemplatePicked(t: TaskTemplate) {
     const { values, titlePrefix } = applyTemplate(
       t,
-      { title, description, status, cwd, slackThread, humanOnly, includeInReport },
+      { title, description, status, cwd, slackThread, gitRepo, humanOnly, includeInReport },
       appliedPrefix
     )
     title = values.title
@@ -86,6 +88,7 @@
     status = values.status
     cwd = values.cwd
     slackThread = values.slackThread
+    gitRepo = values.gitRepo
     humanOnly = values.humanOnly
     includeInReport = values.includeInReport
     appliedPrefix = titlePrefix
@@ -128,7 +131,8 @@
         cwd: cwd.trim() || undefined,
         humanOnly,
         includeInReport,
-        slackThread: slackThread.trim() || undefined
+        slackThread: slackThread.trim() || undefined,
+        gitRepo: gitRepo.trim() || undefined
       })
       resetForm()
       onClose()
@@ -145,6 +149,7 @@
     status = 'pending'
     cwd = ''
     slackThread = ''
+    gitRepo = ''
     humanOnly = false
     includeInReport = true
     appliedPrefix = ''
@@ -299,6 +304,15 @@
           {/if}
         </label>
 
+        <label class="block">
+          <span class="micro mb-1.5">Git repository</span>
+          <input
+            bind:value={gitRepo}
+            placeholder="github.com/org/repo (optional)"
+            class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+          />
+        </label>
+
         <label class="flex cursor-pointer items-center gap-gap-md">
           <input
             type="checkbox"
@@ -348,7 +362,7 @@
 
   <SaveAsTemplateDialog
     open={saveAsOpen}
-    source={{ title, description, status, cwd, slackThread, humanOnly, includeInReport }}
+    source={{ title, description, status, cwd, slackThread, gitRepo, humanOnly, includeInReport }}
     onClose={() => (saveAsOpen = false)}
     onSaved={(n) => onNotify?.(`Template “${n}” saved`)}
     {onError}

@@ -32,7 +32,10 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   status (`icebox | pending | wip | waiting | review | pr | done`), progress 0–100,
   optional lane visibility (Settings → Statuses/Lanes; GUI board/picker),
   created_at / updated_at / completed_at, optional `pr_url` (pull-request URL(s), one per line;
-  setting empty→non-empty advances status to `pr`). UUIDv7 IDs with short-prefix lookup.
+  setting empty→non-empty advances status to `pr`), optional `git_repo` + `git_branches` (one
+  branch per line; `add`/`edit --git-repo` / `--git-branch`, `edit --git-detect` appends the current
+  branch, `list --git-repo|--git-branch|--git-current`; repos normalized to `host/path`; template
+  preset `git_repo`; migrations v17–v19). UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock
  (`internal/instance` + `mhtodo.open` deep links via `mhtodo://task/{id}` / `mhtodo open`).

@@ -2,6 +2,7 @@
   import { relTime, STATUS_LABELS } from '../lib/format'
   import { api, errMsg, type Status } from '../lib/api'
   import { sortSubtasksByCreated } from '../lib/boardOrder'
+  import { parseGitBranches } from '../lib/git'
   import {
     DEFAULT_PANEL_ATTN_STATUSES,
     panelAttnPeakOpacity,
@@ -714,6 +715,20 @@
                   class="w-full cursor-grab p-2.5 {onToggleFocus && t.status !== 'done' ? 'pr-11' : 'pr-6'} text-left focus:outline-none"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
+                  {#if t.git_branches?.trim()}
+                    {@const branches = parseGitBranches(t.git_branches)}
+                    <p
+                      class="mb-1.5 flex min-w-0 items-center gap-1 font-mono text-[10.5px] text-ink-3"
+                      title={(t.git_repo ? t.git_repo + '\n' : '') + branches.join('\n')}
+                    >
+                      <svg class="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <circle cx="4.5" cy="3.5" r="1.5" /><circle cx="4.5" cy="12.5" r="1.5" /><circle cx="11.5" cy="5.5" r="1.5" />
+                        <path d="M4.5 5v6M11.5 7c0 3-7 2-7 4" stroke-linecap="round" />
+                      </svg>
+                      <span class="truncate">{branches[0]}</span>
+                      {#if branches.length > 1}<span class="shrink-0">+{branches.length - 1}</span>{/if}
+                    </p>
+                  {/if}
                   <div class="flex items-center gap-2">
                     <div class="h-[3px] flex-1 overflow-hidden rounded-full bg-white/10">
                       <div

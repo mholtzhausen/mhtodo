@@ -29,6 +29,8 @@ export interface Task {
   include_in_report: boolean
   slack_thread: string
   pr_url: string
+  git_repo: string
+  git_branches: string
   todo_session: string
   terminal_pid?: number
 }
@@ -72,7 +74,9 @@ const toGoFilter = (f: ListFilterInput) => ({
   Archived: !!f.archived,
   RootsOnly: !!f.rootsOnly,
   ParentID: f.parentId ?? '',
-  IncludeHumanOnly: f.includeHumanOnly !== undefined ? f.includeHumanOnly : true
+  IncludeHumanOnly: f.includeHumanOnly !== undefined ? f.includeHumanOnly : true,
+  GitRepo: '',
+  GitBranch: ''
 })
 
 const toGoActivityFilter = (f: ActivityFilterInput) => ({
@@ -104,6 +108,8 @@ export const api = {
     includeInReport?: boolean
     slackThread?: string
     prUrl?: string
+    gitRepo?: string
+    gitBranches?: string
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -117,7 +123,9 @@ export const api = {
       IncludeInReport: input.includeInReport,
       SlackThread: input.slackThread ?? '',
       PRURL: input.prUrl ?? '',
-      TodoSession: ''
+      TodoSession: '',
+      GitRepo: input.gitRepo ?? '',
+      GitBranches: input.gitBranches ?? ''
     }) as Promise<Task>
   },
   update(id: string, patch: {
@@ -130,6 +138,8 @@ export const api = {
     includeInReport?: boolean
     slackThread?: string
     prUrl?: string
+    gitRepo?: string
+    gitBranches?: string
     todoSession?: string
   }) {
     return App.UpdateTask(id, {
@@ -142,6 +152,8 @@ export const api = {
       IncludeInReport: patch.includeInReport ?? null,
       SlackThread: patch.slackThread ?? null,
       PRURL: patch.prUrl ?? null,
+      GitRepo: patch.gitRepo ?? null,
+      GitBranches: patch.gitBranches ?? null,
       TodoSession: patch.todoSession !== undefined ? patch.todoSession : null
     })
   },
@@ -180,6 +192,10 @@ export const api = {
   },
   remove(id: string) {
     return App.DeleteTask(id)
+  },
+  /** Record repo + current branch from the task's cwd (appends the branch). */
+  detectGit(id: string): Promise<Task> {
+    return App.DetectGit(id) as Promise<Task>
   },
   countChildren(id: string): Promise<number> {
     return App.CountChildren(id)

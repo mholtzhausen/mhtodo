@@ -82,6 +82,10 @@ export function DeleteTheme(arg1) {
   return window['go']['main']['App']['DeleteTheme'](arg1);
 }
 
+export function DetectGit(arg1) {
+  return window['go']['main']['App']['DetectGit'](arg1);
+}
+
 export function DuplicateTheme(arg1, arg2) {
   return window['go']['main']['App']['DuplicateTheme'](arg1, arg2);
 }

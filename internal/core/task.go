@@ -63,6 +63,8 @@ type Task struct {
 	TodoSession     string     `json:"todo_session"`      // Claude session UUID linked to this ticket (set via edit --session)
 	TerminalPID     int        `json:"terminal_pid"`      // legacy column (unused; kept for schema stability)
 	FocusRank       *float64   `json:"focus_rank"`        // nil = not in Focus view; lower = further left; cleared on done/archive
+	GitRepo         string     `json:"git_repo"`          // optional git repository (URL or owner/name) the ticket involves
+	GitBranches     string     `json:"git_branches"`      // optional branch name(s) in GitRepo, one per line
 
 }
 
@@ -90,6 +92,8 @@ type CreateInput struct {
 	SlackThread     string // optional Slack thread URL
 	PRURL           string // optional PR URL(s), one per line; non-empty forces status pr
 	TodoSession     string // optional; left empty on create unless set (prefer edit --session on adopt)
+	GitRepo         string // optional git repository
+	GitBranches     string // optional branch name(s), one per line
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
@@ -105,19 +109,24 @@ type UpdateInput struct {
 	SlackThread     *string
 	PRURL           *string
 	TodoSession     *string
+	GitRepo         *string
+	GitBranches     *string
 }
+
+// HasFields reports whether any field is set.
+func (in UpdateInput) HasFields() bool { return in.hasFields() }
 
 func (in UpdateInput) hasFields() bool {
 	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
 		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil || in.SlackThread != nil ||
-		in.PRURL != nil || in.TodoSession != nil
+		in.PRURL != nil || in.TodoSession != nil || in.GitRepo != nil || in.GitBranches != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
 // exclude done, sort board order, no limit.
 type ListFilter struct {
 	Status           Status // "" = any (subject to IncludeDone)
-	Search           string // case-insensitive substring over title+description
+	Search           string // case-insensitive substring over title+description+git_repo+git_branches
 	Limit            int    // 0 = unlimited
 	Sort             string // board|created|updated|status|progress|title; default "board"
 	Ascending        bool   // false = descending (CLI: --sort field- for ascending)
@@ -126,6 +135,8 @@ type ListFilter struct {
 	RootsOnly        bool   // true → parent_id IS NULL only (v0.3)
 	ParentID         string // if set, only direct children of this parent (ignores RootsOnly)
 	IncludeHumanOnly bool   // false (default) → human_only tasks are hidden; true → include them
+	GitRepo          string // if set, only tasks recording this repo (normalized; case-insensitive)
+	GitBranch        string // if set, only tasks listing this exact branch name in git_branches
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

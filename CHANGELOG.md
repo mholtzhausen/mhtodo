@@ -3,7 +3,12 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Tickets gain `git_repo` (one repository) and `git_branches` (branch names, one per line): `add`/`edit --git-repo` and `--git-branch` (repeatable), shown in `show`, the markdown report, and the task detail "Git repository" / "Git branches" fields; the ticket reference asks agents to record their branch on the root
+- `mhtodo edit ID --git-detect[=DIR]` records the repo + current branch from a working tree (appends; refuses a different repo); GUI "Detect from cwd" button
+- `mhtodo list --git-repo / --git-branch / --git-current` reverse lookup; `--search` also matches git fields
+- Repos are normalized to `host/path` (`git@github.com:org/x.git` and `org/x` → `github.com/org/x`)
+- Task detail links the repo and branches (GitHub `/tree/`, GitLab `/-/tree/`); board cards show a branch badge
+- Templates can preset `git_repo` (`template create|update --git-repo`, `--clear-git-repo`; migration v19)
 
 ### Bugfixes
 - (none)

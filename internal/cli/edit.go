@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -9,8 +11,8 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback, cwd, slackThread, session string
-	var prURLs []string
+	var title, desc, feedback, cwd, slackThread, session, gitRepo, gitDetect string
+	var prURLs, gitBranches []string
 	var progress int
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -52,6 +54,14 @@ func newEditCmd() *cobra.Command {
 				v := core.JoinPRURLs(prURLs)
 				in.PRURL = &v
 			}
+			if cmd.Flags().Changed("git-repo") {
+				v := gitRepo
+				in.GitRepo = &v
+			}
+			if cmd.Flags().Changed("git-branch") {
+				v := core.JoinGitBranches(gitBranches)
+				in.GitBranches = &v
+			}
 			if cmd.Flags().Changed("session") {
 				v := session
 				in.TodoSession = &v
@@ -77,9 +87,24 @@ func newEditCmd() *cobra.Command {
 			}
 			defer closeDB()
 
-			t, err := svc.Edit(context.Background(), args[0], in)
-			if err != nil {
-				return mapError(err) // no flags set → ErrNoFieldsToUpdate (exit 1)
+			ctx := context.Background()
+			detect := cmd.Flags().Changed("git-detect")
+			var t core.Task
+			if !detect || in.HasFields() {
+				t, err = svc.Edit(ctx, args[0], in)
+				if err != nil {
+					return mapError(err) // no flags set → ErrNoFieldsToUpdate (exit 1)
+				}
+			}
+			if detect {
+				dir, err := detectDir(gitDetect)
+				if err != nil {
+					return err
+				}
+				t, err = svc.DetectGit(ctx, args[0], dir)
+				if err != nil {
+					return mapError(err)
+				}
 			}
 			return o.printTask(t)
 		},
@@ -91,10 +116,31 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "working directory path (empty clears)")
 	cmd.Flags().StringVar(&slackThread, "slack-thread", "", "Slack thread URL (empty clears)")
 	cmd.Flags().StringArrayVar(&prURLs, "pr-url", nil, "pull request URL(s); repeatable; empty clears; setting advances status to pr")
+	cmd.Flags().StringVar(&gitRepo, "git-repo", "", "git repository (URL or owner/name; empty clears)")
+	cmd.Flags().StringArrayVar(&gitBranches, "git-branch", nil, "git branch name(s); repeatable (replaces the list); empty clears")
+	cmd.Flags().StringVar(&gitDetect, "git-detect", "", "record repo + current branch; bare flag uses the current directory, --git-detect=DIR another; sets repo when empty, appends the branch")
+	cmd.Flags().Lookup("git-detect").NoOptDefVal = "."
 	cmd.Flags().StringVar(&session, "session", "", "Claude session UUID linked to this ticket (empty clears)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
 	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report")
 	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")
 	return cmd
+}
+
+// detectDir resolves the --git-detect value to an absolute directory
+// ("." or empty → the process working directory).
+func detectDir(v string) (string, error) {
+	if v == "" || v == "." {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", usageError("--git-detect: %v", err)
+		}
+		return wd, nil
+	}
+	abs, err := filepath.Abs(v)
+	if err != nil {
+		return "", usageError("--git-detect: %v", err)
+	}
+	return abs, nil
 }

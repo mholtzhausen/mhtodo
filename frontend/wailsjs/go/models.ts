@@ -82,6 +82,8 @@ export namespace core {
 	    SlackThread: string;
 	    PRURL: string;
 	    TodoSession: string;
+	    GitRepo: string;
+	    GitBranches: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -101,6 +103,8 @@ export namespace core {
 	        this.SlackThread = source["SlackThread"];
 	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
+	        this.GitRepo = source["GitRepo"];
+	        this.GitBranches = source["GitBranches"];
 	    }
 	}
 	export class ListFilter {
@@ -114,6 +118,8 @@ export namespace core {
 	    RootsOnly: boolean;
 	    ParentID: string;
 	    IncludeHumanOnly: boolean;
+	    GitRepo: string;
+	    GitBranch: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListFilter(source);
@@ -131,6 +137,8 @@ export namespace core {
 	        this.RootsOnly = source["RootsOnly"];
 	        this.ParentID = source["ParentID"];
 	        this.IncludeHumanOnly = source["IncludeHumanOnly"];
+	        this.GitRepo = source["GitRepo"];
+	        this.GitBranch = source["GitBranch"];
 	    }
 	}
 	export class Task {
@@ -158,6 +166,8 @@ export namespace core {
 	    todo_session: string;
 	    terminal_pid: number;
 	    focus_rank?: number;
+	    git_repo: string;
+	    git_branches: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -185,6 +195,8 @@ export namespace core {
 	        this.todo_session = source["todo_session"];
 	        this.terminal_pid = source["terminal_pid"];
 	        this.focus_rank = source["focus_rank"];
+	        this.git_repo = source["git_repo"];
+	        this.git_branches = source["git_branches"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -213,6 +225,7 @@ export namespace core {
 	    status?: string;
 	    cwd?: string;
 	    slack_thread?: string;
+	    git_repo?: string;
 	    human_only?: boolean;
 	    include_in_report?: boolean;
 	    // Go type: time
@@ -233,6 +246,7 @@ export namespace core {
 	        this.status = source["status"];
 	        this.cwd = source["cwd"];
 	        this.slack_thread = source["slack_thread"];
+	        this.git_repo = source["git_repo"];
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
 	        this.created_at = this.convertValues(source["created_at"], null);
@@ -264,6 +278,7 @@ export namespace core {
 	    Status?: string;
 	    Cwd?: string;
 	    SlackThread?: string;
+	    GitRepo?: string;
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
 	
@@ -279,6 +294,7 @@ export namespace core {
 	        this.Status = source["Status"];
 	        this.Cwd = source["Cwd"];
 	        this.SlackThread = source["SlackThread"];
+	        this.GitRepo = source["GitRepo"];
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	    }
@@ -352,6 +368,8 @@ export namespace core {
 	    SlackThread?: string;
 	    PRURL?: string;
 	    TodoSession?: string;
+	    GitRepo?: string;
+	    GitBranches?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -369,6 +387,8 @@ export namespace core {
 	        this.SlackThread = source["SlackThread"];
 	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
+	        this.GitRepo = source["GitRepo"];
+	        this.GitBranches = source["GitBranches"];
 	    }
 	}
 

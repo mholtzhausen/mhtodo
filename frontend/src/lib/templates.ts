@@ -17,6 +17,7 @@ export interface TaskTemplate {
   status: Status | null
   cwd: string | null
   slack_thread: string | null
+  git_repo: string | null
   human_only: boolean | null
   include_in_report: boolean | null
   created_at: string
@@ -30,6 +31,7 @@ export type TemplateFieldKey =
   | 'status'
   | 'cwd'
   | 'slack_thread'
+  | 'git_repo'
   | 'human_only'
   | 'include_in_report'
 
@@ -84,6 +86,14 @@ export const TEMPLATE_FIELDS: readonly TemplateFieldMeta[] = [
     placeholder: 'https://…'
   },
   {
+    key: 'git_repo',
+    label: 'Git repository',
+    chip: 'repo',
+    kind: 'text',
+    hint: 'Normalized to host/path (owner/name means GitHub).',
+    placeholder: 'github.com/org/repo'
+  },
+  {
     key: 'human_only',
     label: 'Human only',
     chip: 'human-only',
@@ -106,6 +116,7 @@ export type TemplateValues = {
   status: Status | null
   cwd: string | null
   slack_thread: string | null
+  git_repo: string | null
   human_only: boolean | null
   include_in_report: boolean | null
 }
@@ -117,6 +128,7 @@ export function emptyValues(): TemplateValues {
     status: null,
     cwd: null,
     slack_thread: null,
+    git_repo: null,
     human_only: null,
     include_in_report: null
   }
@@ -129,6 +141,7 @@ export function valuesOf(t: TaskTemplate): TemplateValues {
     status: t.status,
     cwd: t.cwd,
     slack_thread: t.slack_thread,
+    git_repo: t.git_repo ?? null,
     human_only: t.human_only,
     include_in_report: t.include_in_report
   }
@@ -165,6 +178,7 @@ export interface NewTaskFormValues {
   status: Status
   cwd: string
   slackThread: string
+  gitRepo: string
   humanOnly: boolean
   includeInReport: boolean
 }
@@ -205,6 +219,7 @@ export function applyTemplate(
   if (t.status !== null) next.status = t.status
   if (t.cwd !== null) next.cwd = t.cwd
   if (t.slack_thread !== null) next.slackThread = t.slack_thread
+  if (t.git_repo != null) next.gitRepo = t.git_repo
   if (t.human_only !== null) next.humanOnly = t.human_only
   if (t.include_in_report !== null) next.includeInReport = t.include_in_report
 
@@ -220,6 +235,7 @@ export function toGoTemplateInput(name: string, v: TemplateValues) {
     Status: v.status as unknown as string | null,
     Cwd: v.cwd,
     SlackThread: v.slack_thread,
+    GitRepo: v.git_repo,
     HumanOnly: v.human_only,
     IncludeInReport: v.include_in_report
   }

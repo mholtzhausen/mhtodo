@@ -23,6 +23,11 @@ mhtodo status ID icebox|pending|wip|waiting|review|pr|done
 mhtodo status migrate FROM TO
 mhtodo edit ID --session UUID|--progress N|--feedback S|--desc S|--title S|--pr-url URL [--pr-url URL…]
   # --pr-url is repeatable; each edit replaces the full PR list (not append)
+mhtodo edit ID --git-detect[=DIR]
+  # from inside the repo: sets git_repo if empty and APPENDS the current branch (exit 1 git_repo_mismatch if a different repo is recorded)
+mhtodo edit ID --git-repo REPO --git-branch BRANCH [--git-branch BRANCH…]
+  # git_repo is a single repo (normalized to host/path; owner/name = GitHub); --git-branch is repeatable and replaces the full branch list
+mhtodo list --git-current [--json]   # tickets recording this repo's current branch (also --git-repo R / --git-branch B)
 mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
 mhtodo activity add ID --activity "Label" --comment "…"
 mhtodo activity list --task ID [--json]
@@ -57,6 +62,7 @@ Instructions: (only if you start working on this task)
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this
  - before starting: be on a clean `master` (or `main` if that is the default trunk); if the working tree is dirty, stop and clear it up with the user first; then create a new branch for this ticket and only then start work
+ - after creating the branch: record it on the root ticket with `mhtodo edit {rootShort8} --git-detect` (run in the repo; sets the repo if empty and appends the current branch — or `--git-repo <repo> --git-branch <branch>`, which replaces the branch list)
  - never write to or change production while working this ticket (no deploys, migrations, data/config edits, restarts, or mutating calls); you may only read from production. If the work needs a production change, stop and hand it back to the user
  - when you open a pull request: put every PR URL on the root ticket with `mhtodo edit {rootShort8} --pr-url <url> [--pr-url <url>…]` (repeatable; each edit replaces the full list — `mhtodo show {rootShort8} --json` first if adding another). Never leave PR links only in feedback or comments.
  - (sub-task handoffs only) register pull requests against the main ticket `{rootShort8}`, not this sub-task id
@@ -69,9 +75,9 @@ Treat that as pointing at the ticket. Resolve with `mhtodo show` / `mhtodo open`
 
 Before substantive work:
 
-1. `mhtodo list --roots --json --search "<keywords>"` (or use a pasted id).
+1. `mhtodo list --roots --json --search "<keywords>"` (or use a pasted id; inside a repo, `mhtodo list --git-current --json` finds tickets already tracking the current branch).
 2. Same job → adopt. In `review` or `pr` with more work → reopen to `wip`. Nothing matches → **ask** before creating a root. Unsure → ask.
-3. **Git hygiene (required before any code work):** checkout `master` (or `main` if that is the repo default). Working tree must be clean. If anything is dirty (uncommitted changes, untracked work you did not expect, mid-rebase, etc.), **stop and clear it up with the user** — do not stash, discard, or commit on their behalf unless they explicitly approve. Only then create a new branch for this ticket and start work.
+3. **Git hygiene (required before any code work):** checkout `master` (or `main` if that is the repo default). Working tree must be clean. If anything is dirty (uncommitted changes, untracked work you did not expect, mid-rebase, etc.), **stop and clear it up with the user** — do not stash, discard, or commit on their behalf unless they explicitly approve. Only then create a new branch for this ticket and start work, and record it on the **root** ticket: run `mhtodo edit <root-id> --git-detect` from the repo (sets the repo if empty, appends the current branch). `--git-repo`/`--git-branch` replace values instead (`show --json` first if editing the list by hand).
 4. Adopt:
 
 ```bash

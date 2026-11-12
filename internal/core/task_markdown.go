@@ -20,6 +20,17 @@ func FormatTaskMarkdown(task Task, children []Task, activities []Activity) strin
 		fmt.Fprintf(&b, "\n%s\n", notice)
 	}
 
+	branches := ParseGitBranches(task.GitBranches)
+	if task.GitRepo != "" || len(branches) > 0 {
+		b.WriteString("\n### Git\n\n")
+		if task.GitRepo != "" {
+			fmt.Fprintf(&b, "Repo: `%s`\n", task.GitRepo)
+		}
+		for _, br := range branches {
+			fmt.Fprintf(&b, "- `%s`\n", br)
+		}
+	}
+
 	if desc := strings.TrimSpace(task.Description); desc != "" {
 		b.WriteString("\n### Description\n\n```\n")
 		b.WriteString(desc)

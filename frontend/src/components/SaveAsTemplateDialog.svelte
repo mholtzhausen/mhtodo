@@ -32,6 +32,7 @@
       status: Status
       cwd: string
       slackThread: string
+      gitRepo: string
       humanOnly: boolean
       includeInReport: boolean
     }
@@ -66,6 +67,7 @@
       status: source.status,
       cwd: source.cwd,
       slack_thread: source.slackThread,
+      git_repo: source.gitRepo,
       human_only: source.humanOnly,
       include_in_report: source.includeInReport
     }
@@ -78,6 +80,7 @@
   function defaultSelection(): TemplateFieldKey[] {
     const out: TemplateFieldKey[] = []
     if (source.cwd.trim()) out.push('cwd')
+    if (source.gitRepo.trim()) out.push('git_repo')
     if (source.humanOnly) out.push('human_only')
     if (!source.includeInReport) out.push('include_in_report')
     if (source.status !== 'pending') out.push('status')

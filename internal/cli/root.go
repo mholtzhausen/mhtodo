@@ -97,6 +97,8 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "usage", msg: err.Error()}
 		default:
 			var (
+				gdet  *core.GitDetectError
+				gmis  *core.GitRepoMismatchError
 				dup   *core.DuplicateTemplateNameError
 				long  *core.TemplateNameTooLongError
 				mode  *core.InvalidTemplateSearchModeError
@@ -110,6 +112,10 @@ func mapError(err error) error {
 				ttok  *core.InvalidThemeTokensError
 			)
 			switch {
+			case errors.As(err, &gdet):
+				return &errExit{code: ExitUsage, name: "git_detect", msg: err.Error()}
+			case errors.As(err, &gmis):
+				return &errExit{code: ExitUsage, name: "git_repo_mismatch", msg: err.Error()}
 			case errors.As(err, &dup):
 				return &errExit{code: ExitUsage, name: "duplicate_template_name", msg: err.Error()}
 			case errors.As(err, &long):
@@ -203,6 +209,16 @@ func (o opts) printTask(t core.Task) error {
 		}
 		if notice := core.SlackThreadNotice(t.SlackThread); notice != "" {
 			fmt.Fprintf(w, "Slack thread\t%s\n", notice)
+		}
+		if t.GitRepo != "" {
+			fmt.Fprintf(w, "Git repo   \t%s\n", t.GitRepo)
+		}
+		for i, br := range core.ParseGitBranches(t.GitBranches) {
+			label := "Branches   "
+			if i > 0 {
+				label = "           "
+			}
+			fmt.Fprintf(w, "%s\t%s\n", label, br)
 		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)

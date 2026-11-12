@@ -44,6 +44,8 @@ export function DeleteTemplate(arg1:string):Promise<core.Template>;
 
 export function DeleteTheme(arg1:string):Promise<core.Theme>;
 
+export function DetectGit(arg1:string):Promise<core.Task>;
+
 export function DuplicateTheme(arg1:string,arg2:string):Promise<core.Theme>;
 
 export function FocusTask(arg1:string,arg2:string):Promise<core.Task>;

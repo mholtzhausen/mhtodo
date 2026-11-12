@@ -3,6 +3,7 @@
   import { absShort, relTime, shortId, STATUS_LABELS } from '../lib/format'
   import { openExternalUrl } from '../lib/openExternal'
   import { joinPRURLs, parsePRURLs } from '../lib/prUrl'
+  import { gitWebUrl, parseGitBranches } from '../lib/git'
   import type { GUISettings } from '../lib/settings'
   import StatusPicker from './StatusPicker.svelte'
   import ProgressControl from './ProgressControl.svelte'
@@ -84,6 +85,8 @@
   let slackThread = $state(task.slack_thread ?? '')
   // svelte-ignore state_referenced_locally
   let prUrl = $state(task.pr_url ?? '')
+  let gitRepo = $state(task.git_repo ?? '')
+  let gitBranches = $state(task.git_branches ?? '')
   // svelte-ignore state_referenced_locally
   let todoSession = $state(task.todo_session ?? '')
   // svelte-ignore state_referenced_locally
@@ -170,6 +173,8 @@
     cwd = task.cwd ?? ''
     slackThread = task.slack_thread ?? ''
     prUrl = task.pr_url ?? ''
+    gitRepo = task.git_repo ?? ''
+    gitBranches = task.git_branches ?? ''
     todoSession = task.todo_session ?? ''
     humanOnly = !!task.human_only
     includeInReport = task.include_in_report !== false
@@ -266,6 +271,54 @@
     if (v === joinPRURLs(parsePRURLs(task.pr_url ?? ''))) return
     try {
       await api.update(task.id, { prUrl: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  // Mirrors core.NormalizeGitBranches: trim lines, drop blanks, dedupe.
+  function normalizeGitBranches(s: string): string {
+    return parseGitBranches(s).join('\n')
+  }
+
+  const gitRepoUrl = $derived(gitWebUrl(task.git_repo))
+  const gitBranchLinks = $derived(
+    parseGitBranches(task.git_branches).map((b) => ({ name: b, url: gitWebUrl(task.git_repo, b) }))
+  )
+  let detectingGit = $state(false)
+
+  async function detectGit() {
+    if (archived || detectingGit) return
+    detectingGit = true
+    try {
+      // Flush unsaved edits first so detection appends to what the user typed.
+      await saveGitRepo()
+      await saveGitBranches()
+      await api.detectGit(task.id)
+    } catch (e) {
+      onError(errMsg(e))
+    } finally {
+      detectingGit = false
+    }
+  }
+
+  async function saveGitRepo() {
+    if (archived) return
+    const v = gitRepo.trim()
+    if (v === (task.git_repo ?? '')) return
+    try {
+      await api.update(task.id, { gitRepo: v })
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
+  async function saveGitBranches() {
+    if (archived) return
+    const v = normalizeGitBranches(gitBranches)
+    if (v === normalizeGitBranches(task.git_branches ?? '')) return
+    try {
+      await api.update(task.id, { gitBranches: v })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -701,6 +754,81 @@
       {/if}
     </label>
 
+    <label class="block">
+      <span class="micro mb-1.5">Git repository</span>
+      <input
+        bind:value={gitRepo}
+        disabled={archived}
+        onblur={saveGitRepo}
+        placeholder="github.com/org/repo"
+        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
+      />
+      {#if gitRepoUrl}
+        <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
+          Repository:
+          <a
+            href={gitRepoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent hover:underline"
+            onclick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(gitRepoUrl)
+            }}>{task.git_repo}</a
+          >
+        </p>
+      {/if}
+    </label>
+
+    <label class="block">
+      <span class="micro mb-1.5">Git branches</span>
+      <textarea
+        bind:value={gitBranches}
+        disabled={archived}
+        onblur={saveGitBranches}
+        rows="2"
+        placeholder={"feat/login\nfix/login-redirect"}
+        class="resize-y leading-relaxed w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
+      ></textarea>
+      {#if gitBranchLinks.length}
+        <ul class="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+          {#each gitBranchLinks as b (b.name)}
+            <li>
+              {#if b.url}
+                <a
+                  href={b.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="rounded-control border border-line-soft px-1.5 py-0.5 font-mono text-accent hover:underline"
+                  onclick={(e) => {
+                    e.preventDefault()
+                    void openExternalUrl(b.url)
+                  }}>{b.name}</a
+                >
+              {:else}
+                <span class="rounded-control border border-line-soft px-1.5 py-0.5 font-mono text-ink-2">{b.name}</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="mt-1 flex items-center justify-between gap-gap-md text-[11px] text-ink-3">
+        <span>
+          One branch per line (<code class="text-ink-2">edit --git-detect</code> appends the current one).
+        </span>
+        <button
+          type="button"
+          class="shrink-0 rounded-control border border-line-soft px-2 py-0.5 text-ink-2 hover:border-accent hover:text-accent disabled:cursor-default disabled:opacity-55"
+          disabled={archived || detectingGit || !task.cwd}
+          title={task.cwd ? `Read repo + current branch from ${task.cwd}` : 'Set a working directory first'}
+          onclick={(e) => {
+            e.preventDefault()
+            void detectGit()
+          }}>{detectingGit ? 'Detecting…' : 'Detect from cwd'}</button
+        >
+      </div>
+    </label>
+
     <label class="flex items-center gap-gap-md {archived ? 'cursor-default opacity-55' : 'cursor-pointer'}">
       <input
         type="checkbox"
@@ -896,6 +1024,7 @@
     status: task.status,
     cwd: task.cwd,
     slackThread: task.slack_thread,
+    gitRepo: task.git_repo ?? '',
     humanOnly: task.human_only,
     includeInReport: task.include_in_report
   }}

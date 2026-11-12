@@ -22,7 +22,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url, focus_rank`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url, focus_rank, git_repo, git_branches`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -51,7 +51,7 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		includeInReport int
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL, &focusRank); err != nil {
+		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL, &focusRank, &t.GitRepo, &t.GitBranches); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
@@ -97,10 +97,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
-		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank))
+		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches)
 	return err
 }
 
@@ -180,8 +180,17 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 	}
 	if strings.TrimSpace(f.Search) != "" {
 		pat := "%" + escapeLike(strings.TrimSpace(f.Search)) + "%"
-		conds = append(conds, `(title LIKE ? ESCAPE '\' OR description LIKE ? ESCAPE '\')`)
-		args = append(args, pat, pat)
+		conds = append(conds, `(title LIKE ? ESCAPE '\' OR description LIKE ? ESCAPE '\' OR git_repo LIKE ? ESCAPE '\' OR git_branches LIKE ? ESCAPE '\')`)
+		args = append(args, pat, pat, pat, pat)
+	}
+	if f.GitRepo != "" {
+		conds = append(conds, "git_repo = ? COLLATE NOCASE")
+		args = append(args, f.GitRepo)
+	}
+	if f.GitBranch != "" {
+		// Exact line match inside the newline-separated list (instr avoids LIKE wildcards in branch names).
+		conds = append(conds, "instr(char(10) || git_branches || char(10), char(10) || ? || char(10)) > 0")
+		args = append(args, f.GitBranch)
 	}
 
 	q := `SELECT ` + taskColumns + ` FROM tasks`
@@ -212,10 +221,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
-		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, focus_rank = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, focus_rank = ?, git_repo = ?, git_branches = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), nullFloat(t.BoardRank),
-		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), formatTS(t.UpdatedAt), t.ID)
+		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches, formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
