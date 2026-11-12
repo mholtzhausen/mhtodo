@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.9.0 (HASH)
+## 3.9.0 (93e54ca)
 
 ### Features and Improvements
 - Tickets gain `git_repo` (one repository) and `git_branches` (branch names, one per line): `add`/`edit --git-repo` and `--git-branch` (repeatable), shown in `show`, the markdown report, and the task detail "Git repository" / "Git branches" fields; the ticket reference asks agents to record their branch on the root
