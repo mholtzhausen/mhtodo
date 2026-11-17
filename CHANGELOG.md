@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.10.0 (HASH)
+## 3.10.0 (b7746c1)
 
 ### Features and Improvements
 - Ticket priority (`none|low|medium|high|urgent`, migration v20): `mhtodo priority ID [LEVEL]` (alias `prio`), `add`/`edit --priority`, JSON `priority` field (always present, default `none`)
