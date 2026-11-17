@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Features and Improvements
+- (none)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
+## 3.10.0 (HASH)
+
+### Features and Improvements
 - Ticket priority (`none|low|medium|high|urgent`, migration v20): `mhtodo priority ID [LEVEL]` (alias `prio`), `add`/`edit --priority`, JSON `priority` field (always present, default `none`)
 - `mhtodo list --priority high,urgent` or thresholds like `'>=high'`; opt-in `--sort priority`. Priority never touches `board_rank`/`focus_rank` or the default board sort
 - GUI: priority glyph on board cards, sub-tasks, Focus lanes, archive rows and the detail modal; one click opens a themed picker (arrows/Enter, 0–4, Esc). Unset priority stays hidden until hover
