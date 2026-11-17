@@ -43,28 +43,30 @@ func ParseStatus(s string) (Status, error) {
 // Task is the canonical task object. JSON field names are a stable agent
 // contract — do not rename.
 type Task struct {
-	ID              string     `json:"id"`
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	Feedback        string     `json:"feedback"` // agent-authored; GUI shows only when non-empty
-	Status          Status     `json:"status"`
-	Progress        int        `json:"progress"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-	CompletedAt     *time.Time `json:"completed_at"`
-	ArchivedAt      *time.Time `json:"archived_at"`       // set on archive, cleared on unarchive (v0.2)
-	ParentID        *string    `json:"parent_id"`         // nil = root; one-level children only (v0.3)
-	BoardRank       *float64   `json:"board_rank"`        // nil = unset; root tasks only; lower = higher on board
-	Cwd             string     `json:"cwd"`               // optional project/working directory for the task
-	HumanOnly       bool       `json:"human_only"`        // when true, agents must not adopt or work the task
-	IncludeInReport bool       `json:"include_in_report"` // when false, excluded from Slack board report
-	SlackThread     string     `json:"slack_thread"`      // optional Slack thread URL for this ticket
-	PRURL           string     `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
-	TodoSession     string     `json:"todo_session"`      // Claude session UUID linked to this ticket (set via edit --session)
-	TerminalPID     int        `json:"terminal_pid"`      // legacy column (unused; kept for schema stability)
-	FocusRank       *float64   `json:"focus_rank"`        // nil = not in Focus view; lower = further left; cleared on done/archive
-	GitRepo         string     `json:"git_repo"`          // optional git repository (URL or owner/name) the ticket involves
-	GitBranches     string     `json:"git_branches"`      // optional branch name(s) in GitRepo, one per line
+	ID              string      `json:"id"`
+	Title           string      `json:"title"`
+	Description     string      `json:"description"`
+	Feedback        string      `json:"feedback"` // agent-authored; GUI shows only when non-empty
+	Status          Status      `json:"status"`
+	Progress        int         `json:"progress"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+	CompletedAt     *time.Time  `json:"completed_at"`
+	ArchivedAt      *time.Time  `json:"archived_at"`       // set on archive, cleared on unarchive (v0.2)
+	ParentID        *string     `json:"parent_id"`         // nil = root; one-level children only (v0.3)
+	BoardRank       *float64    `json:"board_rank"`        // nil = unset; root tasks only; lower = higher on board
+	Cwd             string      `json:"cwd"`               // optional project/working directory for the task
+	HumanOnly       bool        `json:"human_only"`        // when true, agents must not adopt or work the task
+	IncludeInReport bool        `json:"include_in_report"` // when false, excluded from Slack board report
+	SlackThread     string      `json:"slack_thread"`      // primary Slack link (= slack_links[0].url, "" when none); kept for the pre-v21 contract
+	SlackLinks      []SlackLink `json:"slack_links"`       // all Slack conversations, primary first; always an array (v21)
+	PRURL           string      `json:"pr_url"`            // optional PR URL(s), one per line; empty→non-empty advances status to pr
+	TodoSession     string      `json:"todo_session"`      // Claude session UUID linked to this ticket (set via edit --session)
+	TerminalPID     int         `json:"terminal_pid"`      // legacy column (unused; kept for schema stability)
+	FocusRank       *float64    `json:"focus_rank"`        // nil = not in Focus view; lower = further left; cleared on done/archive
+	GitRepo         string      `json:"git_repo"`          // optional git repository (URL or owner/name) the ticket involves
+	GitBranches     string      `json:"git_branches"`      // optional branch name(s) in GitRepo, one per line
+	Priority        Priority    `json:"priority"`          // none|low|medium|high|urgent (v20); visual/filter only, never reorders
 
 }
 
@@ -89,11 +91,13 @@ type CreateInput struct {
 	// IncludeInReport: nil → true for root tasks, false for sub-tasks; explicit
 	// value always wins.
 	IncludeInReport *bool
-	SlackThread     string // optional Slack thread URL
-	PRURL           string // optional PR URL(s), one per line; non-empty forces status pr
-	TodoSession     string // optional; left empty on create unless set (prefer edit --session on adopt)
-	GitRepo         string // optional git repository
-	GitBranches     string // optional branch name(s), one per line
+	SlackThread     string      // optional Slack thread URL (becomes the primary link)
+	SlackLinks      []SlackLink // optional extra links, after SlackThread
+	PRURL           string      // optional PR URL(s), one per line; non-empty forces status pr
+	TodoSession     string      // optional; left empty on create unless set (prefer edit --session on adopt)
+	GitRepo         string      // optional git repository
+	GitBranches     string      // optional branch name(s), one per line
+	Priority        Priority    // "" → none; sub-tasks never inherit the parent's
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;
@@ -106,11 +110,13 @@ type UpdateInput struct {
 	Cwd             *string
 	HumanOnly       *bool
 	IncludeInReport *bool
-	SlackThread     *string
+	SlackThread     *string      // non-empty: make this the primary link (moved/inserted; nothing dropped). "": remove the primary
+	SlackLinks      *[]SlackLink // full replacement list (applied before SlackThread)
 	PRURL           *string
 	TodoSession     *string
 	GitRepo         *string
 	GitBranches     *string
+	Priority        *Priority
 }
 
 // HasFields reports whether any field is set.
@@ -118,8 +124,8 @@ func (in UpdateInput) HasFields() bool { return in.hasFields() }
 
 func (in UpdateInput) hasFields() bool {
 	return in.Title != nil || in.Desc != nil || in.Feedback != nil || in.Progress != nil ||
-		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil || in.SlackThread != nil ||
-		in.PRURL != nil || in.TodoSession != nil || in.GitRepo != nil || in.GitBranches != nil
+		in.Cwd != nil || in.HumanOnly != nil || in.IncludeInReport != nil || in.SlackThread != nil || in.SlackLinks != nil ||
+		in.PRURL != nil || in.TodoSession != nil || in.GitRepo != nil || in.GitBranches != nil || in.Priority != nil
 }
 
 // ListFilter drives list / ListTasks. Zero values give the CLI defaults:
@@ -128,7 +134,7 @@ type ListFilter struct {
 	Status           Status // "" = any (subject to IncludeDone)
 	Search           string // case-insensitive substring over title+description+git_repo+git_branches
 	Limit            int    // 0 = unlimited
-	Sort             string // board|created|updated|status|progress|title; default "board"
+	Sort             string // board|created|updated|status|progress|title|priority; default "board"
 	Ascending        bool   // false = descending (CLI: --sort field- for ascending)
 	IncludeDone      bool   // default false → done and icebox are hidden unless matched by Status
 	Archived         bool   // true → archived tasks only; default false → archived tasks excluded
@@ -137,6 +143,9 @@ type ListFilter struct {
 	IncludeHumanOnly bool   // false (default) → human_only tasks are hidden; true → include them
 	GitRepo          string // if set, only tasks recording this repo (normalized; case-insensitive)
 	GitBranch        string // if set, only tasks listing this exact branch name in git_branches
+	// Priorities: nil = any; non-nil = only these levels (an empty non-nil
+	// slice matches nothing — e.g. a ">urgent" threshold).
+	Priorities []Priority
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

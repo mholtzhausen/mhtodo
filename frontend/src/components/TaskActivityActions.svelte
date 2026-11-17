@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { api, errMsg } from '../lib/api'
+  import { api, errMsg, type SlackLink } from '../lib/api'
   import { shortId } from '../lib/format'
   import { type GUISettings } from '../lib/settings'
   import { openExternalUrl } from '../lib/openExternal'
@@ -10,6 +10,7 @@
     subscribeIntegrationStatus
   } from '../lib/integrationStatus'
   import { parsePRURLs, prURLLabel } from '../lib/prUrl'
+  import { slackLinksOf, slackLinkText } from '../lib/slack'
   import ClaudeIcon from './ClaudeIcon.svelte'
   import HumanIcon from './HumanIcon.svelte'
   import PullRequestIcon from './PullRequestIcon.svelte'
@@ -33,7 +34,9 @@
       archived_at?: string | null
       parent_id?: string | null
       slack_thread?: string
+      slack_links?: SlackLink[]
       pr_url?: string
+      priority?: string
       todo_session?: string
     }
     settings?: GUISettings | null
@@ -54,6 +57,10 @@
   let prMenuRoot = $state<HTMLDivElement | null>(null)
   let prMenuBtn = $state<HTMLButtonElement | null>(null)
   let prMenuStyle = $state('')
+  let slackMenuOpen = $state(false)
+  let slackMenuRoot = $state<HTMLDivElement | null>(null)
+  let slackMenuBtn = $state<HTMLButtonElement | null>(null)
+  let slackMenuStyle = $state('')
   let openingZed = $state(false)
   let openingClaude = $state(false)
   let claudeHover = $state(false)
@@ -97,7 +104,14 @@
         ? 'Copy Claude resume command (cd + claude --resume)'
         : `${claudeTitle} — Ctrl+click to copy resume command`
   )
-  const slackURL = $derived((task.slack_thread ?? '').trim())
+  const slackLinks = $derived(slackLinksOf(task))
+  const slackTitle = $derived(
+    slackLinks.length > 1
+      ? `Choose Slack conversation (${slackLinks.length})`
+      : slackLinks[0]?.description
+        ? `Open Slack: ${slackLinks[0].description}`
+        : 'Open Slack thread'
+  )
   const prURLs = $derived(parsePRURLs(task.pr_url))
   const includeInReport = $derived(task.include_in_report !== false)
   const canArchive = $derived(task.status === 'done' && !task.archived_at)
@@ -123,6 +137,7 @@
       '---',
       `MHTodo Ticket: mhtodo://task/${id}`,
       `Status: ${status}`,
+      ...(task.priority && task.priority !== 'none' ? [`Priority: ${task.priority}`] : []),
       `Title: ${title}`,
       'Instructions: (only if you start working on this task) ',
       ` - record your current claude session against the ticket: \`mhtodo edit ${id} --session <claude-session-uuid>\``,
@@ -136,6 +151,10 @@
       lines.push(
         ` - this is a sub-task — register pull requests against the main ticket \`${rootId}\`, not this sub-task id \`${id}\``
       )
+    }
+    if (slackLinks.length > 0) {
+      lines.push('Slack conversations (first is the primary thread):')
+      for (const l of slackLinks) lines.push(` - ${l.url}${l.description ? ` — ${l.description}` : ''}`)
     }
     lines.push('---', '')
     return lines.join('\n')
@@ -226,27 +245,43 @@
     }
   }
 
-  async function openSlack(e: MouseEvent) {
-    stop(e)
-    if (openingSlack || !slackURL) return
+  async function openSlackURL(url: string) {
+    if (openingSlack) return
     openingSlack = true
     try {
-      const ok = await openExternalUrl(slackURL)
-      if (!ok) reportError('Invalid Slack thread URL')
+      const ok = await openExternalUrl(url)
+      if (!ok) reportError('Invalid Slack link')
     } finally {
       openingSlack = false
     }
   }
 
-  function positionPRMenu() {
-    const btn = prMenuBtn
-    if (!btn) {
-      prMenuStyle = ''
+  async function openSlack(e: MouseEvent) {
+    stop(e)
+    if (slackLinks.length === 0) return
+    if (slackLinks.length > 1) {
+      if (!slackMenuOpen) slackMenuStyle = menuStyle(slackMenuBtn, 288)
+      slackMenuOpen = !slackMenuOpen
+      prMenuOpen = false
       return
     }
+    await openSlackURL(slackLinks[0].url)
+  }
+
+  async function openSlackChoice(e: MouseEvent, url: string) {
+    stop(e)
+    slackMenuOpen = false
+    await openSlackURL(url)
+  }
+
+  function positionPRMenu() {
+    prMenuStyle = menuStyle(prMenuBtn, 224)
+  }
+
+  function menuStyle(btn: HTMLElement | null, menuW: number): string {
+    if (!btn) return ''
     const r = btn.getBoundingClientRect()
     const gap = 4
-    const menuW = 224 // ~min-w-[14rem]
     // Prefer below the button; flip above if near the bottom of the viewport.
     const spaceBelow = window.innerHeight - r.bottom
     const openUp = spaceBelow < 160 && r.top > spaceBelow
@@ -258,7 +293,7 @@
     const parts = [`right:${right}px`, `width:${menuW}px`]
     if (top != null) parts.push(`top:${top}px`)
     if (bottom != null) parts.push(`bottom:${bottom}px`)
-    prMenuStyle = parts.join(';')
+    return parts.join(';')
   }
 
   async function openPR(e: MouseEvent) {
@@ -267,6 +302,7 @@
     if (prURLs.length > 1) {
       if (!prMenuOpen) positionPRMenu()
       prMenuOpen = !prMenuOpen
+      slackMenuOpen = false
       return
     }
     openingPR = true
@@ -292,20 +328,23 @@
   }
 
   function onPRMenuPointerDown(e: PointerEvent) {
-    if (!prMenuOpen || !prMenuRoot) return
-    if (!prMenuRoot.contains(e.target as Node)) prMenuOpen = false
+    const t = e.target as Node
+    if (prMenuOpen && prMenuRoot && !prMenuRoot.contains(t)) prMenuOpen = false
+    if (slackMenuOpen && slackMenuRoot && !slackMenuRoot.contains(t)) slackMenuOpen = false
   }
 
   function onPRMenuKeydown(e: KeyboardEvent) {
-    if (prMenuOpen && e.key === 'Escape') {
+    if ((prMenuOpen || slackMenuOpen) && e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
       prMenuOpen = false
+      slackMenuOpen = false
     }
   }
 
   function onPRMenuScrollOrResize() {
     if (prMenuOpen) prMenuOpen = false
+    if (slackMenuOpen) slackMenuOpen = false
   }
 
   // Lane overflow scrolls don't bubble to window — capture so the fixed menu closes.
@@ -320,6 +359,7 @@
   onMount(() => {
     const close = () => {
       if (prMenuOpen) prMenuOpen = false
+      if (slackMenuOpen) slackMenuOpen = false
     }
     document.addEventListener('scroll', close, true)
     return () => document.removeEventListener('scroll', close, true)
@@ -532,17 +572,54 @@
     </button>
   {/if}
 
-  {#if slackURL}
-    <button
-      type="button"
-      onclick={openSlack}
-      disabled={openingSlack}
-      title="Open Slack thread"
-      aria-label="Open Slack thread"
-      class="{actionBtn} text-ink-3 hover:text-ink"
-    >
-      <SlackIcon class="h-3 w-3" />
-    </button>
+  {#if slackLinks.length > 0}
+    <div class="relative" bind:this={slackMenuRoot} data-slack-menu>
+      <button
+        type="button"
+        bind:this={slackMenuBtn}
+        onclick={openSlack}
+        disabled={openingSlack}
+        title={slackTitle}
+        aria-label={slackTitle}
+        aria-expanded={slackLinks.length > 1 ? slackMenuOpen : undefined}
+        aria-haspopup={slackLinks.length > 1 ? 'menu' : undefined}
+        class="{actionBtn} relative text-ink-3 hover:text-ink {slackMenuOpen ? 'bg-white/8 text-ink' : ''}"
+      >
+        <SlackIcon class="h-3 w-3" title="" />
+        {#if slackLinks.length > 1}
+          <span class="pointer-events-none absolute -right-0.5 -top-0.5 font-mono text-[8px] leading-none text-ink-3">{slackLinks.length}</span>
+        {/if}
+      </button>
+      {#if slackMenuOpen && slackLinks.length > 1}
+        <div
+          role="menu"
+          style={slackMenuStyle}
+          class="fixed z-50 max-h-[min(280px,45vh)] overflow-y-auto rounded-control border border-line bg-col py-0 shadow-md ring-1 ring-black/25"
+        >
+          {#each slackLinks as link, i (link.url)}
+            {@const text = slackLinkText(link)}
+            <button
+              type="button"
+              role="menuitem"
+              title={link.url}
+              onclick={(e) => void openSlackChoice(e, link.url)}
+              class="flex w-full items-start gap-2 px-2.5 py-2 text-left transition-colors hover:bg-accent/20
+                {i > 0 ? 'border-t border-line-soft' : ''}"
+            >
+              <SlackIcon class="mt-0.5 h-3 w-3 flex-none" title="" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-xs {link.description ? 'text-ink' : 'text-ink-2'}">
+                  {text.primary}{#if i === 0}<span class="ml-1.5 rounded-chip bg-accent/15 px-1 py-px align-middle text-[9px] font-semibold uppercase tracking-wide text-accent-hi">primary</span>{/if}
+                </span>
+                {#if text.secondary}
+                  <span class="block truncate font-mono text-[10px] text-ink-3">{text.secondary}</span>
+                {/if}
+              </span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   {/if}
 
   {#if prURLs.length > 0}

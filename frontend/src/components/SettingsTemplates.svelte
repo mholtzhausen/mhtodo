@@ -8,6 +8,7 @@
     type TemplateValues
   } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
   import TriStateCheck from './TriStateCheck.svelte'
 
   let {
@@ -223,7 +224,14 @@
             <button
               type="button"
               onclick={() =>
-                enableField(field.key, field.kind === 'status' ? ('pending' as Status) : '')}
+                enableField(
+                  field.key,
+                  field.kind === 'status'
+                    ? ('pending' as Status)
+                    : field.kind === 'priority'
+                      ? 'high'
+                      : ''
+                )}
               class="w-full rounded-control border border-dashed border-line-soft bg-field/30 px-3 py-2 text-left text-sm text-ink-3 transition-colors hover:border-accent/50 hover:text-ink-2"
             >
               + Add {field.label.toLowerCase()} to this template
@@ -232,6 +240,12 @@
             <StatusPicker
               value={values.status as Status}
               onPick={(s) => (values = { ...values, status: s })}
+            />
+          {:else if field.kind === 'priority'}
+            <PriorityPicker
+              variant="field"
+              value={values.priority ?? 'none'}
+              onPick={(p) => (values = { ...values, priority: p })}
             />
           {:else if field.kind === 'textarea'}
             <textarea

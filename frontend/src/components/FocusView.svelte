@@ -9,7 +9,10 @@
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
   import InlineEdit from './InlineEdit.svelte'
+  import SlackLinks from './SlackLinks.svelte'
   import StatusPicker from './StatusPicker.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import { applyPriorityFilter, type Priority } from '../lib/priority'
 
   let {
     tasks,
@@ -22,6 +25,8 @@
     onUnpin,
     onMove,
     onGoToBoard,
+    priorityFilter = [],
+    onPriorityFilterChange,
     onError,
     onToast
   }: {
@@ -35,6 +40,9 @@
     onUnpin: (id: string) => void
     onMove: (id: string, beforeId: string | null) => void
     onGoToBoard: () => void
+    /** Header priority filter: hides non-matching lanes (a root stays if a sub-task matches). */
+    priorityFilter?: readonly Priority[]
+    onPriorityFilterChange?: (ps: Priority[]) => void
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
@@ -61,10 +69,17 @@
   const LANE_MIN = 260
   const LANE_GAP = 12
 
-  const pinned = $derived.by(() => {
+  const allPinned = $derived.by(() => {
     const byId = new Map(tasks.map((t) => [t.id, t]))
     return focusIds.map((id) => byId.get(id)).filter((t): t is any => !!t)
   })
+  // Lanes that pass the priority filter (order untouched).
+  const pinned = $derived.by(() => {
+    if (!priorityFilter.length) return allPinned
+    const keep = new Set(applyPriorityFilter(tasks, priorityFilter).map((t) => t.id))
+    return allPinned.filter((t) => keep.has(t.id))
+  })
+  const hiddenLanes = $derived(allPinned.length - pinned.length)
 
   const childrenOf = $derived.by(() => {
     const m: Record<string, any[]> = {}
@@ -155,6 +170,14 @@
     }
   }
 
+  async function setPriority(t: any, p: Priority) {
+    try {
+      await api.setPriority(t.id, p)
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
   async function setStatus(t: any, s: Status) {
     if (s === t.status) return
     try {
@@ -215,7 +238,31 @@
     'w-full rounded-control border border-line-soft bg-field px-2 py-1 text-[12px] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25'
 </script>
 
-{#if pinned.length === 0}
+{#if priorityFilter.length > 0 && allPinned.length > 0}
+  <div class="mb-2 flex items-center gap-2 text-[11px] text-ink-3">
+    <PriorityPicker
+      mode="multi"
+      variant="filter"
+      values={priorityFilter}
+      onChange={(ps) => onPriorityFilterChange?.(ps)}
+    />
+    <span>
+      Priority filter on{#if hiddenLanes > 0}&nbsp;· {hiddenLanes} lane{hiddenLanes === 1 ? '' : 's'} hidden{/if}
+    </span>
+    <button
+      type="button"
+      onclick={() => onPriorityFilterChange?.([])}
+      class="rounded-control px-1.5 py-0.5 text-accent hover:bg-white/5 hover:text-accent-hi"
+    >
+      Clear
+    </button>
+  </div>
+{/if}
+{#if pinned.length === 0 && allPinned.length > 0}
+  <div class="flex h-[calc(100%-2.25rem)] flex-col items-center justify-center gap-2 text-center">
+    <p class="text-sm text-ink-3">No focused tickets match the priority filter.</p>
+  </div>
+{:else if pinned.length === 0}
   <div class="flex h-full flex-col items-center justify-center gap-3 text-center">
     <FocusIcon class="h-8 w-8 text-ink-3/50" />
     <p class="text-sm text-ink-3">Nothing in focus.</p>
@@ -232,7 +279,10 @@
     </button>
   </div>
 {:else}
-  <div class="h-full min-h-0 overflow-x-auto">
+  <div
+    class="min-h-0 overflow-x-auto"
+    style:height={priorityFilter.length > 0 ? 'calc(100% - 2.25rem)' : '100%'}
+  >
     <div class="grid h-full gap-3" style={gridStyle}>
       {#each pinned as t (t.id)}
         {@const kids = childrenOf[t.id] ?? []}
@@ -270,6 +320,11 @@
             </span>
             <span class="text-[10.5px] text-ink-3">{relTime(t.updated_at)}</span>
             <div class="flex-1"></div>
+            <PriorityPicker
+              value={t.priority}
+              idleClass="opacity-40"
+              onPick={(p) => void setPriority(t, p)}
+            />
             <button
               type="button"
               onclick={() => onSelect(t.id)}
@@ -366,6 +421,8 @@
               />
             </div>
 
+            <SlackLinks task={t} compact {onError} />
+
             {#if !isSub}
               <div>
                 <p class={sectionLabel}>
@@ -379,11 +436,12 @@
                         ? 'border-line-soft bg-field/40'
                         : 'border-transparent'}"
                     >
+                      <div class="group/sub flex items-center gap-1 pr-1">
                       <button
                         type="button"
                         onclick={() => toggleExpanded(c.id)}
                         aria-expanded={open}
-                        class="flex w-full items-center gap-2 rounded-control px-1.5 py-1 text-left hover:bg-white/5
+                        class="flex min-w-0 flex-1 items-center gap-2 rounded-control px-1.5 py-1 text-left hover:bg-white/5
                           {selectedId === c.id ? 'bg-accent/10' : ''}
                           {c.status === 'done' && !open ? 'opacity-60' : ''}"
                       >
@@ -407,6 +465,13 @@
                         >
                         <span class="font-mono text-[10px] text-ink-3">{c.progress}%</span>
                       </button>
+                      <PriorityPicker
+                        value={c.priority}
+                        iconClass="h-3 w-3"
+                        idleClass="opacity-0 group-hover/sub:opacity-50"
+                        onPick={(p) => void setPriority(c, p)}
+                      />
+                      </div>
                       {#if open}
                         <div class="flex flex-col gap-2 px-2 pb-2 pt-1">
                           <div class="flex items-center gap-2 text-[10.5px] text-ink-3">

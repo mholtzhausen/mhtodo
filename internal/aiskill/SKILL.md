@@ -28,7 +28,12 @@ mhtodo edit ID --git-detect[=DIR]
 mhtodo edit ID --git-repo REPO --git-branch BRANCH [--git-branch BRANCH…]
   # git_repo is a single repo (normalized to host/path; owner/name = GitHub); --git-branch is repeatable and replaces the full branch list
 mhtodo list --git-current [--json]   # tickets recording this repo's current branch (also --git-repo R / --git-branch B)
-mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--json]
+mhtodo priority ID [none|low|medium|high|urgent]   # no level = show; never reorders the board
+mhtodo list --priority '>=high' [--sort priority] [--json]   # also comma lists: high,urgent
+mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--priority LEVEL] [--json]
+mhtodo slack link list ID [--json]                 # Slack conversations on a ticket (* = primary thread)
+mhtodo slack link add ID URL [--desc "what it is"] [--primary]   # adds, never replaces; slack.com or slack:// only
+  # read every linked conversation's description before asking the user where a discussion happened
 mhtodo activity add ID --activity "Label" --comment "…"
 mhtodo activity list --task ID [--json]
 mhtodo template search --cwd "$PWD"
@@ -58,6 +63,8 @@ If the user pastes:
 MHTodo Ticket: mhtodo://task/{short8}
 Status: …
 Title: …
+Slack conversations (first is the primary thread):   ← only when the ticket has Slack links
+ - <url> — <description>
 Instructions: (only if you start working on this task) 
  - record your current claude session against the ticket: `mhtodo edit {short8} --session <claude-session-uuid>`
  - remember to update subtasks and activity comments if you do work on this

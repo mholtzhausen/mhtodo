@@ -195,6 +195,39 @@ func (a *App) UpdateTask(id string, patch core.UpdateInput) (core.Task, error) {
 	return t, err
 }
 
+// SetPriority maps to CLI `priority ID LEVEL`. Visual/filter only: never
+// touches board_rank or focus_rank.
+// AddSlackLink attaches a Slack conversation (validated); primary puts it first.
+func (a *App) AddSlackLink(id string, link core.SlackLink, primary bool) (core.Task, error) {
+	t, err := a.svc.AddSlackLink(a.ctx, id, link, primary)
+	if err == nil {
+		a.emitChanged(t.ID, "update")
+	}
+	return t, err
+}
+
+// SetSlackLinks replaces the ordered list (inline edit / reorder / remove).
+func (a *App) SetSlackLinks(id string, links []core.SlackLink) (core.Task, error) {
+	t, err := a.svc.SetSlackLinks(a.ctx, id, links)
+	if err == nil {
+		a.emitChanged(t.ID, "update")
+	}
+	return t, err
+}
+
+// DescribeSlackLink recognises a pasted Slack URL for the add popover.
+func (a *App) DescribeSlackLink(url string) core.SlackLinkInfo {
+	return core.DescribeSlackLink(url)
+}
+
+func (a *App) SetPriority(id string, priority core.Priority) (core.Task, error) {
+	t, err := a.svc.SetPriority(a.ctx, id, priority)
+	if err == nil {
+		a.emitChanged(t.ID, "update")
+	}
+	return t, err
+}
+
 // DetectGit maps to CLI `edit --git-detect`: records the repo and current
 // branch of the task's cwd (repo set when empty, branch appended).
 func (a *App) DetectGit(id string) (core.Task, error) {

@@ -101,12 +101,13 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 
 | Command | Synopsis | Notes |
 |---|---|---|
-| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status icebox\|pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--git-repo` optional repository and `--git-branch` optional branch name(s), repeatable, stored one-per-line in `git_branches`; `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
-| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only] [--git-repo REPO] [--git-branch NAME \| --git-current]` | `--git-repo` matches the normalized repo (case-insensitive); `--git-branch` matches one recorded branch exactly; `--git-current` uses the repo + current branch of the working directory; `--search` also matches git repo/branches; default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title` |
+| `add` | `mhtodo add TITLE [--template REF] [--desc TEXT] [--feedback TEXT] [--status icebox\|pending\|wip\|waiting\|review\|pr\|done] [--progress 0-100] [--parent ID] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--priority none\|low\|medium\|high\|urgent] [--human-only] [--include-in-report \| --no-include-in-report]` | prints the created object (or just the ID with `-q`); `--template` applies a named template (CLI flags override presets); `--parent` creates a one-level sub-task; `--feedback` is agent-authored (GUI shows it when set); `--cwd` optional working directory; `--pr-url` optional PR URL(s), repeatable, stored one-per-line (non-empty advances status to `pr`); `--git-repo` optional repository and `--git-branch` optional branch name(s), repeatable, stored one-per-line in `git_branches`; `--priority` sets the priority (default `none`; an explicit flag overrides a template preset; sub-tasks never inherit it); `--human-only` marks a user-owned task agents must skip; Slack report inclusion defaults to on for root tasks and off for sub-tasks |
+| `list` (`ls`) | `mhtodo list [--status S] [--search TEXT] [--limit N] [--sort FIELD[+\|-]] [--all] [--archived] [--roots] [--human-only] [--git-repo REPO] [--git-branch NAME \| --git-current] [--priority LIST]` | `--priority` keeps only the given levels: a comma list and/or thresholds (`high,urgent`, `'>=high'`, `'<medium'`); invalid → exit 1 `invalid_priority`; `--git-repo` matches the normalized repo (case-insensitive); `--git-branch` matches one recorded branch exactly; `--git-current` uses the repo + current branch of the working directory; `--search` also matches git repo/branches; default: excludes done, archived, **and human-only**, sorted **board order** (status workflow → `board_rank` → `updated_at`); `--all` includes done; `--archived` shows archived only; `--roots` top-level only; `--human-only` includes human-only rows (default hides them); list stays flat for agents (`parent_id` field); sort fields: `board`, `created`, `updated`, `status`, `progress`, `title`, `priority` (opt-in; ties keep board order) |
 | `show` (`get`) | `mhtodo show ID` | full detail; ID may be a unique prefix (≥ 4 chars) |
 | `open` | `mhtodo open TARGET` | raise the GUI focused on a task; TARGET is an id/prefix or `mhtodo://task/{id}` deep link (also registered as desktop `x-scheme-handler/mhtodo`) |
-| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--git-detect[=DIR]] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--git-branch` is repeatable (full replacement list); `--git-detect` reads the repo + current branch from the working directory (or `--git-detect=DIR`; note the `=`), sets `git_repo` when empty and appends the branch (exit 1 `git_repo_mismatch` if a different repo is recorded, `git_detect` if not a git work tree / detached HEAD); combinable with other flags; `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--git-repo ""` / `--git-branch ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket |
+| `edit` | `mhtodo edit ID [--title TEXT] [--desc TEXT] [--feedback TEXT] [--progress 0-100] [--cwd PATH] [--slack-thread URL] [--pr-url URL …] [--git-repo REPO] [--git-branch NAME …] [--git-detect[=DIR]] [--priority LEVEL] [--session UUID] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | at least one flag required; does not change status except `--pr-url` empty→non-empty advances to `pr`; `--pr-url` is repeatable (full replacement list, one URL per line in JSON); `--git-branch` is repeatable (full replacement list); `--git-detect` reads the repo + current branch from the working directory (or `--git-detect=DIR`; note the `=`), sets `git_repo` when empty and appends the branch (exit 1 `git_repo_mismatch` if a different repo is recorded, `git_detect` if not a git work tree / detached HEAD); combinable with other flags; `--cwd ""` / `--slack-thread ""` / `--pr-url ""` / `--git-repo ""` / `--git-branch ""` / `--session ""` clear those fields; `--session` links a Claude session UUID on the ticket; `--priority none` clears the priority |
 | `status` (`set`) | `mhtodo status ID icebox\|pending\|wip\|waiting\|review\|pr\|done` | prints the updated object (transition + timestamps); root tasks append to the target column’s board order |
+| `priority` (`prio`) | `mhtodo priority ID [none\|low\|medium\|high\|urgent]` | with a level sets it and prints the updated object; with only ID prints the current level. Priority is a visual/filter signal only: it never changes `board_rank`, `focus_rank` or the default board sort |
 | `status migrate` | `mhtodo status migrate FROM TO` | bulk-moves every non-archived task from one status to another (JSON: `migrated`, `from`, `to`) |
 | `reorder` | `mhtodo reorder ID [--before ID]` | move a root task within its status column; `--before` omitted appends to column end |
 | `focus` | `mhtodo focus [list]` · `focus add ID [--before ID]` · `focus rm ID` · `focus clear` | Focus view lanes (max 6, in order). A focused parent with a focused sub-task gets no lane of its own (only the sub-task shows; the parent's lane returns when the sub-task leaves focus). `add` pins or moves a task (`--before` omitted appends / moves to end); done or archived → exit 1 (`focus_closed`), a 7th lane → `focus_full`. `rm` is idempotent. `clear` unpins all (JSON: `cleared`). Marking done or archiving unpins automatically |
@@ -119,6 +120,7 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `rm` (`remove`) | `mhtodo rm ID [--yes]` | interactive confirmation on a TTY; **non-TTY requires `--yes`**; cascades to sub-tasks |
 | `path` | `mhtodo path` | print the DB file path |
 | `slack report` | `mhtodo slack report` | paste-ready board summary for Slack (Completed / Todo / WIP); `--json` emits the text as a JSON string |
+| `slack link` | `mhtodo slack link list ID` · `add ID URL [--desc TEXT] [--primary]` · `edit ID LINK [--desc TEXT] [--primary]` · `rm ID LINK` | multiple Slack conversations per ticket, each with an optional description (alias `slack links`). `LINK` is a URL or the 1-based index from `list` (`*` marks the primary). URLs must be `https://*.slack.com/…` or `slack://…` (exit 1 `invalid_slack_link`); unknown link → exit 2 `slack_link_not_found`. Re-adding a linked URL (case/trailing-slash insensitive) updates its description instead of duplicating it. `--json` prints the `slack_links` array (list) or the task |
 | `ai` | `mhtodo ai [--check]` | install/update `~/.claude/skills/mhtodo/SKILL.md` (embedded workflows) and strip legacy Claude hooks/settings/integration artifacts; `--check` reports skill freshness + leftovers without writing |
 | `install` | `mhtodo install [--prefix DIR] [--service \| --no-service]` | copy this binary into `$PREFIX` (default `~/.local`) with desktop launcher + icon; on a TTY, prompt for user systemd service; flags skip prompts (non-TTY skips optionals unless flagged) |
 | `update` | `mhtodo update [--check] [--force] [--no-skill-refresh]` | check GitHub Releases for a newer linux binary; download, verify sha256, install over the running binary (and desktop/icon when under `$PREFIX/bin/mhtodo`); if `~/.config/systemd/user/mhtodo.service` is attached to this binary, stop → rewrite unit → `enable --now`. After a successful binary update, runs `mhtodo ai` and (when `claude` is on PATH) a non-interactive skill refresh; human output announces each skill step before it starts (Claude refresh can take up to a few minutes); refresh failures warn only. Auth: `GH_TOKEN` / `GITHUB_TOKEN`. `--check` reports only; `--force` reinstalls even when current; `--no-skill-refresh` / `MHTODO_SKIP_SKILL_REFRESH=1` skip the Claude pass. When run from inside `mhtodo.service` (e.g. the GUI's Install button), the install is handed off to a transient `mhtodo-update-<ts>` unit via `systemd-run` (stopping the service would otherwise kill the updater) and returns `handed_off: true` + `handoff_unit` immediately; follow it with `journalctl --user -u 'mhtodo-update-*'` |
@@ -126,8 +128,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `template list` | `mhtodo template list` | all templates, name order |
 | `template search` | `mhtodo template search [QUERY] [--mode fuzzy\|regex] [--cwd PATH]` | fuzzy (default) or regex over name/title_prefix/description/cwd; `--cwd` exact path match; query and/or `--cwd` required |
 | `template show` | `mhtodo template show REF` | one template by id or name |
-| `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--git-repo REPO] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
-| `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-git-repo\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
+| `template create` | `mhtodo template create NAME [--title-prefix S] [--desc S] [--status S] [--cwd S] [--slack-thread URL] [--git-repo REPO] [--priority LEVEL] [--human-only \| --no-human-only] [--include-in-report \| --no-include-in-report]` | only passed flags become presets (omitted = unset); `-q` prints id |
+| `template update` | `mhtodo template update REF [--name S] … [--clear-title-prefix\|--clear-desc\|--clear-status\|--clear-cwd\|--clear-slack-thread\|--clear-git-repo\|--clear-priority\|--clear-human-only\|--clear-include-in-report]` | patch by id or name; `--clear-*` unsets a preset; at least one flag required |
 | `template rm` | `mhtodo template rm REF [--yes]` | non-TTY requires `--yes`; prints deleted id |
 | `theme list` | `mhtodo theme list` | all themes, name order (`*` = active) |
 | `theme search` | `mhtodo theme search QUERY [--mode fuzzy\|regex]` | fuzzy (default) or regex over name |
@@ -160,12 +162,23 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
   "cwd": "/home/me/projects/mhtodo",
   "human_only": false,
   "include_in_report": true,
-  "slack_thread": "",
+  "slack_thread": "https://acme.slack.com/archives/C0123/p1700000000000100",
+  "slack_links": [
+    { "url": "https://acme.slack.com/archives/C0123/p1700000000000100", "description": "design review" },
+    { "url": "https://acme.slack.com/archives/D0456", "description": "DM with ops" }
+  ],
   "pr_url": "",
   "git_repo": "github.com/me/mhtodo",
-  "git_branches": "feat/git-fields"
+  "git_branches": "feat/git-fields",
+  "priority": "high"
 }
 ```
+
+`slack_links` (v21) is the ordered list of Slack conversations on the ticket — always an array, first
+entry is the primary thread. `slack_thread` stays as before and always mirrors `slack_links[0].url`
+(`""` when there are none). `add`/`edit --slack-thread URL` makes that URL primary without dropping the
+others; `--slack-thread ""` removes only the primary (the next link is promoted). Existing tickets'
+`slack_thread` became link #1 in migration v21.
 
 Activity entry:
 
@@ -192,7 +205,8 @@ setting the field empty→non-empty advances status to `pr`. Repeat `--pr-url` o
 to set multiple. `git_repo` records the git repository the ticket involves; `git_branches` lists its
 branch name(s), one per line (trimmed, duplicates dropped); repeat `--git-branch` on `add`/`edit` to
 set multiple. Repos are normalized to `host/path` (`git@github.com:org/x.git`, `https://github.com/org/x.git`
-and `org/x` all become `github.com/org/x`; local paths stay paths). Templates can preset `git_repo`. Legacy `terminal_pid` may still appear as `0` — ignore it.
+and `org/x` all become `github.com/org/x`; local paths stay paths). Templates can preset `git_repo`. `priority` is always present: `none`, `low`, `medium`, `high` or `urgent` (default `none`); it is a
+visual/filter signal and never reorders anything. The ticket reference and markdown report mention it only when it is not `none`. Legacy `terminal_pid` may still appear as `0` — ignore it.
 
 ### Zed (Settings → Integrations)
 
@@ -286,9 +300,14 @@ status transitions → activity → delete) using only this CLI.
   choice persists.
 - **Activity view:** feed of agent/user activity across non-archived tickets (newest first), with
   shared search/human filters plus a ticket checkbox dropdown (closes on outside click / Esc).
+- **Priority:** each card, sub-task, Focus lane, archive row and the detail modal has a priority
+  glyph (signal bars; urgent is a filled `!`). Click it for a picker: arrows + Enter, `0`–`4` to jump,
+  Esc to close. Unset priority stays hidden until you hover the card. The filter button next to
+  search narrows Board, Focus and Archive to chosen levels (count shown when active; Clear resets)
+  and is remembered. Priority never reorders cards.
 - **Detail modal:** edit fields (including working directory with fuzzy typeahead over template
   cwds and previously used ticket paths — plus folder picker / free-typed path — Todo session /
-  Claude session UUID, human-only / Slack report checkboxes, Slack thread URL, pull-request URLs
+  Claude session UUID, human-only / Slack report checkboxes, **Slack conversations** list, pull-request URLs
   one-per-line), activity composer,
   Add sub-task (roots only). Header repeats card actions (copy markdown / ticket ref, Slack, pull
   request when `pr_url` is set — picker when multiple — Zed, human-only / include-in-report toggles,
@@ -364,6 +383,7 @@ status transitions → activity → delete) using only this CLI.
 | `UpdateTask(id, patch)` | `edit` | title/description/feedback/progress/cwd/human_only/include_in_report/slack_thread/pr_url/git_repo/git_branches/todo_session; `pr_url` is newline-separated URL(s); empty→non-empty advances to `pr` |
 | `PickDirectory()` | — | system folder picker (GUI cwd field) |
 | `SetStatus(id, status)` | `status` / `done` | optional notify-send per Settings (wip/waiting/review/done); assigns end rank on column change |
+| `SetPriority(id, priority)` | `priority` | none\|low\|medium\|high\|urgent; bumps `updated_at`, never ranks |
 | `MigrateStatus(from, to)` | `status migrate` | bulk-move non-archived tasks between statuses |
 | `CountByStatus()` | — | Settings → Statuses/Lanes ticket counts |
 | `ReorderBoardTask(id, beforeID)` | `reorder` | same-lane board order; empty `beforeID` appends |
@@ -380,6 +400,9 @@ status transitions → activity → delete) using only this CLI.
 | `GetAlwaysOnTop` / `SetAlwaysOnTop` | — | GUI preference (`meta.always_on_top`) |
 | `DBPath()` | `path` | GUI footer |
 | `SlackReport()` | `slack report` | GUI header copies report to clipboard |
+| `AddSlackLink(id, link, primary)` | `slack link add` | validated; re-adding a URL updates its description |
+| `SetSlackLinks(id, links)` | `slack link edit` / `rm` | full ordered replace (GUI reorder / inline edit / remove); first = primary |
+| `DescribeSlackLink(url)` | — | display-only recognition (`valid`, `kind` thread/channel/dm/group/workspace/link, `workspace`, `label`, `error`); no Slack API |
 | `GetInstallStatus(force)` | `update --check` (+ detect) | 60m cache; `force` bypasses; `show` when update available; GUI Ctrl+hover force |
 | `RunInstallActions(in)` | `update` / `service install` | GUI confirmation; execs this binary’s CLI |
 | `ListTemplates` / `GetTemplate` / `CreateTemplate` / `UpdateTemplate` / `DeleteTemplate` | `template list\|search\|show\|create\|update\|rm`; `add --template` | task templates (v0.5); CLI `search` uses core `SearchTemplates` (fuzzy/regex + cwd); update is full replace in core (CLI patches then replace); `add --template` applies then lets changed flags override |

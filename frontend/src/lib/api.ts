@@ -6,6 +6,9 @@ import type { core } from '../../wailsjs/go/models'
 import { defaultSettings, fromGoSettings, toGoSettings, type GUISettings } from './settings'
 import { toGoTemplateInput, type TaskTemplate, type TemplateValues } from './templates'
 import { toGoThemeInput, type Theme } from './themes'
+import type { Priority } from './priority'
+
+export type { Priority } from './priority'
 
 export type Status = 'icebox' | 'pending' | 'wip' | 'waiting' | 'review' | 'pr' | 'done'
 
@@ -27,12 +30,30 @@ export interface Task {
   cwd: string
   human_only: boolean
   include_in_report: boolean
+  /** Mirrors slack_links[0].url (pre-v21 contract). */
   slack_thread: string
+  /** Ordered Slack conversations; first is primary. Always an array (v21). */
+  slack_links: SlackLink[]
   pr_url: string
   git_repo: string
   git_branches: string
+  /** none|low|medium|high|urgent — always present (v20). */
+  priority: Priority
   todo_session: string
   terminal_pid?: number
+}
+
+export interface SlackLink {
+  url: string
+  description: string
+}
+
+export interface SlackLinkInfo {
+  valid: boolean
+  kind: 'thread' | 'channel' | 'dm' | 'group' | 'workspace' | 'link' | ''
+  workspace: string
+  label: string
+  error: string
 }
 
 export interface Activity {
@@ -76,7 +97,9 @@ const toGoFilter = (f: ListFilterInput) => ({
   ParentID: f.parentId ?? '',
   IncludeHumanOnly: f.includeHumanOnly !== undefined ? f.includeHumanOnly : true,
   GitRepo: '',
-  GitBranch: ''
+  GitBranch: '',
+  // null = any priority (an empty array would match nothing in core).
+  Priorities: null as unknown as string[]
 })
 
 const toGoActivityFilter = (f: ActivityFilterInput) => ({
@@ -110,6 +133,7 @@ export const api = {
     prUrl?: string
     gitRepo?: string
     gitBranches?: string
+    priority?: Priority
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -125,8 +149,10 @@ export const api = {
       PRURL: input.prUrl ?? '',
       TodoSession: '',
       GitRepo: input.gitRepo ?? '',
-      GitBranches: input.gitBranches ?? ''
-    }) as Promise<Task>
+      GitBranches: input.gitBranches ?? '',
+      Priority: input.priority ?? 'none',
+      SlackLinks: []
+    } as unknown as core.CreateInput) as Promise<Task>
   },
   update(id: string, patch: {
     title?: string
@@ -141,6 +167,7 @@ export const api = {
     gitRepo?: string
     gitBranches?: string
     todoSession?: string
+    priority?: Priority
   }) {
     return App.UpdateTask(id, {
       Title: patch.title ?? null,
@@ -154,8 +181,22 @@ export const api = {
       PRURL: patch.prUrl ?? null,
       GitRepo: patch.gitRepo ?? null,
       GitBranches: patch.gitBranches ?? null,
+      Priority: patch.priority ?? null,
       TodoSession: patch.todoSession !== undefined ? patch.todoSession : null
     })
+  },
+  addSlackLink(id: string, link: SlackLink, primary = false): Promise<Task> {
+    return App.AddSlackLink(id, link, primary) as Promise<Task>
+  },
+  /** Replace the full ordered list (reorder / edit / remove). */
+  setSlackLinks(id: string, links: SlackLink[]): Promise<Task> {
+    return App.SetSlackLinks(id, links) as Promise<Task>
+  },
+  describeSlackLink(url: string): Promise<SlackLinkInfo> {
+    return App.DescribeSlackLink(url) as Promise<SlackLinkInfo>
+  },
+  setPriority(id: string, priority: Priority) {
+    return App.SetPriority(id, priority as unknown as string) as Promise<Task>
   },
   setStatus(id: string, status: Status) {
     return App.SetStatus(id, status as unknown as string)

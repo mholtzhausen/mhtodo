@@ -10,6 +10,10 @@ export function AddActivity(arg1, arg2) {
   return window['go']['main']['App']['AddActivity'](arg1, arg2);
 }
 
+export function AddSlackLink(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AddSlackLink'](arg1, arg2, arg3);
+}
+
 export function AppVersion() {
   return window['go']['main']['App']['AppVersion']();
 }
@@ -80,6 +84,10 @@ export function DeleteTemplate(arg1) {
 
 export function DeleteTheme(arg1) {
   return window['go']['main']['App']['DeleteTheme'](arg1);
+}
+
+export function DescribeSlackLink(arg1) {
+  return window['go']['main']['App']['DescribeSlackLink'](arg1);
 }
 
 export function DetectGit(arg1) {
@@ -184,6 +192,14 @@ export function SetAlwaysOnTop(arg1) {
 
 export function SetGUISettings(arg1) {
   return window['go']['main']['App']['SetGUISettings'](arg1);
+}
+
+export function SetPriority(arg1, arg2) {
+  return window['go']['main']['App']['SetPriority'](arg1, arg2);
+}
+
+export function SetSlackLinks(arg1, arg2) {
+  return window['go']['main']['App']['SetSlackLinks'](arg1, arg2);
 }
 
 export function SetStatus(arg1, arg2) {

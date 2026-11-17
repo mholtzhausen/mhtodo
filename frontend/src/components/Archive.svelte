@@ -3,11 +3,15 @@
   import { sortSubtasksByCreated } from '../lib/boardOrder'
   import type { GUISettings } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import { api, errMsg } from '../lib/api'
+  import type { Priority } from '../lib/priority'
 
   let {
     tasks,
     hasFilters,
     humanFilterEmpty = false,
+    priorityFilterEmpty = false,
     selectedId,
     showSubtasks,
     showUpdated = true,
@@ -20,6 +24,7 @@
     tasks: any[]
     hasFilters: boolean
     humanFilterEmpty?: boolean
+    priorityFilterEmpty?: boolean
     selectedId: string | null
     showSubtasks: boolean
     showUpdated?: boolean
@@ -29,6 +34,14 @@
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
+
+  async function setPriority(id: string, p: Priority) {
+    try {
+      await api.setPriority(id, p)
+    } catch (e) {
+      onError?.(errMsg(e))
+    }
+  }
 
   const badge: Record<string, string> = {
     icebox: 'border-st-icebox/50 bg-st-icebox/15 text-st-icebox',
@@ -94,6 +107,9 @@
         Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or
         <strong class="font-medium text-ink-2">Human</strong>.
       </p>
+    {:else if priorityFilterEmpty}
+      <p class="text-sm text-ink-3">No archived tasks match the priority filter.</p>
+      <p class="text-xs text-ink-3/70">Use the priority button next to search to change or clear it.</p>
     {:else if hasFilters}
       <p class="text-sm text-ink-3">No archived tasks match.</p>
       <p class="text-xs text-ink-3/70">Clear the filters above to see everything.</p>
@@ -130,10 +146,21 @@
                 onSelect(t.id)
               }
             }}
-            class="flex w-full cursor-pointer items-stretch gap-3 border-b border-line-soft px-3 py-2.5 transition-colors
+            class="group/row flex w-full cursor-pointer items-stretch gap-3 border-b border-line-soft px-3 py-2.5 transition-colors
               {selectedId === t.id ? 'bg-accent/15' : 'bg-transparent hover:bg-card-hi'}"
           >
-            <span class="w-4 flex-none" aria-hidden="true"></span>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <span
+              class="flex w-4 flex-none items-center justify-center"
+              onclick={(e) => e.stopPropagation()}
+              onkeydown={(e) => e.stopPropagation()}
+            >
+              <PriorityPicker
+                value={t.priority}
+                idleClass="opacity-0 group-hover/row:opacity-50"
+                onPick={(p) => void setPriority(t.id, p)}
+              />
+            </span>
             <div class="flex w-28 flex-none items-center self-stretch">
               <div class="flex flex-col gap-1.5">
                 <span
@@ -177,13 +204,32 @@
             {/if}
           </div>
         {:else}
-          <button
-            type="button"
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            role="button"
+            tabindex="0"
             onclick={() => onSelect(t.id)}
-            class="flex w-full cursor-pointer items-center gap-3 border-b border-line-soft border-l-2 border-l-line py-2.5 pl-8 pr-3 text-left transition-colors
+            onkeydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect(t.id)
+              }
+            }}
+            class="group/row flex w-full cursor-pointer items-center gap-3 border-b border-line-soft border-l-2 border-l-line py-2.5 pl-8 pr-3 text-left transition-colors
               {selectedId === t.id ? 'bg-accent/15' : 'bg-transparent hover:bg-card-hi'}"
           >
-            <span class="w-4 flex-none" aria-hidden="true"></span>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <span
+              class="flex w-4 flex-none items-center justify-center"
+              onclick={(e) => e.stopPropagation()}
+              onkeydown={(e) => e.stopPropagation()}
+            >
+              <PriorityPicker
+                value={t.priority}
+                idleClass="opacity-0 group-hover/row:opacity-50"
+                onPick={(p) => void setPriority(t.id, p)}
+              />
+            </span>
             <div class="w-28 flex-none">
               <div class="flex flex-col gap-1.5">
                 <span
@@ -208,7 +254,7 @@
                 <span class="font-mono text-[10px] text-ink-3">{absList(t.updated_at)}</span>
               </div>
             {/if}
-          </button>
+          </div>
         {/if}
       {/each}
     </div>

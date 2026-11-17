@@ -1,4 +1,22 @@
-# mhtodo — progress (updated 26-09-10)
+# mhtodo — progress (updated 26-11-17)
+
+## Multiple Slack links (complete, unreleased)
+
+- [x] Migration v21: `tasks.slack_links` JSON column, backfilled from `slack_thread`
+- [x] Core add/edit/remove/set + recognition (`DescribeSlackLink`), dedupe, primary mirrored to `slack_thread`
+- [x] CLI `mhtodo slack link list|add|edit|rm`; `show` / markdown report / ticket reference list extra links
+- [x] GUI card icon (direct open or picker), Slack conversations list + paste-and-go popover (detail, Focus)
+- [x] Docs (README, AGENTS.md, SKILL.md, CHANGELOG) + tests (core, store migration, CLI)
+
+## Ticket priority (complete, unreleased)
+
+- [x] Migration v20: `tasks.priority` INTEGER 0–4 (default 0) + `task_templates.priority` preset
+- [x] Core `Priority` type, `SetPriority`, list filter (levels + thresholds), opt-in priority sort
+- [x] CLI `mhtodo priority ID [LEVEL]`, `add`/`edit --priority`, `list --priority`, template `--priority`/`--clear-priority`
+- [x] GUI picker on cards, sub-tasks, Focus lanes, archive, detail; hidden-until-hover when unset
+- [x] GUI priority filter (Board/Focus/Archive), persisted, parent kept when a sub-task matches
+- [x] Ticket reference / markdown report show priority when set
+- [x] Docs (README, AGENTS.md, SKILL.md, CHANGELOG) + tests (core, store migration, CLI)
 
 ## v0.7 — Tray menu notifications (complete)
 

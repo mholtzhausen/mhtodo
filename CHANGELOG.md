@@ -3,7 +3,15 @@
 ## Unreleased
 
 ### Features and Improvements
-- (none)
+- Ticket priority (`none|low|medium|high|urgent`, migration v20): `mhtodo priority ID [LEVEL]` (alias `prio`), `add`/`edit --priority`, JSON `priority` field (always present, default `none`)
+- `mhtodo list --priority high,urgent` or thresholds like `'>=high'`; opt-in `--sort priority`. Priority never touches `board_rank`/`focus_rank` or the default board sort
+- GUI: priority glyph on board cards, sub-tasks, Focus lanes, archive rows and the detail modal; one click opens a themed picker (arrows/Enter, 0–4, Esc). Unset priority stays hidden until hover
+- GUI priority filter next to search (multi-select, Clear) for Board, Focus and Archive; persisted per browser; lane counts follow it and parents stay visible when a sub-task matches
+- Templates can preset priority (`template create|update --priority`, `--clear-priority`; Settings → Task Templates); the ticket reference adds a `Priority:` line when set
+- Multiple Slack conversations per ticket, each with an optional description (migration v21; existing `slack_thread` becomes link #1). New JSON `slack_links: [{url, description}]` (always an array); `slack_thread` keeps returning the primary
+- `mhtodo slack link list|add|edit|rm` (URL or 1-based index; `--desc`, `--primary`); only `*.slack.com` / `slack://` links accepted; duplicates are merged
+- GUI: the card Slack icon opens a single link directly or a picker with descriptions; detail modal and Focus lanes get a Slack conversations list with a "+" paste-and-go popover (clipboard prefill, live thread/channel/DM recognition, inline errors) plus inline edit, reorder and remove
+- Ticket reference, markdown report and `mhtodo show` list the other conversations with their descriptions
 
 ### Bugfixes
 - (none)

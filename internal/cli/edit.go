@@ -11,14 +11,14 @@ import (
 )
 
 func newEditCmd() *cobra.Command {
-	var title, desc, feedback, cwd, slackThread, session, gitRepo, gitDetect string
+	var title, desc, feedback, cwd, slackThread, session, gitRepo, gitDetect, priority string
 	var prURLs, gitBranches []string
 	var progress int
 	var humanOnly, noHumanOnly bool
 	var includeInReport, noIncludeInReport bool
 	cmd := &cobra.Command{
 		Use:   "edit ID",
-		Short: "Update a task's title/description/feedback/progress/session (at least one flag)",
+		Short: "Update a task's title/description/feedback/progress/priority/session (at least one flag)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o, err := o(cmd)
@@ -61,6 +61,10 @@ func newEditCmd() *cobra.Command {
 			if cmd.Flags().Changed("git-branch") {
 				v := core.JoinGitBranches(gitBranches)
 				in.GitBranches = &v
+			}
+			if cmd.Flags().Changed("priority") {
+				v := core.Priority(priority)
+				in.Priority = &v
 			}
 			if cmd.Flags().Changed("session") {
 				v := session
@@ -120,6 +124,7 @@ func newEditCmd() *cobra.Command {
 	cmd.Flags().StringArrayVar(&gitBranches, "git-branch", nil, "git branch name(s); repeatable (replaces the list); empty clears")
 	cmd.Flags().StringVar(&gitDetect, "git-detect", "", "record repo + current branch; bare flag uses the current directory, --git-detect=DIR another; sets repo when empty, appends the branch")
 	cmd.Flags().Lookup("git-detect").NoOptDefVal = "."
+	cmd.Flags().StringVar(&priority, "priority", "", "priority (none|low|medium|high|urgent; none clears)")
 	cmd.Flags().StringVar(&session, "session", "", "Claude session UUID linked to this ticket (empty clears)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only")
 	cmd.Flags().BoolVar(&noHumanOnly, "no-human-only", false, "clear human-only flag")

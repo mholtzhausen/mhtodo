@@ -6,6 +6,8 @@
   import type { TaskStatusId } from '../lib/settings'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import type { Priority } from '../lib/priority'
   import TemplatePicker from './TemplatePicker.svelte'
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
   import CwdField from './CwdField.svelte'
@@ -42,6 +44,7 @@
   let title = $state('')
   let description = $state('')
   let status = $state<Status>('pending')
+  let priority = $state<Priority>('none')
   let cwd = $state('')
   let slackThread = $state('')
   let gitRepo = $state('')
@@ -68,6 +71,7 @@
     }
     if (dialogInitialized) return
     status = initialStatus
+    priority = 'none'
     cwd = defaultCwd
     slackThread = defaultSlackThread
     gitRepo = ''
@@ -80,12 +84,13 @@
   function onTemplatePicked(t: TaskTemplate) {
     const { values, titlePrefix } = applyTemplate(
       t,
-      { title, description, status, cwd, slackThread, gitRepo, humanOnly, includeInReport },
+      { title, description, status, priority, cwd, slackThread, gitRepo, humanOnly, includeInReport },
       appliedPrefix
     )
     title = values.title
     description = values.description
     status = values.status
+    priority = values.priority
     cwd = values.cwd
     slackThread = values.slackThread
     gitRepo = values.gitRepo
@@ -127,6 +132,7 @@
         title,
         description,
         status,
+        priority,
         parentId: parentId || undefined,
         cwd: cwd.trim() || undefined,
         humanOnly,
@@ -147,6 +153,7 @@
     title = ''
     description = ''
     status = 'pending'
+    priority = 'none'
     cwd = ''
     slackThread = ''
     gitRepo = ''
@@ -339,6 +346,11 @@
             onPick={(s) => (status = s)}
           />
         </div>
+
+        <div>
+          <span class="micro mb-1.5">Priority</span>
+          <PriorityPicker variant="field" value={priority} onPick={(p) => (priority = p)} />
+        </div>
       </div>
 
       <div class="flex flex-none items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
@@ -362,7 +374,7 @@
 
   <SaveAsTemplateDialog
     open={saveAsOpen}
-    source={{ title, description, status, cwd, slackThread, gitRepo, humanOnly, includeInReport }}
+    source={{ title, description, status, priority, cwd, slackThread, gitRepo, humanOnly, includeInReport }}
     onClose={() => (saveAsOpen = false)}
     onSaved={(n) => onNotify?.(`Template “${n}” saved`)}
     {onError}

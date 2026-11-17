@@ -6,12 +6,15 @@
   import { gitWebUrl, parseGitBranches } from '../lib/git'
   import type { GUISettings } from '../lib/settings'
   import StatusPicker from './StatusPicker.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import type { Priority } from '../lib/priority'
   import ProgressControl from './ProgressControl.svelte'
   import Markdown from './Markdown.svelte'
   import SaveAsTemplateDialog from './SaveAsTemplateDialog.svelte'
   import CwdField from './CwdField.svelte'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import SlackLinks from './SlackLinks.svelte'
   import { focusOnOpen } from '../lib/focusFirstField'
 
   let {
@@ -82,7 +85,6 @@
   // svelte-ignore state_referenced_locally
   let cwd = $state(task.cwd ?? '')
   // svelte-ignore state_referenced_locally
-  let slackThread = $state(task.slack_thread ?? '')
   // svelte-ignore state_referenced_locally
   let prUrl = $state(task.pr_url ?? '')
   let gitRepo = $state(task.git_repo ?? '')
@@ -171,7 +173,6 @@
     title = task.title
     progress = task.progress
     cwd = task.cwd ?? ''
-    slackThread = task.slack_thread ?? ''
     prUrl = task.pr_url ?? ''
     gitRepo = task.git_repo ?? ''
     gitBranches = task.git_branches ?? ''
@@ -231,6 +232,16 @@
     }
   }
 
+  // Priority stays editable on archived tickets: it is visual/filter only.
+  async function setPriority(p: Priority) {
+    if (p === (task.priority ?? 'none')) return
+    try {
+      await api.setPriority(task.id, p)
+    } catch (e) {
+      onError(errMsg(e))
+    }
+  }
+
   async function saveProgress(p: number) {
     if (archived) return
     p = Math.max(0, Math.min(100, Number(p) || 0))
@@ -249,17 +260,6 @@
     if (v === (task.cwd ?? '')) return
     try {
       await api.update(task.id, { cwd: v })
-    } catch (e) {
-      onError(errMsg(e))
-    }
-  }
-
-  async function saveSlackThread() {
-    if (archived) return
-    const v = slackThread.trim()
-    if (v === (task.slack_thread ?? '')) return
-    try {
-      await api.update(task.id, { slackThread: v })
     } catch (e) {
       onError(errMsg(e))
     }
@@ -600,6 +600,11 @@
     </div>
 
     <div>
+      <span class="micro mb-1.5">Priority</span>
+      <PriorityPicker variant="field" value={task.priority} onPick={(p) => setPriority(p)} />
+    </div>
+
+    <div>
       <span class="micro mb-1.5">Progress</span>
       <ProgressControl value={progress} disabled={archived} onCommit={(p) => saveProgress(p)} />
     </div>
@@ -694,31 +699,7 @@
       </p>
     </label>
 
-    <label class="block">
-      <span class="micro mb-1.5">Slack thread</span>
-      <input
-        bind:value={slackThread}
-        disabled={archived}
-        onblur={saveSlackThread}
-        placeholder="https://… (optional Slack thread link)"
-        class="w-full rounded-control border border-line-soft bg-field px-3 py-2 font-mono text-xs text-ink shadow-[inset_0_1px_2px_rgba(6,8,12,0.35)] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:cursor-default disabled:opacity-55"
-      />
-      {#if slackThread.trim()}
-        <p class="mt-1.5 text-xs leading-relaxed text-ink-3">
-          Linked Slack thread:
-          <a
-            href={slackThread.trim()}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-accent hover:underline"
-            onclick={(e) => {
-              e.preventDefault()
-              void openExternalUrl(slackThread.trim())
-            }}>{slackThread.trim()}</a
-          >
-        </p>
-      {/if}
-    </label>
+    <SlackLinks {task} readonly={archived} {onError} />
 
     <label class="block">
       <span class="micro mb-1.5">Pull requests</span>
@@ -1022,6 +1003,7 @@
     title: task.title,
     description: task.description,
     status: task.status,
+    priority: task.priority,
     cwd: task.cwd,
     slackThread: task.slack_thread,
     gitRepo: task.git_repo ?? '',

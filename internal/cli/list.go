@@ -10,7 +10,7 @@ import (
 	"mhtodo/internal/core"
 )
 
-var sortFields = []string{"board", "created", "updated", "status", "progress", "title"}
+var sortFields = []string{"board", "created", "updated", "status", "progress", "title", "priority"}
 
 // parseSort parses --sort FIELD[+|-]. Per spec, a "-" suffix means ascending;
 // "+" or no suffix means descending (the default).
@@ -32,7 +32,7 @@ func parseSort(s string) (field string, ascending bool, err error) {
 }
 
 func newListCmd() *cobra.Command {
-	var status, search, gitRepo, gitBranch string
+	var status, search, gitRepo, gitBranch, priority string
 	var limit int
 	var sort string
 	var all, archived, roots, humanOnly, gitCurrent bool
@@ -49,6 +49,10 @@ func newListCmd() *cobra.Command {
 			field, ascending, err := parseSort(sort)
 			if err != nil {
 				return err
+			}
+			prios, err := core.ParsePriorityFilter(priority)
+			if err != nil {
+				return mapError(err) // invalid_priority → exit 1
 			}
 			if limit < 0 {
 				return usageError("--limit must be >= 0")
@@ -85,6 +89,7 @@ func newListCmd() *cobra.Command {
 				IncludeHumanOnly: humanOnly,
 				GitRepo:          gitRepo,
 				GitBranch:        gitBranch,
+				Priorities:       prios,
 			})
 			if err != nil {
 				return mapError(err)
@@ -97,8 +102,9 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&gitRepo, "git-repo", "", "only tasks recording this git repo (any URL form; normalized)")
 	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "only tasks listing this exact git branch")
 	cmd.Flags().BoolVar(&gitCurrent, "git-current", false, "only tasks recording the current directory's repo + branch")
+	cmd.Flags().StringVar(&priority, "priority", "", "only these priorities: comma list and/or thresholds, e.g. high,urgent or '>=high'")
 	cmd.Flags().IntVar(&limit, "limit", 0, "max results (0 = unlimited)")
-	cmd.Flags().StringVar(&sort, "sort", "board", "sort field: board|created|updated|status|progress|title; suffix - ascending, + or none descending")
+	cmd.Flags().StringVar(&sort, "sort", "board", "sort field: board|created|updated|status|progress|title|priority; suffix - ascending, + or none descending")
 	cmd.Flags().BoolVar(&all, "all", false, "include done tasks")
 	cmd.Flags().BoolVar(&archived, "archived", false, "show archived tasks only (default lists hide them)")
 	cmd.Flags().BoolVar(&roots, "roots", false, "show top-level tasks only (exclude sub-tasks)")

@@ -12,7 +12,7 @@ import (
 func newAddCmd() *cobra.Command {
 	var desc, feedback, status, parent, cwd, slackThread, template string
 	var prURLs, gitBranches []string
-	var gitRepo string
+	var gitRepo, priority string
 	var progress int
 	var humanOnly bool
 	var includeInReport, noIncludeInReport bool
@@ -94,6 +94,10 @@ func newAddCmd() *cobra.Command {
 				}
 			}
 
+			if cmd.Flags().Changed("priority") {
+				in.Priority = core.Priority(priority) // explicit flag beats a template preset; invalid → exit 1
+			}
+
 			t, err := svc.Create(context.Background(), in)
 			if err != nil {
 				return mapError(err)
@@ -120,6 +124,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringArrayVar(&prURLs, "pr-url", nil, "pull request URL(s); repeatable; non-empty advances status to pr")
 	cmd.Flags().StringVar(&gitRepo, "git-repo", "", "git repository (URL or owner/name)")
 	cmd.Flags().StringArrayVar(&gitBranches, "git-branch", nil, "git branch name(s); repeatable")
+	cmd.Flags().StringVar(&priority, "priority", "", "priority (none|low|medium|high|urgent; default none)")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")

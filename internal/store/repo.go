@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,7 +23,7 @@ var _ core.TaskRepository = (*TaskRepo)(nil)
 
 func NewTaskRepo(db *sql.DB) *TaskRepo { return &TaskRepo{db: db} }
 
-const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url, focus_rank, git_repo, git_branches`
+const taskColumns = `id, title, description, feedback, status, progress, created_at, updated_at, completed_at, archived_at, parent_id, board_rank, cwd, human_only, include_in_report, slack_thread, todo_session, terminal_pid, pr_url, focus_rank, git_repo, git_branches, priority, slack_links`
 
 // --- time helpers (RFC3339 UTC strings in the DB) ---------------------------
 
@@ -49,14 +50,18 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 		focusRank       sql.NullFloat64
 		humanOnly       int
 		includeInReport int
+		priority        int
+		slackLinks      string
 	)
 	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Feedback, &status, &t.Progress,
-		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL, &focusRank, &t.GitRepo, &t.GitBranches); err != nil {
+		&createdAt, &updatedAt, &completed, &archived, &parent, &boardRank, &t.Cwd, &humanOnly, &includeInReport, &t.SlackThread, &t.TodoSession, &t.TerminalPID, &t.PRURL, &focusRank, &t.GitRepo, &t.GitBranches, &priority, &slackLinks); err != nil {
 		return core.Task{}, err
 	}
 	t.Status = core.Status(status)
 	t.HumanOnly = humanOnly != 0
 	t.IncludeInReport = includeInReport != 0
+	t.Priority = core.PriorityFromLevel(priority)
+	t.SlackLinks = decodeSlackLinks(slackLinks, t.SlackThread)
 	var err error
 	if t.CreatedAt, err = parseTS(createdAt); err != nil {
 		return core.Task{}, err
@@ -97,10 +102,10 @@ func scanTask(row interface{ Scan(...any) error }) (core.Task, error) {
 
 func (r *TaskRepo) Create(ctx context.Context, t core.Task) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		formatTS(t.CreatedAt), formatTS(t.UpdatedAt), nullTS(t.CompletedAt), nullTS(t.ArchivedAt),
-		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches)
+		nullStr(t.ParentID), nullFloat(t.BoardRank), t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches, t.Priority.Level(), encodeSlackLinks(t.SlackLinks))
 	return err
 }
 
@@ -193,6 +198,19 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 		args = append(args, f.GitBranch)
 	}
 
+	if f.Priorities != nil {
+		if len(f.Priorities) == 0 {
+			conds = append(conds, "0 = 1") // valid threshold that matches no level
+		} else {
+			ph := make([]string, len(f.Priorities))
+			for i, p := range f.Priorities {
+				ph[i] = "?"
+				args = append(args, p.Level())
+			}
+			conds = append(conds, "priority IN ("+strings.Join(ph, ",")+")")
+		}
+	}
+
 	q := `SELECT ` + taskColumns + ` FROM tasks`
 	if len(conds) > 0 {
 		q += " WHERE " + strings.Join(conds, " AND ")
@@ -221,10 +239,10 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 func (r *TaskRepo) Update(ctx context.Context, t core.Task) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET title = ?, description = ?, feedback = ?, status = ?, progress = ?,
-		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, focus_rank = ?, git_repo = ?, git_branches = ?, updated_at = ? WHERE id = ?`,
+		 completed_at = ?, archived_at = ?, parent_id = ?, board_rank = ?, cwd = ?, human_only = ?, include_in_report = ?, slack_thread = ?, todo_session = ?, terminal_pid = ?, pr_url = ?, focus_rank = ?, git_repo = ?, git_branches = ?, priority = ?, slack_links = ?, updated_at = ? WHERE id = ?`,
 		t.Title, t.Description, t.Feedback, string(t.Status), t.Progress,
 		nullTS(t.CompletedAt), nullTS(t.ArchivedAt), nullStr(t.ParentID), nullFloat(t.BoardRank),
-		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches, formatTS(t.UpdatedAt), t.ID)
+		t.Cwd, boolInt(t.HumanOnly), boolInt(t.IncludeInReport), t.SlackThread, t.TodoSession, t.TerminalPID, t.PRURL, nullFloat(t.FocusRank), t.GitRepo, t.GitBranches, t.Priority.Level(), encodeSlackLinks(t.SlackLinks), formatTS(t.UpdatedAt), t.ID)
 	if err != nil {
 		return err
 	}
@@ -547,6 +565,14 @@ func nullFloat(f *float64) any {
 	return *f
 }
 
+// nullPriority stores a template preset as TEXT (NULL = not part of the template).
+func nullPriority(p *core.Priority) any {
+	if p == nil {
+		return nil
+	}
+	return string(*p)
+}
+
 func boolInt(b bool) int {
 	if b {
 		return 1
@@ -566,6 +592,7 @@ var sortColumns = map[string]string{
 	"status":   "status",
 	"progress": "progress",
 	"title":    "title",
+	"priority": "priority",
 }
 
 const boardStatusOrder = `CASE status
@@ -596,4 +623,29 @@ func sortClause(field string, ascending bool) string {
 		dir = "ASC"
 	}
 	return col + " " + dir + ", id " + dir
+}
+
+// encodeSlackLinks stores the ordered list as a JSON array (never NULL).
+func encodeSlackLinks(links []core.SlackLink) string {
+	if len(links) == 0 {
+		return "[]"
+	}
+	b, err := json.Marshal(links)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+// decodeSlackLinks reads the JSON column; a bad/empty value falls back to the
+// legacy slack_thread so a link is never lost. Always non-nil.
+func decodeSlackLinks(raw, thread string) []core.SlackLink {
+	var links []core.SlackLink
+	if err := json.Unmarshal([]byte(raw), &links); err != nil {
+		links = nil
+	}
+	if len(links) == 0 && strings.TrimSpace(thread) != "" {
+		links = []core.SlackLink{{URL: strings.TrimSpace(thread)}}
+	}
+	return core.NormalizeSlackLinks(links)
 }

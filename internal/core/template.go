@@ -28,6 +28,7 @@ type Template struct {
 	Cwd             *string   `json:"cwd"`
 	SlackThread     *string   `json:"slack_thread"`
 	GitRepo         *string   `json:"git_repo"`
+	Priority        *Priority `json:"priority"`
 	HumanOnly       *bool     `json:"human_only"`
 	IncludeInReport *bool     `json:"include_in_report"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -46,6 +47,7 @@ type TemplateInput struct {
 	Cwd             *string
 	SlackThread     *string
 	GitRepo         *string
+	Priority        *Priority
 	HumanOnly       *bool
 	IncludeInReport *bool
 }
@@ -71,6 +73,9 @@ func (t Template) Apply(in CreateInput) CreateInput {
 	}
 	if t.GitRepo != nil {
 		in.GitRepo = *t.GitRepo
+	}
+	if t.Priority != nil {
+		in.Priority = *t.Priority
 	}
 	if t.HumanOnly != nil {
 		in.HumanOnly = *t.HumanOnly
@@ -122,6 +127,13 @@ func (in *TemplateInput) normalize() error {
 			return err
 		}
 		in.Status = &st
+	}
+	if in.Priority != nil {
+		p, err := ParsePriority(string(*in.Priority))
+		if err != nil {
+			return err
+		}
+		in.Priority = &p
 	}
 	// Paths and URLs are trimmed; title prefix and description are not, because
 	// a prefix's trailing space ("BUG: ") is meaningful. Trimming writes to a
@@ -379,6 +391,7 @@ func (t Template) AsInput() TemplateInput {
 		Cwd:             clonePtr(t.Cwd),
 		SlackThread:     clonePtr(t.SlackThread),
 		GitRepo:         clonePtr(t.GitRepo),
+		Priority:        clonePtr(t.Priority),
 		HumanOnly:       clonePtr(t.HumanOnly),
 		IncludeInReport: clonePtr(t.IncludeInReport),
 	}
@@ -396,6 +409,7 @@ func templateFrom(id string, in TemplateInput) Template {
 		Cwd:             clonePtr(in.Cwd),
 		SlackThread:     clonePtr(in.SlackThread),
 		GitRepo:         clonePtr(in.GitRepo),
+		Priority:        clonePtr(in.Priority),
 		HumanOnly:       clonePtr(in.HumanOnly),
 		IncludeInReport: clonePtr(in.IncludeInReport),
 	}

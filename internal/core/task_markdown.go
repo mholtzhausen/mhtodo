@@ -13,10 +13,14 @@ func FormatTaskMarkdown(task Task, children []Task, activities []Activity) strin
 	var b strings.Builder
 	icon := slackStatusIcon(task.Status)
 	fmt.Fprintf(&b, "## %s %s\n\n", icon, task.Title)
-	fmt.Fprintf(&b, "%s · %d%% · `%s` · updated %s\n",
-		task.Status, task.Progress, ShortID(task.ID), formatTaskUpdated(task.UpdatedAt))
+	prio := ""
+	if task.Priority != "" && task.Priority != PriorityNone {
+		prio = " · priority " + string(task.Priority)
+	}
+	fmt.Fprintf(&b, "%s · %d%%%s · `%s` · updated %s\n",
+		task.Status, task.Progress, prio, ShortID(task.ID), formatTaskUpdated(task.UpdatedAt))
 
-	if notice := SlackThreadNotice(task.SlackThread); notice != "" {
+	if notice := SlackLinksNotice(task); notice != "" {
 		fmt.Fprintf(&b, "\n%s\n", notice)
 	}
 

@@ -9,6 +9,8 @@
     type TemplateValues
   } from '../lib/templates'
   import StatusPicker from './StatusPicker.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import type { Priority } from '../lib/priority'
 
   // No tri-state control is needed here: the per-field checkbox *is* the null
   // selector (unchecked = the field is not part of the template), so booleans
@@ -30,6 +32,7 @@
       title: string
       description: string
       status: Status
+      priority?: Priority
       cwd: string
       slackThread: string
       gitRepo: string
@@ -65,6 +68,7 @@
       title_prefix: source.title,
       description: source.description,
       status: source.status,
+      priority: source.priority ?? 'none',
       cwd: source.cwd,
       slack_thread: source.slackThread,
       git_repo: source.gitRepo,
@@ -84,6 +88,7 @@
     if (source.humanOnly) out.push('human_only')
     if (!source.includeInReport) out.push('include_in_report')
     if (source.status !== 'pending') out.push('status')
+    if (source.priority && source.priority !== 'none') out.push('priority')
     return out
   }
 
@@ -230,6 +235,12 @@
                     <StatusPicker
                       value={values.status as Status}
                       onPick={(s) => (values = { ...values, status: s })}
+                    />
+                  {:else if field.kind === 'priority'}
+                    <PriorityPicker
+                      variant="field"
+                      value={values.priority ?? 'none'}
+                      onPick={(p) => (values = { ...values, priority: p })}
                     />
                   {:else if field.kind === 'textarea'}
                     <textarea

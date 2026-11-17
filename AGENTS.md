@@ -35,7 +35,15 @@ single SQLite database at `$XDG_DATA_HOME/mhtodo/mhtodo.db` (override: `MHTODO_D
   setting empty→non-empty advances status to `pr`), optional `git_repo` + `git_branches` (one
   branch per line; `add`/`edit --git-repo` / `--git-branch`, `edit --git-detect` appends the current
   branch, `list --git-repo|--git-branch|--git-current`; repos normalized to `host/path`; template
-  preset `git_repo`; migrations v17–v19). UUIDv7 IDs with short-prefix lookup.
+  preset `git_repo`; migrations v17–v19), `priority` (`none|low|medium|high|urgent`, stored as
+  INTEGER 0–4, migration v20; `mhtodo priority`, `add`/`edit --priority`, `list --priority` with
+  comma lists / `>=` thresholds, opt-in `--sort priority`; template preset; never changes
+  `board_rank`/`focus_rank`; sub-tasks don't inherit), `slack_links` (ordered `[{url, description}]`
+  JSON column, migration v21 backfills from `slack_thread`; first link is primary and is mirrored to
+  `slack_thread`; `mhtodo slack link list|add|edit|rm`; GUI: one card Slack icon — direct open or a
+  picker with descriptions — and a Slack conversations list with a "+" paste-and-go popover in the
+  detail modal and Focus lanes; sub-tasks seed only the primary; templates keep a single
+  `slack_thread`). UUIDv7 IDs with short-prefix lookup.
 - Full CLI ↔ GUI feature parity (the bound-API table in the plan is the contract).
 - System tray: show/hide window, new task, quit; close-to-tray behavior; single-instance lock
  (`internal/instance` + `mhtodo.open` deep links via `mhtodo://task/{id}` / `mhtodo open`).
@@ -129,6 +137,13 @@ Working directory fields (detail + new task) use a warm typeahead: template name
 and previously used ticket cwds, fuzzy-ranked (template names preferred), with folder picker
 and free-typed path still available. Detail-pane description & feedback grow with content up
 to 500px, then scroll.
+
+**Priority (GUI):** one shared `PriorityPicker.svelte` (portalled, flip/clamp popover; arrows +
+Enter, 0–4 jump, Esc closes without hiding the window via `aria-haspopup="listbox"`) on board cards,
+sub-tasks, Focus lanes, archive rows and the detail modal; `PriorityIcon.svelte` glyph tinted with
+existing theme tokens; unset priority is hidden until hover. Header filter (multi-select + Clear) next
+to search applies to Board/Focus/Archive, persists in `localStorage` (`mhtodo.priorityFilter`), keeps
+a parent visible when a sub-task matches, and never reorders (`lib/priority.ts`).
 
 **Focus view:** a Focus tab to the left of Board shows only hand-pinned tickets (max 6 lanes),
 one large card per lane. Pins are `tasks.focus_rank` (migration v16, nullable REAL, fractional

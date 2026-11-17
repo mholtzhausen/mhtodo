@@ -36,6 +36,8 @@ var migrations = []migration{
 	{version: 17, fn: addGitColumns},
 	{version: 18, fn: addGitColumns}, // repairs DBs that ran an early v17 which added only git_refs (now unused)
 	{version: 19, fn: addTemplateGitRepoColumn},
+	{version: 20, fn: addPriorityColumns},
+	{version: 21, fn: addSlackLinksColumn},
 }
 
 // v2 adds the archive (v0.2): archived_at is set when a done task is archived
@@ -387,6 +389,54 @@ func addTemplateGitRepoColumn(tx *sql.Tx) error {
 	}
 	if _, err := tx.Exec(`ALTER TABLE task_templates ADD COLUMN git_repo TEXT`); err != nil {
 		return fmt.Errorf("add task_templates.git_repo: %w", err)
+	}
+	return nil
+}
+
+// v20: ticket priority. tasks.priority is an INTEGER level (0 none … 4 urgent)
+// so sorting and thresholds are plain comparisons; existing rows default to
+// none. task_templates.priority is a nullable TEXT preset (NULL = not part of
+// the template). Idempotent like v17.
+func addPriorityColumns(tx *sql.Tx) error {
+	have, err := tableColumns(tx, "tasks")
+	if err != nil {
+		return err
+	}
+	if !have["priority"] {
+		if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4)`); err != nil {
+			return fmt.Errorf("add tasks.priority: %w", err)
+		}
+	}
+	tpl, err := tableColumns(tx, "task_templates")
+	if err != nil {
+		return err
+	}
+	if !tpl["priority"] {
+		if _, err := tx.Exec(`ALTER TABLE task_templates ADD COLUMN priority TEXT`); err != nil {
+			return fmt.Errorf("add task_templates.priority: %w", err)
+		}
+	}
+	return nil
+}
+
+// v21: several Slack conversations per ticket. tasks.slack_links is a JSON
+// array of {url, description}, primary first. slack_thread stays and mirrors
+// the primary URL (the pre-v21 contract). Each non-empty slack_thread becomes
+// link #1 with no description. Idempotent like v17.
+func addSlackLinksColumn(tx *sql.Tx) error {
+	have, err := tableColumns(tx, "tasks")
+	if err != nil {
+		return err
+	}
+	if !have["slack_links"] {
+		if _, err := tx.Exec(`ALTER TABLE tasks ADD COLUMN slack_links TEXT NOT NULL DEFAULT '[]'`); err != nil {
+			return fmt.Errorf("add tasks.slack_links: %w", err)
+		}
+	}
+	if _, err := tx.Exec(`UPDATE tasks
+		SET slack_links = json_array(json_object('url', trim(slack_thread), 'description', ''))
+		WHERE trim(slack_thread) <> '' AND (slack_links IS NULL OR slack_links IN ('', '[]'))`); err != nil {
+		return fmt.Errorf("backfill tasks.slack_links: %w", err)
 	}
 	return nil
 }

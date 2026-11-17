@@ -17,6 +17,12 @@
   import { boardAdjacentTaskId, archiveAdjacentTaskId, activityAdjacentTaskId } from './lib/boardOrder'
   import { applyHumanFilter, loadHumanFilter, type HumanFilter } from './lib/humanFilter'
   import {
+    applyPriorityFilter,
+    loadPriorityFilter,
+    savePriorityFilter,
+    type Priority
+  } from './lib/priority'
+  import {
     invalidateBinaryCache,
     loadIntegrationSettings,
     refreshBinaryReadiness,
@@ -110,7 +116,10 @@
   let ascending = $state(false)
   let humanFilter = $state<HumanFilter>(loadHumanFilter())
 
-  const displayTasks = $derived(applyHumanFilter(tasks, humanFilter))
+  let priorityFilter = $state<Priority[]>(loadPriorityFilter())
+  const ownerTasks = $derived(applyHumanFilter(tasks, humanFilter))
+  const displayTasks = $derived(applyPriorityFilter(ownerTasks, priorityFilter))
+  const ownerRootCount = $derived(ownerTasks.filter((t) => !t.parent_id).length)
   const displayRootCount = $derived(displayTasks.filter((t) => !t.parent_id).length)
   const rawRootCount = $derived(tasks.filter((t) => !t.parent_id).length)
 
@@ -408,6 +417,11 @@
     if (nextId) selectedId = nextId
   }
 
+  function setPriorityFilter(ps: Priority[]) {
+    priorityFilter = ps
+    savePriorityFilter(ps)
+  }
+
   function setHumanFilter(v: HumanFilter) {
     if (humanFilter === v) return
     humanFilter = v
@@ -543,7 +557,7 @@
     const el = e.target as HTMLElement | null
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     if (e.key === 'Escape') {
-      if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"]')) return
+      if (document.querySelector('[aria-haspopup][aria-expanded="true"]')) return
       if (document.querySelector('[data-ticket-filter][data-open="true"]')) return
       if (document.querySelector('[data-cwd-field] [role="combobox"][aria-expanded="true"]')) return
       e.preventDefault()
@@ -1061,6 +1075,8 @@
         load()
       }}
       onHumanFilterChange={setHumanFilter}
+      {priorityFilter}
+      onPriorityFilterChange={setPriorityFilter}
       onToggleSubtasks={toggleSubtasks}
       onCopySlackReport={copySlackReport}
     />
@@ -1086,6 +1102,8 @@
       onSortChange={() => {}}
       onToggleAsc={() => {}}
       onHumanFilterChange={setHumanFilter}
+      {priorityFilter}
+      onPriorityFilterChange={setPriorityFilter}
       onToggleSubtasks={toggleSubtasks}
       onCopySlackReport={copySlackReport}
     />
@@ -1129,6 +1147,8 @@
           onUnpin={toggleFocusTask}
           onMove={moveFocus}
           onGoToBoard={() => setView('board')}
+          {priorityFilter}
+          onPriorityFilterChange={setPriorityFilter}
           onError={showToast}
           onToast={showToast}
         />
@@ -1139,7 +1159,8 @@
           selectedId={selectedId}
           {showSubtasks}
           statusFilter={status}
-          humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
+          humanFilterEmpty={rawRootCount > 0 && ownerRootCount === 0}
+          priorityFilterEmpty={ownerRootCount > 0 && displayRootCount === 0}
           archiveDoneSubtasks={guiSettings.archive_done_subtasks}
           settings={guiSettings}
           {zedBinaryOk}
@@ -1154,8 +1175,9 @@
       {:else if view === 'archive'}
         <Archive
           tasks={displayTasks}
-          hasFilters={search.trim() !== '' || humanFilter !== 'all'}
-          humanFilterEmpty={rawRootCount > 0 && displayRootCount === 0}
+          hasFilters={search.trim() !== '' || humanFilter !== 'all' || priorityFilter.length > 0}
+          humanFilterEmpty={rawRootCount > 0 && ownerRootCount === 0}
+          priorityFilterEmpty={ownerRootCount > 0 && displayRootCount === 0}
           selectedId={selectedId}
           {showSubtasks}
           showUpdated={!narrowChrome}

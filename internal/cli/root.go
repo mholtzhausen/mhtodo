@@ -49,12 +49,21 @@ func mapError(err error) error {
 		return &errExit{code: ExitUsage, name: "empty_title", msg: err.Error()}
 	default:
 		var (
+			isl *core.InvalidSlackLinkError
+			snf *core.SlackLinkNotFoundError
 			ise *core.InvalidStatusError
 			pre *core.ProgressRangeError
+			ipe *core.InvalidPriorityError
 		)
 		switch {
+		case errors.As(err, &isl):
+			return &errExit{code: ExitUsage, name: "invalid_slack_link", msg: err.Error()}
+		case errors.As(err, &snf):
+			return &errExit{code: ExitNotFound, name: "slack_link_not_found", msg: err.Error()}
 		case errors.As(err, &ise):
 			return &errExit{code: ExitUsage, name: "invalid_status", msg: err.Error()}
+		case errors.As(err, &ipe):
+			return &errExit{code: ExitUsage, name: "invalid_priority", msg: err.Error()}
 		case errors.As(err, &pre):
 			return &errExit{code: ExitUsage, name: "progress_range", msg: err.Error()}
 		case errors.Is(err, core.ErrNoFieldsToUpdate):
@@ -207,8 +216,18 @@ func (o opts) printTask(t core.Task) error {
 		if t.Feedback != "" {
 			fmt.Fprintf(w, "Feedback   \t%s\n", t.Feedback)
 		}
-		if notice := core.SlackThreadNotice(t.SlackThread); notice != "" {
-			fmt.Fprintf(w, "Slack thread\t%s\n", notice)
+		for i, l := range t.SlackLinks {
+			// Row 1 keeps the pre-v21 agent-facing sentence; others follow.
+			label, line := "           ", l.URL
+			if i == 0 {
+				label, line = "Slack thread", core.SlackThreadNotice(l.URL)
+			} else if i == 1 {
+				label = "Slack also "
+			}
+			if l.Description != "" {
+				line += "  — " + l.Description
+			}
+			fmt.Fprintf(w, "%s\t%s\n", label, line)
 		}
 		if t.GitRepo != "" {
 			fmt.Fprintf(w, "Git repo   \t%s\n", t.GitRepo)
@@ -222,6 +241,9 @@ func (o opts) printTask(t core.Task) error {
 		}
 		fmt.Fprintf(w, "Status     \t%s\n", t.Status)
 		fmt.Fprintf(w, "Progress   \t%d%%\n", t.Progress)
+		if t.Priority != "" && t.Priority != core.PriorityNone {
+			fmt.Fprintf(w, "Priority   \t%s\n", t.Priority)
+		}
 		if t.ParentID != nil {
 			fmt.Fprintf(w, "Parent     \t%s\n", *t.ParentID)
 		}
@@ -245,8 +267,12 @@ func (o opts) printTasks(tasks []core.Task) error {
 	}
 	w := newTabWriter(o.out)
 	for _, t := range tasks {
+		title := t.Title
+		if t.Priority != "" && t.Priority != core.PriorityNone {
+			title = "[" + string(t.Priority) + "] " + title
+		}
 		fmt.Fprintf(w, "%s\t%s\t%d%%\t%s (%s)\t%s\n",
-			shortID(t.ID), t.Status, t.Progress, relTime(t.UpdatedAt), absShort(t.UpdatedAt), t.Title)
+			shortID(t.ID), t.Status, t.Progress, relTime(t.UpdatedAt), absShort(t.UpdatedAt), title)
 	}
 	return w.Flush()
 }
@@ -310,7 +336,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newOpenCmd(), newEditCmd(),
-		newStatusCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
+		newStatusCmd(), newPriorityCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
 		newFocusCmd(), newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(),
 	} {

@@ -12,7 +12,7 @@ func newSlackCmd() *cobra.Command {
 		Use:   "slack",
 		Short: "Slack helpers",
 	}
-	cmd.AddCommand(newSlackReportCmd())
+	cmd.AddCommand(newSlackReportCmd(), newSlackLinkCmd())
 	return cmd
 }
 

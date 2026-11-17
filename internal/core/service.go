@@ -97,6 +97,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 	if in.Progress < 0 || in.Progress > 100 {
 		return Task{}, &ProgressRangeError{Value: in.Progress}
 	}
+	prio, err := ParsePriority(string(in.Priority))
+	if err != nil {
+		return Task{}, err
+	}
 
 	var parentID *string
 	if ref := strings.TrimSpace(in.ParentID); ref != "" {
@@ -143,16 +147,18 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 		Cwd:             strings.TrimSpace(in.Cwd),
 		HumanOnly:       in.HumanOnly,
 		IncludeInReport: includeInReport,
-		SlackThread:     strings.TrimSpace(in.SlackThread),
+		SlackLinks:      append(promoteSlackThread(nil, in.SlackThread), in.SlackLinks...),
 		PRURL:           prURL,
 		TodoSession:     strings.TrimSpace(in.TodoSession), // not auto-seeded; agents set via edit --session
 		GitRepo:         NormalizeGitRepo(in.GitRepo),
 		GitBranches:     NormalizeGitBranches(in.GitBranches),
+		Priority:        prio,
 	}
 	if st == StatusDone {
 		t.Progress = 100
 		t.CompletedAt = &now
 	}
+	syncSlack(&t)
 	if parentID == nil {
 		if err := s.assignEndBoardRank(ctx, &t); err != nil {
 			return Task{}, err
@@ -173,7 +179,19 @@ func (s *Service) List(ctx context.Context, f ListFilter) ([]Task, error) {
 	}
 	f.GitRepo = NormalizeGitRepo(f.GitRepo)
 	f.GitBranch = strings.TrimSpace(f.GitBranch)
+	for _, p := range f.Priorities {
+		if _, err := ParsePriority(string(p)); err != nil || p == "" {
+			return nil, &InvalidPriorityError{Priority: string(p)}
+		}
+	}
 	return s.repo.List(ctx, f)
+}
+
+// SetPriority sets a task's priority (none|low|medium|high|urgent). It is a
+// normal field edit (bumps updated_at) but never touches board_rank or
+// focus_rank, so the card stays exactly where it is.
+func (s *Service) SetPriority(ctx context.Context, ref string, p Priority) (Task, error) {
+	return s.Edit(ctx, ref, UpdateInput{Priority: &p})
 }
 
 // Get fetches a task by full ID or unique prefix (≥ MinPrefixLen chars).
@@ -233,6 +251,14 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	if in.Progress != nil && (*in.Progress < 0 || *in.Progress > 100) {
 		return Task{}, &ProgressRangeError{Value: *in.Progress}
 	}
+	var prio Priority
+	if in.Priority != nil {
+		p, err := ParsePriority(string(*in.Priority))
+		if err != nil {
+			return Task{}, err
+		}
+		prio = p
+	}
 
 	t, err := s.Get(ctx, ref)
 	if err != nil {
@@ -259,14 +285,21 @@ func (s *Service) Edit(ctx context.Context, ref string, in UpdateInput) (Task, e
 	if in.IncludeInReport != nil {
 		t.IncludeInReport = *in.IncludeInReport
 	}
-	if in.SlackThread != nil {
-		t.SlackThread = strings.TrimSpace(*in.SlackThread)
+	if in.SlackLinks != nil {
+		t.SlackLinks = append([]SlackLink{}, (*in.SlackLinks)...)
 	}
+	if in.SlackThread != nil {
+		t.SlackLinks = promoteSlackThread(t.SlackLinks, *in.SlackThread)
+	}
+	syncSlack(&t)
 	if in.GitRepo != nil {
 		t.GitRepo = NormalizeGitRepo(*in.GitRepo)
 	}
 	if in.GitBranches != nil {
 		t.GitBranches = NormalizeGitBranches(*in.GitBranches)
+	}
+	if in.Priority != nil {
+		t.Priority = prio
 	}
 	advanceToPR := false
 	if in.PRURL != nil {

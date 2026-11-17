@@ -10,6 +10,8 @@
   } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import type { Priority } from '../lib/priority'
   import { FOCUS_MAX } from '../lib/focus'
 
   let {
@@ -19,6 +21,7 @@
     showSubtasks,
     statusFilter = '',
     humanFilterEmpty = false,
+    priorityFilterEmpty = false,
     archiveDoneSubtasks = false,
     settings = null,
     zedBinaryOk = false,
@@ -36,6 +39,7 @@
     showSubtasks: boolean
     statusFilter?: Status | ''
     humanFilterEmpty?: boolean
+    priorityFilterEmpty?: boolean
     archiveDoneSubtasks?: boolean
     settings?: GUISettings | null
     zedBinaryOk?: boolean
@@ -432,6 +436,14 @@
     el?.blur()
   }
 
+  async function setPriority(id: string, p: Priority) {
+    try {
+      await api.setPriority(id, p)
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
   async function markDone(id: string, e: MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
@@ -500,6 +512,9 @@
     {:else if humanFilterEmpty}
       <p class="text-sm text-ink-3">No tasks match the owner filter.</p>
       <p class="text-xs text-ink-3/70">Switch the filter to <strong class="font-medium text-ink-2">All tasks</strong> or <strong class="font-medium text-ink-2">Human</strong>.</p>
+    {:else if priorityFilterEmpty}
+      <p class="text-sm text-ink-3">No tasks match the priority filter.</p>
+      <p class="text-xs text-ink-3/70">Use the priority button next to search to change or clear it.</p>
     {:else if statusFilter}
       <p class="text-sm text-ink-3">No {STATUS_LABELS[statusFilter] ?? statusFilter} tasks.</p>
       <p class="text-xs text-ink-3/70">Clear the status filter above to see all columns.</p>
@@ -650,7 +665,7 @@
                 draggable="true"
                 ondragstart={(e) => onCardDragStart(e, t)}
                 ondragend={onCardDragEnd}
-                class="relative rounded-card border border-l-2 border-line-soft shadow-sm select-none cursor-grab
+                class="group/card relative rounded-card border border-l-2 border-line-soft shadow-sm select-none cursor-grab
                   {col.edge}
                   {selectedId === t.id
                     ? 'bg-accent/10'
@@ -662,6 +677,11 @@
                   class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1"
                   onmousedown={(e) => e.stopPropagation()}
                 >
+                  <PriorityPicker
+                    value={t.priority}
+                    idleClass="opacity-0 group-hover/card:opacity-50"
+                    onPick={(p) => void setPriority(t.id, p)}
+                  />
                   {#if onToggleFocus && t.status !== 'done'}
                     {@const pinned = t.focus_rank != null}
                     <button
@@ -712,7 +732,7 @@
                   type="button"
                   onclick={(e) => onCardClick(t, e.currentTarget)}
                   ondragstart={(e) => e.preventDefault()}
-                  class="w-full cursor-grab p-2.5 {onToggleFocus && t.status !== 'done' ? 'pr-11' : 'pr-6'} text-left focus:outline-none"
+                  class="w-full cursor-grab p-2.5 {onToggleFocus && t.status !== 'done' ? 'pr-16' : 'pr-11'} text-left focus:outline-none"
                 >
                   <p class="mb-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-ink">{t.title}</p>
                   {#if t.git_branches?.trim()}
@@ -743,11 +763,13 @@
                 {#if showSubtasks && (childrenOf[t.id]?.length ?? 0) > 0}
                   <ul class="space-y-1 border-t border-line-soft px-2 pt-1.5">
                     {#each childrenOf[t.id] as c (c.id)}
-                      <li>
+                      <li
+                        class="group/sub flex items-center gap-1 rounded-control border border-transparent pr-1 hover:border-line-soft hover:bg-white/5
+                          {selectedId === c.id ? 'bg-accent/10' : ''}"
+                      >
                         <button
                           onclick={() => onSelect(c.id)}
-                          class="flex w-full items-center gap-2 rounded-control border border-transparent px-1.5 py-1 text-left hover:border-line-soft hover:bg-white/5
-                            {selectedId === c.id ? 'bg-accent/10' : ''}"
+                          class="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1 text-left"
                         >
                           <span
                             class="h-1.5 w-1.5 flex-none rounded-full {childBar[c.status] ?? childBar.pending}"
@@ -756,6 +778,12 @@
                           <span class="min-w-0 flex-1 truncate text-[11px] text-ink-2">{c.title}</span>
                           <span class="font-mono text-[10px] text-ink-3">{c.progress}%</span>
                         </button>
+                        <PriorityPicker
+                          value={c.priority}
+                          iconClass="h-3 w-3"
+                          idleClass="opacity-0 group-hover/sub:opacity-50"
+                          onPick={(p) => void setPriority(c.id, p)}
+                        />
                       </li>
                     {/each}
                   </ul>

@@ -69,6 +69,20 @@ export namespace core {
 	        this.Comment = source["Comment"];
 	    }
 	}
+	export class SlackLink {
+	    url: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SlackLink(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.description = source["description"];
+	    }
+	}
 	export class CreateInput {
 	    Title: string;
 	    Description: string;
@@ -80,10 +94,12 @@ export namespace core {
 	    HumanOnly: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread: string;
+	    SlackLinks: SlackLink[];
 	    PRURL: string;
 	    TodoSession: string;
 	    GitRepo: string;
 	    GitBranches: string;
+	    Priority: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -101,11 +117,31 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.SlackLinks = this.convertValues(source["SlackLinks"], SlackLink);
 	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
 	        this.GitRepo = source["GitRepo"];
 	        this.GitBranches = source["GitBranches"];
+	        this.Priority = source["Priority"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class ListFilter {
 	    Status: string;
@@ -120,6 +156,7 @@ export namespace core {
 	    IncludeHumanOnly: boolean;
 	    GitRepo: string;
 	    GitBranch: string;
+	    Priorities: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ListFilter(source);
@@ -139,6 +176,28 @@ export namespace core {
 	        this.IncludeHumanOnly = source["IncludeHumanOnly"];
 	        this.GitRepo = source["GitRepo"];
 	        this.GitBranch = source["GitBranch"];
+	        this.Priorities = source["Priorities"];
+	    }
+	}
+	
+	export class SlackLinkInfo {
+	    valid: boolean;
+	    kind: string;
+	    workspace: string;
+	    label: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SlackLinkInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.valid = source["valid"];
+	        this.kind = source["kind"];
+	        this.workspace = source["workspace"];
+	        this.label = source["label"];
+	        this.error = source["error"];
 	    }
 	}
 	export class Task {
@@ -162,12 +221,14 @@ export namespace core {
 	    human_only: boolean;
 	    include_in_report: boolean;
 	    slack_thread: string;
+	    slack_links: SlackLink[];
 	    pr_url: string;
 	    todo_session: string;
 	    terminal_pid: number;
 	    focus_rank?: number;
 	    git_repo: string;
 	    git_branches: string;
+	    priority: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -191,12 +252,14 @@ export namespace core {
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
 	        this.slack_thread = source["slack_thread"];
+	        this.slack_links = this.convertValues(source["slack_links"], SlackLink);
 	        this.pr_url = source["pr_url"];
 	        this.todo_session = source["todo_session"];
 	        this.terminal_pid = source["terminal_pid"];
 	        this.focus_rank = source["focus_rank"];
 	        this.git_repo = source["git_repo"];
 	        this.git_branches = source["git_branches"];
+	        this.priority = source["priority"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -226,6 +289,7 @@ export namespace core {
 	    cwd?: string;
 	    slack_thread?: string;
 	    git_repo?: string;
+	    priority?: string;
 	    human_only?: boolean;
 	    include_in_report?: boolean;
 	    // Go type: time
@@ -247,6 +311,7 @@ export namespace core {
 	        this.cwd = source["cwd"];
 	        this.slack_thread = source["slack_thread"];
 	        this.git_repo = source["git_repo"];
+	        this.priority = source["priority"];
 	        this.human_only = source["human_only"];
 	        this.include_in_report = source["include_in_report"];
 	        this.created_at = this.convertValues(source["created_at"], null);
@@ -279,6 +344,7 @@ export namespace core {
 	    Cwd?: string;
 	    SlackThread?: string;
 	    GitRepo?: string;
+	    Priority?: string;
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
 	
@@ -295,6 +361,7 @@ export namespace core {
 	        this.Cwd = source["Cwd"];
 	        this.SlackThread = source["SlackThread"];
 	        this.GitRepo = source["GitRepo"];
+	        this.Priority = source["Priority"];
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	    }
@@ -366,10 +433,12 @@ export namespace core {
 	    HumanOnly?: boolean;
 	    IncludeInReport?: boolean;
 	    SlackThread?: string;
+	    SlackLinks?: SlackLink[];
 	    PRURL?: string;
 	    TodoSession?: string;
 	    GitRepo?: string;
 	    GitBranches?: string;
+	    Priority?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInput(source);
@@ -385,11 +454,31 @@ export namespace core {
 	        this.HumanOnly = source["HumanOnly"];
 	        this.IncludeInReport = source["IncludeInReport"];
 	        this.SlackThread = source["SlackThread"];
+	        this.SlackLinks = this.convertValues(source["SlackLinks"], SlackLink);
 	        this.PRURL = source["PRURL"];
 	        this.TodoSession = source["TodoSession"];
 	        this.GitRepo = source["GitRepo"];
 	        this.GitBranches = source["GitBranches"];
+	        this.Priority = source["Priority"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

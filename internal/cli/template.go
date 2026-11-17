@@ -136,6 +136,9 @@ func newTemplateCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if _, err := applyTemplatePriority(cmd, &in); err != nil {
+				return err
+			}
 			svc, closeDB, err := openService()
 			if err != nil {
 				return err
@@ -193,6 +196,11 @@ func newTemplateUpdateCmd() *cobra.Command {
 				return err
 			}
 			changed = changed || patch
+			prioPatch, err := applyTemplatePriority(cmd, &in)
+			if err != nil {
+				return err
+			}
+			changed = changed || prioPatch
 			if !changed {
 				return usageError("template update requires at least one flag")
 			}
@@ -213,6 +221,7 @@ func newTemplateUpdateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&clearCwd, "clear-cwd", false, "unset cwd preset")
 	cmd.Flags().BoolVar(&clearSlackThread, "clear-slack-thread", false, "unset slack_thread preset")
 	cmd.Flags().BoolVar(&clearGitRepo, "clear-git-repo", false, "unset git_repo preset")
+	cmd.Flags().Bool("clear-priority", false, "unset priority preset")
 	cmd.Flags().BoolVar(&clearHumanOnly, "clear-human-only", false, "unset human_only preset")
 	cmd.Flags().BoolVar(&clearIncludeInReport, "clear-include-in-report", false, "unset include_in_report preset")
 	return cmd
@@ -275,6 +284,7 @@ func bindTemplatePresetFlags(cmd *cobra.Command, titlePrefix, desc, status, cwd,
 	cmd.Flags().StringVar(cwd, "cwd", "", "working directory preset")
 	cmd.Flags().StringVar(slackThread, "slack-thread", "", "Slack thread URL preset")
 	cmd.Flags().StringVar(gitRepo, "git-repo", "", "git repository preset (URL or owner/name)")
+	cmd.Flags().String("priority", "", "priority preset (none|low|medium|high|urgent)")
 	cmd.Flags().BoolVar(humanOnly, "human-only", false, "set human_only preset to true")
 	cmd.Flags().BoolVar(noHumanOnly, "no-human-only", false, "set human_only preset to false")
 	cmd.Flags().BoolVar(includeInReport, "include-in-report", false, "set include_in_report preset to true")
@@ -331,6 +341,30 @@ func templateInputFromFlags(cmd *cobra.Command, name, titlePrefix, desc, status,
 		in.IncludeInReport = &v
 	}
 	return in, nil
+}
+
+// applyTemplatePriority applies --priority / --clear-priority (the latter only
+// exists on update). Validation happens in core (invalid → exit 1).
+func applyTemplatePriority(cmd *cobra.Command, in *core.TemplateInput) (bool, error) {
+	set := cmd.Flags().Changed("priority")
+	clear := false
+	if f := cmd.Flags().Lookup("clear-priority"); f != nil {
+		clear, _ = cmd.Flags().GetBool("clear-priority")
+	}
+	if set && clear {
+		return false, usageError("cannot combine --priority and --clear-priority")
+	}
+	if clear {
+		in.Priority = nil
+		return true, nil
+	}
+	if set {
+		v, _ := cmd.Flags().GetString("priority")
+		p := core.Priority(v)
+		in.Priority = &p
+		return true, nil
+	}
+	return false, nil
 }
 
 func applyTemplatePresetPatches(cmd *cobra.Command, in *core.TemplateInput,
@@ -443,6 +477,11 @@ func (o opts) printTemplate(t core.Template) error {
 		writeOptString(w, "Cwd", t.Cwd)
 		writeOptString(w, "Slack thread", t.SlackThread)
 		writeOptString(w, "Git repo", t.GitRepo)
+		if t.Priority != nil {
+			fmt.Fprintf(w, "Priority   \t%s\n", *t.Priority)
+		} else {
+			fmt.Fprintf(w, "Priority   \t—\n")
+		}
 		writeOptBool(w, "Human only", t.HumanOnly)
 		writeOptBool(w, "Include in report", t.IncludeInReport)
 		fmt.Fprintf(w, "Created    \t%s\n", absTS(t.CreatedAt))

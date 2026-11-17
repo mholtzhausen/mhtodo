@@ -3,6 +3,8 @@
   import type { Status } from '../lib/api'
   import type { HumanFilter } from '../lib/humanFilter'
   import DropdownSelect from './DropdownSelect.svelte'
+  import PriorityPicker from './PriorityPicker.svelte'
+  import type { Priority } from '../lib/priority'
 
   let {
     status,
@@ -10,6 +12,7 @@
     sort,
     ascending,
     humanFilter,
+    priorityFilter = [],
     showSubtasks,
     showSort = true,
     showStatus = true,
@@ -20,6 +23,7 @@
     onSortChange,
     onToggleAsc,
     onHumanFilterChange,
+    onPriorityFilterChange,
     onToggleSubtasks,
     onCopySlackReport
   }: {
@@ -28,6 +32,7 @@
     sort: string
     ascending: boolean
     humanFilter: HumanFilter
+    priorityFilter?: readonly Priority[]
     showSubtasks: boolean
     showSort?: boolean
     showStatus?: boolean
@@ -38,6 +43,7 @@
     onSortChange: (f: string) => void
     onToggleAsc: () => void
     onHumanFilterChange: (v: HumanFilter) => void
+    onPriorityFilterChange?: (ps: Priority[]) => void
     onToggleSubtasks: () => void
     onCopySlackReport?: () => void
   } = $props()
@@ -146,6 +152,15 @@
       class="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
     />
   </label>
+
+  {#if onPriorityFilterChange}
+    <PriorityPicker
+      mode="multi"
+      variant="filter"
+      values={priorityFilter}
+      onChange={onPriorityFilterChange}
+    />
+  {/if}
 
   <button
     type="button"

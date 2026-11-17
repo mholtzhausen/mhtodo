@@ -7,6 +7,7 @@
 // pointer/null shape is carried all the way from SQLite to this module rather
 // than being flattened to '' / false anywhere in between.
 import type { Status } from './api'
+import type { Priority } from './priority'
 
 /** Mirrors core.Template (internal/core/template.go) — JSON names are a contract. */
 export interface TaskTemplate {
@@ -15,6 +16,7 @@ export interface TaskTemplate {
   title_prefix: string | null
   description: string | null
   status: Status | null
+  priority?: Priority | null
   cwd: string | null
   slack_thread: string | null
   git_repo: string | null
@@ -29,13 +31,14 @@ export type TemplateFieldKey =
   | 'title_prefix'
   | 'description'
   | 'status'
+  | 'priority'
   | 'cwd'
   | 'slack_thread'
   | 'git_repo'
   | 'human_only'
   | 'include_in_report'
 
-export type TemplateFieldKind = 'text' | 'textarea' | 'path' | 'url' | 'bool' | 'status'
+export type TemplateFieldKind = 'text' | 'textarea' | 'path' | 'url' | 'bool' | 'status' | 'priority'
 
 export interface TemplateFieldMeta {
   key: TemplateFieldKey
@@ -71,6 +74,7 @@ export const TEMPLATE_FIELDS: readonly TemplateFieldMeta[] = [
     placeholder: 'Boilerplate notes for tasks from this template…'
   },
   { key: 'status', label: 'Status', chip: 'status', kind: 'status' },
+  { key: 'priority', label: 'Priority', chip: 'priority', kind: 'priority' },
   {
     key: 'cwd',
     label: 'Working directory',
@@ -114,6 +118,7 @@ export type TemplateValues = {
   title_prefix: string | null
   description: string | null
   status: Status | null
+  priority: Priority | null
   cwd: string | null
   slack_thread: string | null
   git_repo: string | null
@@ -126,6 +131,7 @@ export function emptyValues(): TemplateValues {
     title_prefix: null,
     description: null,
     status: null,
+    priority: null,
     cwd: null,
     slack_thread: null,
     git_repo: null,
@@ -139,6 +145,7 @@ export function valuesOf(t: TaskTemplate): TemplateValues {
     title_prefix: t.title_prefix,
     description: t.description,
     status: t.status,
+    priority: t.priority ?? null,
     cwd: t.cwd,
     slack_thread: t.slack_thread,
     git_repo: t.git_repo ?? null,
@@ -166,7 +173,7 @@ export function setFields(t: TaskTemplate): TemplateFieldMeta[] {
 export function chipLabel(t: TaskTemplate, f: TemplateFieldMeta): string {
   const value = valuesOf(t)[f.key]
   if (f.kind === 'bool') return `${f.chip}: ${value ? 'on' : 'off'}`
-  if (f.kind === 'status') return `${f.chip}: ${value}`
+  if (f.kind === 'status' || f.kind === 'priority') return `${f.chip}: ${value}`
   if (typeof value === 'string' && value === '') return `${f.chip}: none`
   return f.chip
 }
@@ -176,6 +183,7 @@ export interface NewTaskFormValues {
   title: string
   description: string
   status: Status
+  priority: Priority
   cwd: string
   slackThread: string
   gitRepo: string
@@ -217,6 +225,7 @@ export function applyTemplate(
 
   if (t.description !== null) next.description = t.description
   if (t.status !== null) next.status = t.status
+  if (t.priority != null) next.priority = t.priority
   if (t.cwd !== null) next.cwd = t.cwd
   if (t.slack_thread !== null) next.slackThread = t.slack_thread
   if (t.git_repo != null) next.gitRepo = t.git_repo
@@ -233,6 +242,7 @@ export function toGoTemplateInput(name: string, v: TemplateValues) {
     TitlePrefix: v.title_prefix,
     Description: v.description,
     Status: v.status as unknown as string | null,
+    Priority: v.priority as unknown as string | null,
     Cwd: v.cwd,
     SlackThread: v.slack_thread,
     GitRepo: v.git_repo,

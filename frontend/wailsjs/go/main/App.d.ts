@@ -8,6 +8,8 @@ export function ActivateTheme(arg1:string):Promise<core.Theme>;
 
 export function AddActivity(arg1:string,arg2:core.ActivityInput):Promise<core.Activity>;
 
+export function AddSlackLink(arg1:string,arg2:core.SlackLink,arg3:boolean):Promise<core.Task>;
+
 export function AppVersion():Promise<string>;
 
 export function Archive(arg1:string):Promise<core.Task>;
@@ -43,6 +45,8 @@ export function DeleteTask(arg1:string):Promise<core.Task>;
 export function DeleteTemplate(arg1:string):Promise<core.Template>;
 
 export function DeleteTheme(arg1:string):Promise<core.Theme>;
+
+export function DescribeSlackLink(arg1:string):Promise<core.SlackLinkInfo>;
 
 export function DetectGit(arg1:string):Promise<core.Task>;
 
@@ -95,6 +99,10 @@ export function RunInstallActions(arg1:main.InstallActionsInput):Promise<main.In
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetGUISettings(arg1:settings.GUISettings):Promise<void>;
+
+export function SetPriority(arg1:string,arg2:core.Priority):Promise<core.Task>;
+
+export function SetSlackLinks(arg1:string,arg2:Array<core.SlackLink>):Promise<core.Task>;
 
 export function SetStatus(arg1:string,arg2:core.Status):Promise<core.Task>;
 
