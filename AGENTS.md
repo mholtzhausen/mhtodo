@@ -90,7 +90,7 @@ resumes `todo_session` when its transcript exists under `~/.claude/projects/<cwd
 paste run in a goroutine, with failures emitted as `claude:error` → GUI toast.
 Without herdr it opens ghostty → x-terminal-emulator → gnome-terminal in the cwd. Ctrl+click
 copies the resume command instead (`cd <cwd> && claude --resume <session>`, plain `claude` when
-no transcript; `App.ClaudeResumeCommand`); Ctrl+hover swaps its title/aria-label to say so. Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
+no transcript; `App.ClaudeResumeCommand`); Ctrl+hover swaps its title/aria-label to say so. Board/Focus/archive cards have a copy-ID (`#`) button (click = short ID, Ctrl+click = full UUID, like the detail pane's ID chip; hidden in the detail header via `showCopyId={false}`). Board/archive cards (and the detail modal header) can also copy a markdown report or a ticket reference block
 (`MHTodo Ticket` / Status / Title / Instructions including `mhtodo edit … --session`,
  clean `master`/`main` before a new branch, ask the user if the tree is dirty, never write to production (read-only), and register
  pull requests on the root via `edit … --pr-url` — never on a sub-task id).

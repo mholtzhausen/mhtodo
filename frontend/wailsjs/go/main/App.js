@@ -98,6 +98,10 @@ export function DuplicateTheme(arg1, arg2) {
   return window['go']['main']['App']['DuplicateTheme'](arg1, arg2);
 }
 
+export function ExactSearchID(arg1, arg2) {
+  return window['go']['main']['App']['ExactSearchID'](arg1, arg2);
+}
+
 export function FocusTask(arg1, arg2) {
   return window['go']['main']['App']['FocusTask'](arg1, arg2);
 }

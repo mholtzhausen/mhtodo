@@ -52,6 +52,8 @@ export function DetectGit(arg1:string):Promise<core.Task>;
 
 export function DuplicateTheme(arg1:string,arg2:string):Promise<core.Theme>;
 
+export function ExactSearchID(arg1:string,arg2:Array<string>):Promise<string>;
+
 export function FocusTask(arg1:string,arg2:string):Promise<core.Task>;
 
 export function GetActiveTheme():Promise<core.Theme>;

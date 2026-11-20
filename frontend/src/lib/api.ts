@@ -99,7 +99,9 @@ const toGoFilter = (f: ListFilterInput) => ({
   GitRepo: '',
   GitBranch: '',
   // null = any priority (an empty array would match nothing in core).
-  Priorities: null as unknown as string[]
+  Priorities: null as unknown as string[],
+  // Keep the parent of a sub-task matched by ticket ID so the board can nest it.
+  WithParents: true
 })
 
 const toGoActivityFilter = (f: ActivityFilterInput) => ({
@@ -114,6 +116,10 @@ export const api = {
   },
   get(ref: string) {
     return App.GetTask(ref)
+  },
+  /** The task id a search query names exactly (link / short id / UUID), or ''. */
+  exactSearchId(query: string, ids: string[]): Promise<string> {
+    return App.ExactSearchID(query, ids)
   },
   /** Drain a deep-link / tray focus id queued before the frontend listener was ready. */
   consumePendingFocus(): Promise<string> {

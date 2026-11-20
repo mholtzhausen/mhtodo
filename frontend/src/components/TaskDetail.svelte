@@ -401,6 +401,7 @@
         {task}
         {settings}
         {zedBinaryOk}
+        showCopyId={false}
         {onError}
         onToast={(msg, kind) => {
           if (onToast) onToast(msg, kind)

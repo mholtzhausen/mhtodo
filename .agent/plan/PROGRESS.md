@@ -1,4 +1,11 @@
-# mhtodo — progress (updated 26-11-17)
+# mhtodo — progress (updated 26-11-19)
+
+## Search by ticket ID (complete, unreleased)
+
+- [x] Core `SearchIDFragment` / `ExactSearchID`: links, pasted ticket lines, short IDs, UUIDs (any case, dashes optional); 6+ hex chars to switch on
+- [x] `list --search` ORs an ID match onto the text match (JSON, order, exit codes unchanged)
+- [x] GUI: an ID-matched sub-task keeps its parent visible (`WithParents`); an exact reference opens the ticket once per query
+- [x] Core + CLI tests; README / SKILL.md / `--search` help updated
 
 ## Multiple Slack links (complete, unreleased)
 

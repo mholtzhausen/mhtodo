@@ -82,7 +82,7 @@ Treat that as pointing at the ticket. Resolve with `mhtodo show` / `mhtodo open`
 
 Before substantive work:
 
-1. `mhtodo list --roots --json --search "<keywords>"` (or use a pasted id; inside a repo, `mhtodo list --git-current --json` finds tickets already tracking the current branch).
+1. `mhtodo list --roots --json --search "<keywords>"` (`--search` also accepts a ticket ID fragment of 6+ hex chars, a short ID, UUID or `mhtodo://task/…` link; or use a pasted id; inside a repo, `mhtodo list --git-current --json` finds tickets already tracking the current branch).
 2. Same job → adopt. In `review` or `pr` with more work → reopen to `wip`. Nothing matches → **ask** before creating a root. Unsure → ask.
 3. **Git hygiene (required before any code work):** checkout `master` (or `main` if that is the repo default). Working tree must be clean. If anything is dirty (uncommitted changes, untracked work you did not expect, mid-rebase, etc.), **stop and clear it up with the user** — do not stash, discard, or commit on their behalf unless they explicitly approve. Only then create a new branch for this ticket and start work, and record it on the **root** ticket: run `mhtodo edit <root-id> --git-detect` from the repo (sets the repo if empty, appends the current branch). `--git-repo`/`--git-branch` replace values instead (`show --json` first if editing the list by hand).
 4. Adopt:

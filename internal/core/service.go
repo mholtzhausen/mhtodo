@@ -184,7 +184,37 @@ func (s *Service) List(ctx context.Context, f ListFilter) ([]Task, error) {
 			return nil, &InvalidPriorityError{Priority: string(p)}
 		}
 	}
-	return s.repo.List(ctx, f)
+	tasks, err := s.repo.List(ctx, f)
+	if err != nil || !f.WithParents {
+		return tasks, err
+	}
+	return s.withIDMatchParents(ctx, f, tasks)
+}
+
+// withIDMatchParents appends the missing parent of each sub-task in tasks
+// that matched the search by ticket ID (same archived state as the filter).
+func (s *Service) withIDMatchParents(ctx context.Context, f ListFilter, tasks []Task) ([]Task, error) {
+	have := make(map[string]bool, len(tasks))
+	for _, t := range tasks {
+		have[t.ID] = true
+	}
+	for i := 0; i < len(tasks); i++ {
+		t := tasks[i]
+		if t.ParentID == nil || have[*t.ParentID] || !MatchesSearchID(f.Search, t.ID) {
+			continue
+		}
+		p, err := s.repo.GetByID(ctx, *t.ParentID)
+		if errors.Is(err, ErrNotFound) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		have[p.ID] = true
+		if (p.ArchivedAt != nil) == f.Archived {
+			tasks = append(tasks, p)
+		}
+	}
+	return tasks, nil
 }
 
 // SetPriority sets a task's priority (none|low|medium|high|urgent). It is a

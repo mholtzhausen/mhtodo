@@ -276,6 +276,24 @@
     }, delayMs)
   }
 
+  // Pasting a ticket reference (link, short id, UUID) into search opens that
+  // ticket — once per distinct query, so reloads and edits don't reopen it.
+  let autoOpenedQuery = ''
+  async function autoOpenSearchId(q: string, list: Task[]) {
+    const query = q.trim()
+    if (query && query === autoOpenedQuery) return
+    autoOpenedQuery = '' // a new query re-arms; clearing and re-pasting opens again
+    if (!query) return
+    try {
+      const id = await api.exactSearchId(query, list.map((t) => t.id))
+      if (!id || search.trim() !== query) return
+      autoOpenedQuery = query
+      selectTask(id)
+    } catch {
+      /* best effort — the filtered board still shows the match */
+    }
+  }
+
   function scheduleSearchLoad() {
     clearTimeout(searchTimer)
     searchTimer = setTimeout(() => {
@@ -488,6 +506,7 @@
         if (seq !== loadSeq) return
         tasks = t
         if (view === 'board') void refreshFocus()
+        void autoOpenSearchId(search, t)
       }
     } catch (e) {
       if (seq !== loadSeq) return

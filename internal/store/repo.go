@@ -185,8 +185,15 @@ func (r *TaskRepo) List(ctx context.Context, f core.ListFilter) ([]core.Task, er
 	}
 	if strings.TrimSpace(f.Search) != "" {
 		pat := "%" + escapeLike(strings.TrimSpace(f.Search)) + "%"
-		conds = append(conds, `(title LIKE ? ESCAPE '\' OR description LIKE ? ESCAPE '\' OR git_repo LIKE ? ESCAPE '\' OR git_branches LIKE ? ESCAPE '\')`)
+		textCond := `title LIKE ? ESCAPE '\' OR description LIKE ? ESCAPE '\' OR git_repo LIKE ? ESCAPE '\' OR git_branches LIKE ? ESCAPE '\'`
 		args = append(args, pat, pat, pat, pat)
+		// ID-looking queries (hex fragment / mhtodo://task link) also match the
+		// ticket ID, dashes and case ignored; text matches are never narrowed.
+		if frag, _ := core.SearchIDFragment(f.Search); frag != "" {
+			textCond += ` OR replace(lower(id), '-', '') LIKE ?`
+			args = append(args, "%"+frag+"%")
+		}
+		conds = append(conds, "("+textCond+")")
 	}
 	if f.GitRepo != "" {
 		conds = append(conds, "git_repo = ? COLLATE NOCASE")

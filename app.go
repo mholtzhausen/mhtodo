@@ -172,6 +172,13 @@ func (a *App) ListTasks(filter core.ListFilter) ([]core.Task, error) {
 	return tasks, nil
 }
 
+// ExactSearchID returns the id among ids that a search query names exactly
+// (mhtodo://task link, short ID or full UUID), or "" — the GUI opens that
+// ticket. Parsing lives in core (SearchIDFragment) so CLI and GUI agree.
+func (a *App) ExactSearchID(query string, ids []string) string {
+	return core.ExactSearchID(query, ids)
+}
+
 // GetTask maps to CLI `show`; accepts a full ID or unique prefix (same helper
 // as the CLI).
 func (a *App) GetTask(ref string) (core.Task, error) { return a.svc.Get(a.ctx, ref) }

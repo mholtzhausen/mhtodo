@@ -157,6 +157,7 @@ export namespace core {
 	    GitRepo: string;
 	    GitBranch: string;
 	    Priorities: string[];
+	    WithParents: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListFilter(source);
@@ -177,6 +178,7 @@ export namespace core {
 	        this.GitRepo = source["GitRepo"];
 	        this.GitBranch = source["GitBranch"];
 	        this.Priorities = source["Priorities"];
+	        this.WithParents = source["WithParents"];
 	    }
 	}
 	

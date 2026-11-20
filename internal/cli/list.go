@@ -98,7 +98,7 @@ func newListCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&status, "status", "", "filter by status (icebox|pending|wip|waiting|review|pr|done)")
-	cmd.Flags().StringVar(&search, "search", "", "case-insensitive substring over title + description + git repo/branches")
+	cmd.Flags().StringVar(&search, "search", "", "case-insensitive substring over title + description + git repo/branches; ID-like queries (6+ hex chars, short ID, UUID, mhtodo://task/ link) also match the ticket ID")
 	cmd.Flags().StringVar(&gitRepo, "git-repo", "", "only tasks recording this git repo (any URL form; normalized)")
 	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "only tasks listing this exact git branch")
 	cmd.Flags().BoolVar(&gitCurrent, "git-current", false, "only tasks recording the current directory's repo + branch")

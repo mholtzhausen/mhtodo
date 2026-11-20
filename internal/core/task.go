@@ -132,7 +132,7 @@ func (in UpdateInput) hasFields() bool {
 // exclude done, sort board order, no limit.
 type ListFilter struct {
 	Status           Status // "" = any (subject to IncludeDone)
-	Search           string // case-insensitive substring over title+description+git_repo+git_branches
+	Search           string // case-insensitive substring over title+description+git_repo+git_branches; ID-looking queries also match the ticket ID (SearchIDFragment)
 	Limit            int    // 0 = unlimited
 	Sort             string // board|created|updated|status|progress|title|priority; default "board"
 	Ascending        bool   // false = descending (CLI: --sort field- for ascending)
@@ -146,6 +146,10 @@ type ListFilter struct {
 	// Priorities: nil = any; non-nil = only these levels (an empty non-nil
 	// slice matches nothing — e.g. a ">urgent" threshold).
 	Priorities []Priority
+	// WithParents (GUI): also return the parent of any sub-task matched by
+	// ticket ID whose parent is not already in the result, so the board can
+	// nest it. The CLI leaves this false; its output is unchanged.
+	WithParents bool
 }
 
 // Activity is an agent/user-authored note on a task (v0.3). Not auto-logged.

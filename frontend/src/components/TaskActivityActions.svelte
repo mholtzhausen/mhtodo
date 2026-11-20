@@ -21,6 +21,7 @@
     task,
     settings = null,
     zedBinaryOk = false,
+    showCopyId = true,
     onError,
     onToast
   }: {
@@ -41,6 +42,8 @@
     }
     settings?: GUISettings | null
     zedBinaryOk?: boolean
+    /** Copy-ID button (off in the detail header, which has its own ID chip). */
+    showCopyId?: boolean
     onError?: (msg: string) => void
     onToast?: (msg: string, kind?: 'error' | 'info') => void
   } = $props()
@@ -75,6 +78,19 @@
   let zedCommandLoading = $state(false)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
   let copyRefTimer: ReturnType<typeof setTimeout> | undefined
+  let copiedIdKind = $state<'short' | 'full' | null>(null)
+  let idHover = $state(false)
+  let copyIdTimer: ReturnType<typeof setTimeout> | undefined
+  /** Same contract as the detail pane: click = short ID, Ctrl+click = full UUID. */
+  const idLabel = $derived(
+    copiedIdKind === 'full'
+      ? 'Copied full UUID'
+      : copiedIdKind === 'short'
+        ? 'Copied short ID'
+        : idHover && claudeCtrl
+          ? `Copy full UUID ${task.id}`
+          : `${shortId(task.id)} — click to copy, Ctrl+click to copy full UUID`
+  )
 
   const showZed = $derived(
     !!settings?.zed.enabled && zedBinaryOk && !!(task.cwd ?? '').trim()
@@ -207,6 +223,29 @@
       reportError(errMsg(err))
     } finally {
       copying = false
+    }
+  }
+
+  async function copyTaskId(e: MouseEvent) {
+    stop(e)
+    if (!inWails) {
+      reportError('Running outside Wails — copy unavailable')
+      return
+    }
+    const kind = e.ctrlKey || e.metaKey ? 'full' : 'short'
+    try {
+      if (!(await clipboardSet(kind === 'full' ? task.id : shortId(task.id)))) {
+        reportError('Could not copy to clipboard')
+        return
+      }
+      copiedIdKind = kind
+      toast(kind === 'full' ? 'Full UUID copied' : 'Short ID copied', 'info')
+      clearTimeout(copyIdTimer)
+      copyIdTimer = setTimeout(() => {
+        copiedIdKind = null
+      }, 1500)
+    } catch (err) {
+      reportError(errMsg(err))
     }
   }
 
@@ -505,6 +544,32 @@
   aria-label="Task actions"
   onpointerdown={(e) => e.stopPropagation()}
 >
+  {#if showCopyId}
+    <button
+      type="button"
+      onclick={copyTaskId}
+      onpointerenter={(e) => {
+        idHover = true
+        claudeCtrl = e.ctrlKey
+      }}
+      onpointermove={(e) => (claudeCtrl = e.ctrlKey)}
+      onpointerleave={() => (idHover = false)}
+      title={idLabel}
+      aria-label={idLabel}
+      class="{actionBtn} cursor-copy {copiedIdKind || (idHover && claudeCtrl) ? toggleOn : 'text-ink-3 hover:text-ink'}"
+    >
+      {#if copiedIdKind}
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 6 9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      {:else}
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      {/if}
+    </button>
+  {/if}
+
   <button
     type="button"
     onclick={copyMarkdown}
