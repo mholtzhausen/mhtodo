@@ -11,6 +11,19 @@
 ### Deprecations
 - (none)
 
+## 3.11.0 (HASH)
+
+### Features and Improvements
+- Search by ticket ID: `mhtodo list --search` and the GUI search box also match ticket IDs when the query looks like one — 6+ hex chars, the 8-char short ID, a UUID with or without dashes (any case), or a `mhtodo://task/…` link / pasted "MHTodo Ticket:" line. ID hits add to text hits; JSON, order and exit codes are unchanged, and shorter fragments stay text-only
+- GUI: a sub-task found by ID keeps its parent card visible; pasting a reference that names exactly one ticket opens its detail (once per query)
+- GUI: copy-ID (`#`) button on Board, Focus and Archive cards — hover shows the short ID, click copies it, Ctrl+click copies the full UUID (same as the detail pane's ID chip)
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.10.0 (b7746c1)
 
 ### Features and Improvements
