@@ -11,7 +11,7 @@
 ### Deprecations
 - (none)
 
-## 3.11.0 (HASH)
+## 3.11.0 (222bf76)
 
 ### Features and Improvements
 - Search by ticket ID: `mhtodo list --search` and the GUI search box also match ticket IDs when the query looks like one — 6+ hex chars, the 8-char short ID, a UUID with or without dashes (any case), or a `mhtodo://task/…` link / pasted "MHTodo Ticket:" line. ID hits add to text hits; JSON, order and exit codes are unchanged, and shorter fragments stay text-only
