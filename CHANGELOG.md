@@ -11,6 +11,17 @@
 ### Deprecations
 - (none)
 
+## 3.12.1 (07a92b2)
+
+### Features and Improvements
+- In-app install/update dialog now enables updating/installing the user systemd service by default (previously unchecked when a service was already present)
+
+### Bugfixes
+- Avoid a redundant `service install` call when an in-app update has already been handed off to a transient systemd unit that refreshes and restarts the service
+
+### Deprecations
+- (none)
+
 ## 3.12.0 (4024b99)
 
 ### Features and Improvements
