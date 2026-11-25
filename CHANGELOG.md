@@ -11,6 +11,20 @@
 ### Deprecations
 - (none)
 
+## 3.13.0 (04e6137)
+
+### Features and Improvements
+- Promote sub-tasks to top-level tasks: `mhtodo promote ID` (`Service.Promote` / `App.PromoteTask`) detaches `parent_id`, appends the task to the end of its status column's board order, and preserves all fields and activities while respecting the 6-lane Focus cap
+- Demote / reparent tasks under a top-level parent: `mhtodo demote ID PARENT_ID` (alias `reparent`; `Service.SetParent` / `App.SetTaskParent`) attaches a standalone task as a sub-task or moves an existing sub-task to another parent while enforcing one-level nesting (`parent_is_self`, `parent_is_child`, `task_has_children`, `parent_archived`)
+- GUI fuzzy parent selector modal (`ParentPickerDialog`): fuzzy-complete search by title (with inline match highlights and multi-word matching), ticket ID, or git repo, with full keyboard navigation (`↑`/`↓`, `Enter`, `Esc`)
+- GUI promote and reparent/move controls across Task Detail (header **Make sub-task**, sub-task **Parent task** bar **Move** / **Promote**, and parent **Sub-tasks** tab), Board cards and nested sub-task rows, and Focus view lanes and expanded sub-tasks
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.12.1 (07a92b2)
 
 ### Features and Improvements
