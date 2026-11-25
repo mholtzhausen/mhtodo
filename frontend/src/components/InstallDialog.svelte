@@ -24,7 +24,7 @@
   } = $props()
 
   let updateApp = $state(true)
-  let installService = $state(false)
+  let installService = $state(true)
   let seeded = false
 
   $effect(() => {
@@ -35,7 +35,7 @@
     if (seeded) return
     seeded = true
     updateApp = true
-    installService = status ? !status.has_service : false
+    installService = true
   })
 
   const canConfirm = $derived((updateApp || installService) && !busy)

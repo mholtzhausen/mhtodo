@@ -176,7 +176,7 @@ func (a *App) RunInstallActions(in InstallActionsInput) (InstallActionsResult, e
 			if ur.Message != "" {
 				messages = append(messages, ur.Message)
 			}
-			if ur.Service && ur.Updated {
+			if ur.Service && (ur.Updated || ur.HandedOff) {
 				out.Service = true
 				in.InstallService = false
 			}
