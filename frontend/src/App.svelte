@@ -145,6 +145,10 @@
     dialogParentId ? false : guiSettings.default_include_in_report
   )
   const dialogDefaultSlackThread = $derived(dialogParent?.slack_thread ?? '')
+  /** A sub-task of a currently visible focused parent replaces its parent's lane, so it still fits at FOCUS_MAX. */
+  const dialogFocusFull = $derived(
+    focusIds.length >= FOCUS_MAX && !(dialogParentId && focusIds.includes(dialogParentId))
+  )
 
   let appVersion = $state('')
 
@@ -694,6 +698,7 @@
     try {
       const lanes = await api.listFocus()
       await migrateLegacyFocus(lanes.length === 0, (id) => api.focusTask(id))
+      await refreshFocus()
     } catch {
       /* ignore */
     }
@@ -1271,6 +1276,7 @@
     defaultIncludeInReport={dialogDefaultIncludeInReport}
     defaultSlackThread={dialogDefaultSlackThread}
     visibleStatuses={guiSettings.visible_statuses}
+    focusFull={dialogFocusFull}
     openWithTemplatePicker={dialogTemplatePicker}
     onClose={() => {
       dialogOpen = false

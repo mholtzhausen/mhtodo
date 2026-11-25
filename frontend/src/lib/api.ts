@@ -140,6 +140,7 @@ export const api = {
     gitRepo?: string
     gitBranches?: string
     priority?: Priority
+    focus?: boolean
   }): Promise<Task> {
     return App.CreateTask({
       Title: input.title,
@@ -157,6 +158,7 @@ export const api = {
       GitRepo: input.gitRepo ?? '',
       GitBranches: input.gitBranches ?? '',
       Priority: input.priority ?? 'none',
+      Focus: !!input.focus,
       SlackLinks: []
     } as unknown as core.CreateInput) as Promise<Task>
   },

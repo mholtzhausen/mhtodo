@@ -148,7 +148,8 @@ a parent visible when a sub-task matches, and never reorders (`lib/priority.ts`)
 **Focus view:** a Focus tab to the left of Board shows only hand-pinned tickets (max 6 lanes),
 one large card per lane. Pins are `tasks.focus_rank` (migration v16, nullable REAL, fractional
 like `board_rank`; pinning does not bump `updated_at`). Core: `internal/core/focus.go`
-(`ListFocus` / `Focus` / `Unfocus` / `ClearFocus`); CLI: `mhtodo focus [list|add|rm|clear]`.
+(`ListFocus` / `Focus` / `Unfocus` / `ClearFocus`, plus `CreateInput.Focus`); CLI: `mhtodo focus [list|add|rm|clear]`
+and `mhtodo add --focus`. The New Task modal includes a Focus toggle in its footer.
 If a parent and its sub-task are both pinned, only the sub-task gets a lane: the parent stays
 pinned and its lane comes back when the sub-task leaves focus. The cap counts visible lanes.
 `SetStatus(done)` and `Archive` clear the pin. Lanes are editable in place

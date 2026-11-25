@@ -164,6 +164,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Task, error) {
 			return Task{}, err
 		}
 	}
+	if in.Focus {
+		if err := s.assignEndFocusRank(ctx, &t); err != nil {
+			return Task{}, err
+		}
+	}
 	if err := s.repo.Create(ctx, t); err != nil {
 		return Task{}, err
 	}

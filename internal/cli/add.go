@@ -14,7 +14,7 @@ func newAddCmd() *cobra.Command {
 	var prURLs, gitBranches []string
 	var gitRepo, priority string
 	var progress int
-	var humanOnly bool
+	var humanOnly, focus bool
 	var includeInReport, noIncludeInReport bool
 	cmd := &cobra.Command{
 		Use:   "add TITLE",
@@ -36,6 +36,7 @@ func newAddCmd() *cobra.Command {
 				Feedback: feedback,
 				Progress: progress,
 				ParentID: parent,
+				Focus:    focus,
 			}
 
 			if template != "" {
@@ -127,6 +128,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&priority, "priority", "", "priority (none|low|medium|high|urgent; default none)")
 	cmd.Flags().StringVar(&template, "template", "", "apply a task template by id or name (CLI flags override presets)")
 	cmd.Flags().BoolVar(&humanOnly, "human-only", false, "mark as human-only (excluded from default agent lists)")
+	cmd.Flags().BoolVar(&focus, "focus", false, "pin the new task to the Focus view")
 	cmd.Flags().BoolVar(&includeInReport, "include-in-report", false, "include in Slack board report (default on for roots, off for sub-tasks)")
 	cmd.Flags().BoolVar(&noIncludeInReport, "no-include-in-report", false, "exclude from Slack board report")
 	return cmd

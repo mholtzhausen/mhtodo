@@ -1,10 +1,12 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { api, errMsg, type Status } from '../lib/api'
+  import { FOCUS_MAX } from '../lib/focus'
   import { focusOnOpen } from '../lib/focusFirstField'
   import { openExternalUrl } from '../lib/openExternal'
   import type { TaskStatusId } from '../lib/settings'
   import { applyTemplate, type TaskTemplate } from '../lib/templates'
+  import FocusIcon from './FocusIcon.svelte'
   import StatusPicker from './StatusPicker.svelte'
   import PriorityPicker from './PriorityPicker.svelte'
   import type { Priority } from '../lib/priority'
@@ -21,6 +23,7 @@
     defaultIncludeInReport = true,
     defaultSlackThread = '',
     visibleStatuses = null,
+    focusFull = false,
     /** Open with the template picker already showing and its filter focused. */
     openWithTemplatePicker = false,
     onClose,
@@ -35,6 +38,7 @@
     defaultIncludeInReport?: boolean
     defaultSlackThread?: string
     visibleStatuses?: readonly TaskStatusId[] | null
+    focusFull?: boolean
     openWithTemplatePicker?: boolean
     onClose: () => void
     onError?: (msg: string) => void
@@ -50,6 +54,16 @@
   let gitRepo = $state('')
   let humanOnly = $state(false)
   let includeInReport = $state(true)
+  let focus = $state(false)
+
+  const focusDisabledReason = $derived(
+    status === 'done'
+      ? 'Done tasks cannot be focused'
+      : focusFull
+        ? `Focus is full (${FOCUS_MAX}/${FOCUS_MAX})`
+        : ''
+  )
+  const focusActive = $derived(focus && !focusDisabledReason)
 
   let pickerOpen = $state(false)
   let saveAsOpen = $state(false)
@@ -77,8 +91,13 @@
     gitRepo = ''
     humanOnly = defaultHumanOnly
     includeInReport = defaultIncludeInReport
+    focus = false
     dialogInitialized = true
     pickerOpen = openWithTemplatePicker
+  })
+
+  $effect(() => {
+    if (status === 'done' && focus) focus = false
   })
 
   function onTemplatePicked(t: TaskTemplate) {
@@ -138,7 +157,8 @@
         humanOnly,
         includeInReport,
         slackThread: slackThread.trim() || undefined,
-        gitRepo: gitRepo.trim() || undefined
+        gitRepo: gitRepo.trim() || undefined,
+        focus: focusActive
       })
       resetForm()
       onClose()
@@ -159,6 +179,7 @@
     gitRepo = ''
     humanOnly = false
     includeInReport = true
+    focus = false
     appliedPrefix = ''
     appliedTemplateName = ''
     pickerOpen = false
@@ -353,21 +374,38 @@
         </div>
       </div>
 
-      <div class="flex flex-none items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
+      <div class="flex flex-none items-center justify-between gap-2 border-t border-line-soft px-5 py-3">
         <button
           type="button"
-          onclick={resetAndClose}
-          class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          disabled={!!focusDisabledReason}
+          aria-pressed={focusActive}
+          title={focusDisabledReason || (focusActive ? 'Will be pinned to Focus' : 'Pin to Focus on create')}
+          onclick={() => (focus = !focus)}
+          class="inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40
+            {focusActive
+              ? 'border-accent/50 bg-accent/15 text-accent-hi hover:bg-accent/20'
+              : 'border-line-soft text-ink-3 hover:bg-white/5 hover:text-ink'}"
         >
-          Cancel
+          <FocusIcon class="h-3.5 w-3.5" filled={focusActive} />
+          <span>Focus</span>
         </button>
-        <button
-          type="submit"
-          disabled={!title.trim() || submitting}
-          class="btn-primary rounded-control bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Create {parentId ? 'sub-task' : 'task'}
-        </button>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onclick={resetAndClose}
+            class="rounded-control px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/5 hover:text-ink"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!title.trim() || submitting}
+            class="btn-primary rounded-control bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Create {parentId ? 'sub-task' : 'task'}
+          </button>
+        </div>
       </div>
     </form>
   </div>

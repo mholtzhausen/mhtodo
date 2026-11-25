@@ -98,6 +98,7 @@ type CreateInput struct {
 	GitRepo         string      // optional git repository
 	GitBranches     string      // optional branch name(s), one per line
 	Priority        Priority    // "" → none; sub-tasks never inherit the parent's
+	Focus           bool        // pin the new task to the Focus view (ErrFocusClosed on done, ErrFocusFull past FocusMax)
 }
 
 // UpdateInput carries the optional fields accepted by edit / UpdateTask;

@@ -100,6 +100,7 @@ export namespace core {
 	    GitRepo: string;
 	    GitBranches: string;
 	    Priority: string;
+	    Focus: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateInput(source);
@@ -123,6 +124,7 @@ export namespace core {
 	        this.GitRepo = source["GitRepo"];
 	        this.GitBranches = source["GitBranches"];
 	        this.Priority = source["Priority"];
+	        this.Focus = source["Focus"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

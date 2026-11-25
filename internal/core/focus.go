@@ -123,6 +123,29 @@ func (s *Service) ClearFocus(ctx context.Context) (int, error) {
 	return s.repo.ClearFocus(ctx)
 }
 
+// assignEndFocusRank validates focus rules for a task being created and sets
+// its FocusRank to append to the Focus view. Mirrors Focus(ref, nil): done or
+// archived tasks fail with ErrFocusClosed, and exceeding FocusMax visible lanes
+// fails with ErrFocusFull.
+func (s *Service) assignEndFocusRank(ctx context.Context, t *Task) error {
+	if t.Status == StatusDone || t.ArchivedAt != nil {
+		return ErrFocusClosed
+	}
+	pins, err := s.repo.ListFocused(ctx)
+	if err != nil {
+		return err
+	}
+	if len(FocusLanes(append(append([]Task{}, pins...), *t))) > FocusMax {
+		return ErrFocusFull
+	}
+	rank, err := s.computeFocusRank(ctx, pins, nil)
+	if err != nil {
+		return err
+	}
+	t.FocusRank = &rank
+	return nil
+}
+
 // computeFocusRank places a task among others (focus order, excluding the
 // task itself): appended when beforeID is nil, else just before beforeID.
 func (s *Service) computeFocusRank(ctx context.Context, others []Task, beforeID *string) (float64, error) {

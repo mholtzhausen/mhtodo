@@ -30,7 +30,7 @@ mhtodo edit ID --git-repo REPO --git-branch BRANCH [--git-branch BRANCH…]
 mhtodo list --git-current [--json]   # tickets recording this repo's current branch (also --git-repo R / --git-branch B)
 mhtodo priority ID [none|low|medium|high|urgent]   # no level = show; never reorders the board
 mhtodo list --priority '>=high' [--sort priority] [--json]   # also comma lists: high,urgent
-mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--priority LEVEL] [--json]
+mhtodo add TITLE [--parent ID] [--template REF] [--cwd PATH] [--priority LEVEL] [--focus] [--json]
 mhtodo slack link list ID [--json]                 # Slack conversations on a ticket (* = primary thread)
 mhtodo slack link add ID URL [--desc "what it is"] [--primary]   # adds, never replaces; slack.com or slack:// only
   # read every linked conversation's description before asking the user where a discussion happened

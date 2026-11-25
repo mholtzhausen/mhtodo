@@ -166,3 +166,61 @@ func TestFocusClearedOnArchive(t *testing.T) {
 		t.Fatalf("archived still focused: %v", got)
 	}
 }
+
+func TestCreateWithFocus(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	// Creating with Focus appends to Focus lanes immediately.
+	t1, err := svc.Create(ctx, core.CreateInput{Title: "First", Status: core.StatusWIP, Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if t1.FocusRank == nil {
+		t.Fatalf("expected focus_rank set on created task")
+	}
+	t2, err := svc.Create(ctx, core.CreateInput{Title: "Second", Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := laneIDs(t, svc); !eqIDs(got, []string{t1.ID, t2.ID}) {
+		t.Fatalf("lanes after create: %v", got)
+	}
+
+	// Done task cannot be created focused and must not be persisted.
+	if _, err := svc.Create(ctx, core.CreateInput{Title: "Done", Status: core.StatusDone, Focus: true}); !errors.Is(err, core.ErrFocusClosed) {
+		t.Fatalf("done+focus: want ErrFocusClosed, got %v", err)
+	}
+
+	// Fill remaining lanes up to FocusMax.
+	for i := 2; i < core.FocusMax; i++ {
+		if _, err := svc.Create(ctx, core.CreateInput{Title: "Fill", Focus: true}); err != nil {
+			t.Fatalf("fill %d: %v", i, err)
+		}
+	}
+
+	// 7th root task with Focus fails with ErrFocusFull and must not be persisted.
+	if _, err := svc.Create(ctx, core.CreateInput{Title: "Overflow", Focus: true}); !errors.Is(err, core.ErrFocusFull) {
+		t.Fatalf("7th focus create: want ErrFocusFull, got %v", err)
+	}
+	all, err := svc.List(ctx, core.ListFilter{IncludeDone: true, IncludeHumanOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != core.FocusMax {
+		t.Fatalf("failed focus creates should not persist tasks: got %d tasks, want %d", len(all), core.FocusMax)
+	}
+
+	// A sub-task of an already-focused parent replaces the parent's lane, so it fits even at FocusMax.
+	sub1, err := svc.Create(ctx, core.CreateInput{Title: "Sub 1", ParentID: t1.ID, Focus: true})
+	if err != nil {
+		t.Fatalf("sub-task of focused parent at cap: %v", err)
+	}
+	if sub1.FocusRank == nil {
+		t.Fatalf("expected focus_rank set on sub-task")
+	}
+	// A second focused sub-task of the same parent would add a 7th visible lane → ErrFocusFull.
+	if _, err := svc.Create(ctx, core.CreateInput{Title: "Sub 2", ParentID: t1.ID, Focus: true}); !errors.Is(err, core.ErrFocusFull) {
+		t.Fatalf("second focused sub-task at cap: want ErrFocusFull, got %v", err)
+	}
+}

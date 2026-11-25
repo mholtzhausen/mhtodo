@@ -534,6 +534,41 @@ func TestFocusCLI(t *testing.T) {
 	if code := run("focus", "clear", "--json"); code != 0 || !strings.Contains(out.String(), `"cleared": 0`) {
 		t.Fatalf("focus clear: exit %d out %q", code, out.String())
 	}
+
+	// add --focus pins immediately; done+focus and full+focus fail without creating.
+	out.Reset()
+	if code := run("add", "Focused on create", "--focus", "--json"); code != 0 {
+		t.Fatalf("add --focus exit %d: %s", code, errb.String())
+	}
+	var created core.Task
+	mustJSON(t, out.Bytes(), &created)
+	if created.FocusRank == nil {
+		t.Fatalf("add --focus json missing focus_rank: %+v", created)
+	}
+	out.Reset()
+	if code := run("focus", "--json"); code != 0 {
+		t.Fatalf("focus list after add --focus exit %d", code)
+	}
+	lanes = nil
+	mustJSON(t, out.Bytes(), &lanes)
+	if len(lanes) != 1 || lanes[0].ID != created.ID {
+		t.Fatalf("focus lanes after add --focus: %+v", lanes)
+	}
+
+	errb.Reset()
+	if code := run("add", "Done focused", "--status", "done", "--focus", "--json"); code != cli.ExitUsage || !strings.Contains(errb.String(), `"focus_closed"`) {
+		t.Fatalf("add --status done --focus: exit %d stderr %q", code, errb.String())
+	}
+	for i := 1; i < core.FocusMax; i++ {
+		out.Reset()
+		if code := run("add", fmt.Sprintf("Extra %d", i), "--focus"); code != 0 {
+			t.Fatalf("fill focus %d exit %d: %s", i, code, errb.String())
+		}
+	}
+	errb.Reset()
+	if code := run("add", "Overflow", "--focus", "--json"); code != cli.ExitUsage || !strings.Contains(errb.String(), `"focus_full"`) {
+		t.Fatalf("add --focus when full: exit %d stderr %q", code, errb.String())
+	}
 }
 
 // --- show ---------------------------------------------------------------------
