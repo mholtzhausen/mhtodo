@@ -11,6 +11,18 @@
 ### Deprecations
 - (none)
 
+## 3.12.0 (4024b99)
+
+### Features and Improvements
+- Focus on create (GUI): New Task modal adds a **Focus** toggle button in the footer to pin a newly created task or sub-task straight to the Focus view; automatically disables with a hint when status is `done` or Focus is at the 6-lane cap (while still allowing a sub-task of a currently visible focused parent, which replaces the parent's lane)
+- Focus on create (CLI & core): `mhtodo add --focus` (and `core.CreateInput.Focus`) pins the task at creation time and validates Focus rules (`focus_closed` / `focus_full`) before persisting so failed checks never leave an orphan task
+
+### Bugfixes
+- (none)
+
+### Deprecations
+- (none)
+
 ## 3.11.0 (222bf76)
 
 ### Features and Improvements
