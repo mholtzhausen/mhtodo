@@ -76,8 +76,16 @@ func mapError(err error) error {
 			return &errExit{code: ExitUsage, name: "already_archived", msg: err.Error()}
 		case errors.Is(err, core.ErrParentIsChild):
 			return &errExit{code: ExitUsage, name: "parent_is_child", msg: err.Error()}
+		case errors.Is(err, core.ErrParentIsSelf):
+			return &errExit{code: ExitUsage, name: "parent_is_self", msg: err.Error()}
+		case errors.Is(err, core.ErrTaskHasChildren):
+			return &errExit{code: ExitUsage, name: "task_has_children", msg: err.Error()}
+		case errors.Is(err, core.ErrParentArchived):
+			return &errExit{code: ExitUsage, name: "parent_archived", msg: err.Error()}
 		case errors.Is(err, core.ErrNotRoot):
 			return &errExit{code: ExitUsage, name: "not_root", msg: err.Error()}
+		case errors.Is(err, core.ErrNotSubtask):
+			return &errExit{code: ExitUsage, name: "not_subtask", msg: err.Error()}
 		case errors.Is(err, core.ErrReorderStatusMismatch):
 			return &errExit{code: ExitUsage, name: "reorder_status_mismatch", msg: err.Error()}
 		case errors.Is(err, core.ErrFocusFull):
@@ -336,7 +344,7 @@ func NewRootCmd(version, commit string) *cobra.Command {
 
 	for _, c := range []*cobra.Command{
 		newAddCmd(), newListCmd(), newShowCmd(), newOpenCmd(), newEditCmd(),
-		newStatusCmd(), newPriorityCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newReorderCmd(),
+		newStatusCmd(), newPriorityCmd(), newDoneCmd(), newArchiveCmd(), newUnarchiveCmd(), newPromoteCmd(), newDemoteCmd(), newReorderCmd(),
 		newFocusCmd(), newActivityCmd(), newTemplateCmd(), newThemeCmd(), newRmCmd(), newPathCmd(), newSlackCmd(), newAICmd(version),
 		newInstallCmd(), newUpdateCmd(version), newServiceCmd(),
 	} {

@@ -93,7 +93,7 @@ concurrently with the GUI.
 Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries the envelope
 `{"error":"<code>","message":"..."}`. Error codes: `not_found`, `ambiguous_id`, `empty_title`,
 `invalid_status`, `progress_range`, `no_fields`, `not_archived`, `not_done`, `already_archived`,
-`parent_is_child`, `not_root`, `git_detect`, `git_repo_mismatch`,
+`parent_is_child`, `parent_is_self`, `task_has_children`, `parent_archived`, `not_root`, `not_subtask`, `git_detect`, `git_repo_mismatch`,
 `reorder_status_mismatch`, `empty_activity`, `focus_full`, `focus_closed`, `not_focused`,
 `usage`, `storage`, `update`, `service`, `install`.
 
@@ -114,6 +114,8 @@ Errors go to **stderr** as `mhtodo: <message>`; with `--json`, stderr carries th
 | `done` | `mhtodo done ID [--notify]` | shortcut for `status ID done`; `--notify` sends a desktop notification (opt-in; GUI notify-send is Settings → Notifications) |
 | `archive` | `mhtodo archive [ID]` | with no ID, archives **all** currently-done tasks; with ID, archives that single done task only (must be done; already archived → `already_archived`); reversible via `unarchive` |
 | `unarchive` | `mhtodo unarchive ID` | restores an archived task to `pending`, progress 0; non-archived → exit 1 (`not_archived`) |
+| `promote` | `mhtodo promote ID` | promotes a sub-task to a top-level task: clears `parent_id`, appends to the end of its current status column's board order, and preserves all fields and activities (root → exit 1 `not_subtask`, archived → `already_archived`) |
+| `demote` (`reparent`) | `mhtodo demote ID PARENT_ID` | attaches a task as a one-level sub-task of `PARENT_ID` (or moves an existing sub-task to a new parent): clears `board_rank` and preserves all fields and activities (self → `parent_is_self`, sub-task parent → `parent_is_child`, task with children → `task_has_children`, archived → `already_archived` / `parent_archived`) |
 | `activity add` | `mhtodo activity add ID --activity TEXT [--comment TEXT]` | agent/user-authored entry (at least one of activity/comment); not auto-logged |
 | `activity list` | `mhtodo activity list [--task ID]… [--limit N]` | newest first; non-archived tasks by default |
 | `activity rm` | `mhtodo activity rm ID [--yes]` | non-TTY requires `--yes` |
@@ -401,6 +403,8 @@ status transitions → activity → delete) using only this CLI.
 | `Archive(id)` | `archive ID` | single done task → archive |
 | `ArchiveDone()` | `archive` | bulk done → archive |
 | `Unarchive(id)` | `unarchive` | |
+| `PromoteTask(id)` | `promote` | promote a sub-task to a top-level task |
+| `SetTaskParent(id, parentID)` | `demote` (`reparent`) | attach a task as a sub-task of a top-level parent (or move a sub-task) |
 | `DeleteTask(id)` | `rm` | cascades to children |
 | `CountChildren(id)` | (confirm helper) | GUI delete confirm |
 | `AddActivity` / `ListActivity` / `DeleteActivity` | `activity add\|list\|rm` | agent-authored |

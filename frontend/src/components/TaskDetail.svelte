@@ -14,6 +14,8 @@
   import CwdField from './CwdField.svelte'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import DemoteIcon from './DemoteIcon.svelte'
+  import PromoteIcon from './PromoteIcon.svelte'
   import SlackLinks from './SlackLinks.svelte'
   import { focusOnOpen } from '../lib/focusFirstField'
 
@@ -30,7 +32,9 @@
     onAddSubtask,
     onSelectParent,
     focused = false,
-    onToggleFocus
+    onToggleFocus,
+    onReparent,
+    refreshSeq = 0
   }: {
     task: any
     parentTitle?: string | null
@@ -45,6 +49,8 @@
     onSelectParent?: (parentId: string) => void
     focused?: boolean
     onToggleFocus?: (id: string) => void
+    onReparent?: (task: any) => void
+    refreshSeq?: number
   } = $props()
 
   type ModalSection = 'task' | 'subtasks' | 'activity'
@@ -104,6 +110,7 @@
   let actText = $state('')
   let commentText = $state('')
   let posting = $state(false)
+  let promoting = $state(false)
   let copiedKind = $state<'short' | 'full' | null>(null)
   let copyTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -159,6 +166,11 @@
     copiedKind = null
     activeSection = 'task'
     loadActivity()
+    loadSubtasks()
+  })
+
+  $effect(() => {
+    void refreshSeq
     loadSubtasks()
   })
 
@@ -239,6 +251,20 @@
       await api.setPriority(task.id, p)
     } catch (e) {
       onError(errMsg(e))
+    }
+  }
+
+  async function promoteTask(target: { id: string; title: string }, refreshList = false) {
+    if (archived || promoting) return
+    promoting = true
+    try {
+      await api.promote(target.id)
+      if (refreshList) await loadSubtasks()
+      onNotify?.(`Promoted “${target.title}” to a full task`)
+    } catch (e) {
+      onError(errMsg(e))
+    } finally {
+      promoting = false
     }
   }
 
@@ -489,6 +515,21 @@
         </button>
       </div>
     </div>
+    {#if onReparent && !task.parent_id && !archived}
+      <button
+        type="button"
+        disabled={subtasks.length > 0}
+        onclick={() => onReparent(task)}
+        title={subtasks.length > 0
+          ? 'Tasks with sub-tasks cannot become a sub-task'
+          : 'Make this task a sub-task of another task'}
+        aria-label="Make sub-task of another task"
+        class="inline-flex items-center gap-1 rounded-control border border-line-soft px-2 py-1 text-[11px] font-medium text-ink-3 transition-colors hover:border-accent/40 hover:bg-white/5 hover:text-accent-hi disabled:cursor-not-allowed disabled:opacity-35"
+      >
+        <DemoteIcon class="h-3 w-3" />
+        <span>Make sub-task</span>
+      </button>
+    {/if}
     {#if onToggleFocus && (focused || (task.status !== 'done' && !archived))}
       <button
         type="button"
@@ -561,20 +602,47 @@
     {#if task.parent_id}
       <div>
         <span class="micro mb-1.5">Parent task</span>
-        {#if onSelectParent}
-          <button
-            type="button"
-            onclick={() => onSelectParent?.(task.parent_id)}
-            class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
-            title={parentTitle ?? task.parent_id}
-          >
-            {parentTitle ?? 'Open parent'}
-          </button>
-        {:else}
-          <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
-            {parentTitle ?? task.parent_id}
-          </p>
-        {/if}
+        <div class="flex items-center gap-2">
+          <div class="min-w-0 flex-1">
+            {#if onSelectParent}
+              <button
+                type="button"
+                onclick={() => onSelectParent?.(task.parent_id)}
+                class="block w-full truncate text-left text-sm font-medium text-accent-hi hover:underline"
+                title={parentTitle ?? task.parent_id}
+              >
+                {parentTitle ?? 'Open parent'}
+              </button>
+            {:else}
+              <p class="truncate text-sm font-medium text-ink-2" title={parentTitle ?? task.parent_id}>
+                {parentTitle ?? task.parent_id}
+              </p>
+            {/if}
+          </div>
+          {#if !archived}
+            {#if onReparent}
+              <button
+                type="button"
+                onclick={() => onReparent(task)}
+                title="Move this sub-task to another parent task"
+                class="inline-flex shrink-0 items-center gap-1 rounded-control border border-line-soft bg-field px-2 py-1 text-xs font-medium text-ink-2 transition-colors hover:border-accent/50 hover:bg-accent/10 hover:text-accent-hi"
+              >
+                <DemoteIcon class="h-3 w-3" />
+                <span>Move</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              disabled={promoting}
+              onclick={() => void promoteTask(task)}
+              title="Promote this sub-task to a full task"
+              class="inline-flex shrink-0 items-center gap-1 rounded-control border border-line-soft bg-field px-2 py-1 text-xs font-medium text-ink-2 transition-colors hover:border-accent/50 hover:bg-accent/10 hover:text-accent-hi disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <PromoteIcon class="h-3 w-3" />
+              <span>Promote</span>
+            </button>
+          {/if}
+        </div>
       </div>
     {/if}
 
@@ -847,11 +915,13 @@
       {/if}
     <ul class="space-y-1">
       {#each subtasks as st (st.id)}
-        <li>
+        <li
+          class="group/st flex items-center gap-1 rounded-control border border-line-soft bg-field/50 pr-1.5 transition-colors hover:bg-card-hi"
+        >
           <button
             type="button"
             onclick={() => onSelectParent?.(st.id)}
-            class="flex w-full items-center gap-gap-md rounded-control border border-line-soft bg-field/50 px-3 py-2 text-left transition-colors hover:bg-card-hi"
+            class="flex min-w-0 flex-1 items-center gap-gap-md px-3 py-2 text-left"
           >
             <span
               class="h-2 w-2 flex-none rounded-full {statusDot[st.status] ?? statusDot.pending}"
@@ -860,6 +930,29 @@
             <span class="min-w-0 flex-1 truncate text-sm text-ink">{st.title}</span>
             <span class="font-mono text-[11px] text-ink-3">{st.progress}%</span>
           </button>
+          {#if !archived}
+            {#if onReparent}
+              <button
+                type="button"
+                onclick={() => onReparent(st)}
+                title="Move sub-task to another parent task"
+                aria-label={`Move “${st.title}” to another parent task`}
+                class="rounded-control p-1 text-ink-3 opacity-0 transition-all hover:bg-accent/15 hover:text-accent-hi group-hover/st:opacity-100 focus:opacity-100"
+              >
+                <DemoteIcon class="h-3.5 w-3.5" />
+              </button>
+            {/if}
+            <button
+              type="button"
+              disabled={promoting}
+              onclick={() => void promoteTask(st, true)}
+              title="Promote sub-task to a full task"
+              aria-label={`Promote “${st.title}” to a full task`}
+              class="rounded-control p-1 text-ink-3 opacity-0 transition-all hover:bg-accent/15 hover:text-accent-hi group-hover/st:opacity-100 focus:opacity-100 disabled:opacity-40"
+            >
+              <PromoteIcon class="h-3.5 w-3.5" />
+            </button>
+          {/if}
         </li>
       {:else}
         <li class="text-sm text-ink-3">No sub-tasks yet.</li>

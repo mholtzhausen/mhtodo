@@ -571,6 +571,102 @@ func TestFocusCLI(t *testing.T) {
 	}
 }
 
+func TestPromoteCLI(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("add", "Root", "-q"); code != 0 {
+		t.Fatalf("add root: exit %d: %s", code, errb.String())
+	}
+	rootID := strings.TrimSpace(out.String())
+	out.Reset()
+
+	// Promoting a root task fails with exit 1 (not_subtask).
+	if code := run("promote", rootID, "--json"); code != cli.ExitUsage || !strings.Contains(errb.String(), `"not_subtask"`) {
+		t.Fatalf("promote root: exit %d stderr %q", code, errb.String())
+	}
+	errb.Reset()
+
+	if code := run("add", "Sub", "--parent", rootID, "--status", "wip", "-q"); code != 0 {
+		t.Fatalf("add sub: exit %d: %s", code, errb.String())
+	}
+	subID := strings.TrimSpace(out.String())
+	out.Reset()
+
+	if code := run("promote", core.ShortID(subID), "--json"); code != 0 {
+		t.Fatalf("promote sub: exit %d: %s", code, errb.String())
+	}
+	var promoted core.Task
+	mustJSON(t, out.Bytes(), &promoted)
+	if promoted.ID != subID || promoted.ParentID != nil || promoted.BoardRank == nil {
+		t.Fatalf("unexpected promoted task: %+v", promoted)
+	}
+
+	// Appears in root list now.
+	out.Reset()
+	if code := run("list", "--roots", "--json"); code != 0 {
+		t.Fatalf("list --roots: exit %d", code)
+	}
+	var roots []core.Task
+	mustJSON(t, out.Bytes(), &roots)
+	if len(roots) != 2 {
+		t.Fatalf("expected 2 root tasks after promote, got %d", len(roots))
+	}
+}
+
+func TestDemoteCLI(t *testing.T) {
+	out, errb, run := newCLI(t)
+
+	if code := run("add", "Parent A", "-q"); code != 0 {
+		t.Fatal(code)
+	}
+	pA := strings.TrimSpace(out.String())
+	out.Reset()
+	if code := run("add", "Parent B", "-q"); code != 0 {
+		t.Fatal(code)
+	}
+	pB := strings.TrimSpace(out.String())
+	out.Reset()
+	if code := run("add", "Child", "-q"); code != 0 {
+		t.Fatal(code)
+	}
+	child := strings.TrimSpace(out.String())
+	out.Reset()
+
+	// Self-parenting → exit 1 parent_is_self.
+	if code := run("demote", child, child, "--json"); code != cli.ExitUsage || !strings.Contains(errb.String(), `"parent_is_self"`) {
+		t.Fatalf("demote self: exit %d stderr %q", code, errb.String())
+	}
+	errb.Reset()
+
+	// Demote child under pA.
+	if code := run("demote", core.ShortID(child), core.ShortID(pA), "--json"); code != 0 {
+		t.Fatalf("demote: exit %d: %s", code, errb.String())
+	}
+	var demoted core.Task
+	mustJSON(t, out.Bytes(), &demoted)
+	if demoted.ParentID == nil || *demoted.ParentID != pA || demoted.BoardRank != nil {
+		t.Fatalf("unexpected demoted task: %+v", demoted)
+	}
+
+	// pA now has a child → demoting pA under pB fails with task_has_children.
+	errb.Reset()
+	if code := run("demote", pA, pB, "--json"); code != cli.ExitUsage || !strings.Contains(errb.String(), `"task_has_children"`) {
+		t.Fatalf("demote parent with children: exit %d stderr %q", code, errb.String())
+	}
+	errb.Reset()
+
+	// Alias `reparent` moves child to pB.
+	out.Reset()
+	if code := run("reparent", child, pB, "--json"); code != 0 {
+		t.Fatalf("reparent: exit %d: %s", code, errb.String())
+	}
+	var moved core.Task
+	mustJSON(t, out.Bytes(), &moved)
+	if moved.ParentID == nil || *moved.ParentID != pB {
+		t.Fatalf("expected moved under pB, got %+v", moved)
+	}
+}
+
 // --- show ---------------------------------------------------------------------
 
 func TestShow(t *testing.T) {

@@ -10,6 +10,7 @@
   import NewTaskDialog from './components/NewTaskDialog.svelte'
   import SettingsDialog from './components/SettingsDialog.svelte'
   import ConfirmDialog from './components/ConfirmDialog.svelte'
+  import ParentPickerDialog from './components/ParentPickerDialog.svelte'
   import InstallDialog from './components/InstallDialog.svelte'
   import { api, errMsg, type Activity, type GUISettings, type InstallStatus, type Status, type Task } from './lib/api'
   import { defaultSettings } from './lib/settings'
@@ -108,6 +109,9 @@
   let confirmTask = $state<any | null>(null)
   let confirmMsg = $state('')
   let deleting = $state(false)
+  let reparentTask = $state<any | null>(null)
+  let reparenting = $state(false)
+  let reparentSeq = $state(0)
   let dbPath = $state('')
 
   let status = $state<Status | ''>('')
@@ -576,6 +580,32 @@
     }
   }
 
+  function requestReparent(t: any) {
+    if (reparenting) return
+    reparentTask = t
+  }
+
+  async function doReparent(parent: Task) {
+    const t = reparentTask
+    if (!t || reparenting) return
+    reparenting = true
+    try {
+      await api.setParent(t.id, parent.id)
+      reparentTask = null
+      reparentSeq++
+      showToast(
+        t.parent_id
+          ? `Moved “${t.title}” under “${parent.title}”`
+          : `Made “${t.title}” a sub-task of “${parent.title}”`,
+        'info'
+      )
+    } catch (e) {
+      showToast(errMsg(e))
+    } finally {
+      reparenting = false
+    }
+  }
+
   function onKeydown(e: KeyboardEvent) {
     const el = e.target as HTMLElement | null
     const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
@@ -585,6 +615,7 @@
       if (document.querySelector('[data-cwd-field] [role="combobox"][aria-expanded="true"]')) return
       e.preventDefault()
       if (confirmTask) confirmTask = null
+      else if (reparentTask && !reparenting) reparentTask = null
       else if (installOpen && !installBusy) installOpen = false
       else if (settingsOpen) settingsOpen = false
       else if (dialogOpen) {
@@ -604,6 +635,7 @@
       selectedId &&
       !dialogOpen &&
       !confirmTask &&
+      !reparentTask &&
       !typing &&
       !e.metaKey &&
       !e.ctrlKey &&
@@ -627,7 +659,7 @@
         openNewTask()
         break
       case 'Delete':
-        if (!dialogOpen && !confirmTask && selectedTask) {
+        if (!dialogOpen && !confirmTask && !reparentTask && selectedTask) {
           e.preventDefault()
           requestDelete(selectedTask)
         }
@@ -1170,6 +1202,7 @@
           onSelect={selectTask}
           onUnpin={toggleFocusTask}
           onMove={moveFocus}
+          onReparent={requestReparent}
           onGoToBoard={() => setView('board')}
           {priorityFilter}
           onPriorityFilterChange={setPriorityFilter}
@@ -1192,6 +1225,7 @@
           onQuickAdd={(s: Status) => openNewTask({ status: s })}
           focusFull={focusIds.length >= FOCUS_MAX}
           onToggleFocus={toggleFocusTask}
+          onReparent={requestReparent}
           onArchived={(n: number) => showToast(`Archived ${n} task${n === 1 ? '' : 's'}`, 'info')}
           onError={showToast}
           onToast={showToast}
@@ -1262,6 +1296,8 @@
         onSelectParent={selectTask}
         focused={selectedTask.focus_rank != null}
         onToggleFocus={toggleFocusTask}
+        onReparent={requestReparent}
+        refreshSeq={reparentSeq}
         onAddSubtask={(pid) => openNewTask({ parentId: pid, status: 'pending' })}
       />
     </div>
@@ -1313,6 +1349,17 @@
     confirmLabel="Delete"
     onCancel={() => (confirmTask = null)}
     onConfirm={doDelete}
+  />
+
+  <ParentPickerDialog
+    open={reparentTask !== null}
+    task={reparentTask}
+    busy={reparenting}
+    onClose={() => {
+      if (!reparenting) reparentTask = null
+    }}
+    onPick={doReparent}
+    onError={showToast}
   />
 
   {#if toast}

@@ -174,6 +174,10 @@ export function PickDirectory(arg1) {
   return window['go']['main']['App']['PickDirectory'](arg1);
 }
 
+export function PromoteTask(arg1) {
+  return window['go']['main']['App']['PromoteTask'](arg1);
+}
+
 export function Quit() {
   return window['go']['main']['App']['Quit']();
 }
@@ -208,6 +212,10 @@ export function SetSlackLinks(arg1, arg2) {
 
 export function SetStatus(arg1, arg2) {
   return window['go']['main']['App']['SetStatus'](arg1, arg2);
+}
+
+export function SetTaskParent(arg1, arg2) {
+  return window['go']['main']['App']['SetTaskParent'](arg1, arg2);
 }
 
 export function ShowWindow() {

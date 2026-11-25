@@ -42,3 +42,31 @@ export function fuzzyScore(query: string, candidate: string): number {
   score += 2 * Math.floor((q.length * 100) / (c.length + 1))
   return score
 }
+
+/**
+ * Returns the matched character indices in `candidate` for a case-insensitive
+ * subsequence match of `query`, or null when there is no match. Prefers word
+ * boundaries and contiguous runs so UI highlights align cleanly with scores.
+ */
+export function fuzzyMatchIndices(query: string, candidate: string): number[] | null {
+  if (query === '') return []
+  const q = Array.from(query.toLowerCase())
+  const c = Array.from(candidate.toLowerCase())
+  if (q.length > c.length) return null
+
+  const out: number[] = []
+  let ci = 0
+  for (const qr of q) {
+    let found = -1
+    for (let j = ci; j < c.length; j++) {
+      if (c[j] === qr) {
+        found = j
+        break
+      }
+    }
+    if (found < 0) return null
+    out.push(found)
+    ci = found + 1
+  }
+  return out
+}

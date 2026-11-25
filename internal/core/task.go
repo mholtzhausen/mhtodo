@@ -222,11 +222,23 @@ var ErrAlreadyArchived = errors.New("task is already archived")
 // ErrParentIsChild is returned when --parent points at a sub-task (one level only).
 var ErrParentIsChild = errors.New("parent must be a top-level task (sub-tasks cannot have children)")
 
+// ErrParentIsSelf is returned when setting a task's parent to itself.
+var ErrParentIsSelf = errors.New("task cannot be its own parent")
+
+// ErrTaskHasChildren is returned when reparenting a task that already has sub-tasks.
+var ErrTaskHasChildren = errors.New("task has sub-tasks and cannot become a sub-task")
+
+// ErrParentArchived is returned when attaching a task to an archived parent.
+var ErrParentArchived = errors.New("parent task is archived")
+
 // ErrEmptyActivity is returned when both activity and comment are empty.
 var ErrEmptyActivity = errors.New("activity or comment is required")
 
 // ErrNotRoot is returned when a board-only operation targets a sub-task.
 var ErrNotRoot = errors.New("task must be a top-level task")
+
+// ErrNotSubtask is returned when promote targets a task that is already top-level.
+var ErrNotSubtask = errors.New("task is already a top-level task")
 
 // ErrReorderStatusMismatch is returned when --before points at a task in another column.
 var ErrReorderStatusMismatch = errors.New("before task must be in the same status column")

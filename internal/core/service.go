@@ -564,6 +564,138 @@ func (s *Service) Unarchive(ctx context.Context, ref string) (Task, error) {
 	return t, nil
 }
 
+// Promote turns a sub-task into a top-level task: clears parent_id, appends it
+// to the end of its current status column's board order, and bumps updated_at.
+// All other fields and activities are preserved. Returns ErrNotSubtask if the
+// task is already top-level, or ErrAlreadyArchived if archived. If detaching
+// would unhide a focused former parent past FocusMax visible lanes, the former
+// parent is unpinned so the visible Focus lanes stay within the cap.
+func (s *Service) Promote(ctx context.Context, ref string) (Task, error) {
+	t, err := s.Get(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.ArchivedAt != nil {
+		return Task{}, ErrAlreadyArchived
+	}
+	if t.ParentID == nil {
+		return Task{}, ErrNotSubtask
+	}
+	oldParentID := *t.ParentID
+
+	t.ParentID = nil
+	t.UpdatedAt = s.now()
+	if err := s.assignEndBoardRank(ctx, &t); err != nil {
+		return Task{}, err
+	}
+
+	unpinParent := false
+	if t.FocusRank != nil {
+		pins, err := s.repo.ListFocused(ctx)
+		if err != nil {
+			return Task{}, err
+		}
+		after := make([]Task, len(pins))
+		for i, p := range pins {
+			if p.ID == t.ID {
+				p.ParentID = nil
+			}
+			after[i] = p
+		}
+		if len(FocusLanes(after)) > FocusMax {
+			unpinParent = true
+		}
+	}
+
+	if err := s.repo.Update(ctx, t); err != nil {
+		return Task{}, err
+	}
+	if unpinParent {
+		if err := s.repo.UpdateFocusRank(ctx, oldParentID, nil); err != nil {
+			return Task{}, err
+		}
+	}
+	return t, nil
+}
+
+// SetParent attaches a task as a one-level sub-task of parentRef (either
+// demoting a root task or moving an existing sub-task to a different parent).
+// Clears board_rank and bumps updated_at; preserves all other fields and
+// activities. Refuses self-parenting, archived tasks/parents, sub-task parents
+// (ErrParentIsChild), and tasks that already have children (ErrTaskHasChildren).
+// Re-attaching to the same parent is a no-op. If moving a focused sub-task off
+// a focused former parent would exceed FocusMax visible lanes, the former
+// parent is unpinned so visible lanes stay within the cap.
+func (s *Service) SetParent(ctx context.Context, ref, parentRef string) (Task, error) {
+	t, err := s.Get(ctx, ref)
+	if err != nil {
+		return Task{}, err
+	}
+	if t.ArchivedAt != nil {
+		return Task{}, ErrAlreadyArchived
+	}
+	parent, err := s.Get(ctx, parentRef)
+	if err != nil {
+		return Task{}, err
+	}
+	if parent.ArchivedAt != nil {
+		return Task{}, ErrParentArchived
+	}
+	if t.ID == parent.ID {
+		return Task{}, ErrParentIsSelf
+	}
+	if parent.ParentID != nil {
+		return Task{}, ErrParentIsChild
+	}
+	if t.ParentID != nil && *t.ParentID == parent.ID {
+		return t, nil
+	}
+	children, err := s.repo.CountChildren(ctx, t.ID)
+	if err != nil {
+		return Task{}, err
+	}
+	if children > 0 {
+		return Task{}, ErrTaskHasChildren
+	}
+
+	var oldParentID string
+	if t.ParentID != nil {
+		oldParentID = *t.ParentID
+	}
+	pid := parent.ID
+	t.ParentID = &pid
+	t.BoardRank = nil
+	t.UpdatedAt = s.now()
+
+	unpinOldParent := false
+	if oldParentID != "" && t.FocusRank != nil {
+		pins, err := s.repo.ListFocused(ctx)
+		if err != nil {
+			return Task{}, err
+		}
+		after := make([]Task, len(pins))
+		for i, p := range pins {
+			if p.ID == t.ID {
+				p.ParentID = &pid
+			}
+			after[i] = p
+		}
+		if len(FocusLanes(after)) > FocusMax {
+			unpinOldParent = true
+		}
+	}
+
+	if err := s.repo.Update(ctx, t); err != nil {
+		return Task{}, err
+	}
+	if unpinOldParent {
+		if err := s.repo.UpdateFocusRank(ctx, oldParentID, nil); err != nil {
+			return Task{}, err
+		}
+	}
+	return t, nil
+}
+
 // CountChildren returns how many direct sub-tasks a task has (for delete confirm).
 func (s *Service) CountChildren(ctx context.Context, ref string) (int, error) {
 	id, err := s.ResolveID(ctx, ref)

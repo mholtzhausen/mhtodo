@@ -8,6 +8,8 @@
   import ProgressControl from './ProgressControl.svelte'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import DemoteIcon from './DemoteIcon.svelte'
+  import PromoteIcon from './PromoteIcon.svelte'
   import InlineEdit from './InlineEdit.svelte'
   import SlackLinks from './SlackLinks.svelte'
   import StatusPicker from './StatusPicker.svelte'
@@ -24,6 +26,7 @@
     onSelect,
     onUnpin,
     onMove,
+    onReparent,
     onGoToBoard,
     priorityFilter = [],
     onPriorityFilterChange,
@@ -39,6 +42,7 @@
     onSelect: (id: string) => void
     onUnpin: (id: string) => void
     onMove: (id: string, beforeId: string | null) => void
+    onReparent?: (task: any) => void
     onGoToBoard: () => void
     /** Header priority filter: hides non-matching lanes (a root stays if a sub-task matches). */
     priorityFilter?: readonly Priority[]
@@ -187,6 +191,15 @@
     }
   }
 
+  async function promoteSubtask(c: any) {
+    try {
+      await api.promote(c.id)
+      onToast?.(`Promoted “${c.title}” to a full task`, 'info')
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
   // Per-lane drafts for the quick-add sub-task and activity forms.
   let subDraft = $state<Record<string, string>>({})
   let actDraft = $state<Record<string, string>>({})
@@ -325,6 +338,17 @@
               idleClass="opacity-40"
               onPick={(p) => void setPriority(t, p)}
             />
+            {#if onReparent && !isSub && kids.length === 0}
+              <button
+                type="button"
+                onclick={() => onReparent(t)}
+                title="Make sub-task of another task"
+                aria-label={`Make “${t.title}” a sub-task of another task`}
+                class="rounded-control p-0.5 text-ink-3 transition-colors hover:bg-white/5 hover:text-accent-hi"
+              >
+                <DemoteIcon class="h-3.5 w-3.5" />
+              </button>
+            {/if}
             <button
               type="button"
               onclick={() => onSelect(t.id)}
@@ -364,20 +388,42 @@
           <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
             <div>
               {#if parent}
-                <button
-                  type="button"
-                  onclick={() => onSelect(t.parent_id)}
-                  class="mb-1.5 flex max-w-full items-center gap-1.5 rounded-control border border-line-soft bg-card/60 px-2 py-1 text-left text-[11px] text-ink-3 hover:border-accent/40 hover:text-ink-2"
-                  title={parent.focus_rank != null
-                    ? 'Parent is pinned too — its lane returns when this sub-task leaves focus'
-                    : 'Open parent ticket'}
-                >
-                  <span class="flex-none text-[10px] uppercase tracking-[0.06em] text-ink-3/70">Parent</span>
-                  <span class="min-w-0 flex-1 truncate">{parent.title}</span>
-                  {#if parent.focus_rank != null}
-                    <FocusIcon class="h-3 w-3 flex-none text-accent/70" filled />
+                <div class="mb-1.5 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onclick={() => onSelect(t.parent_id)}
+                    class="flex min-w-0 flex-1 items-center gap-1.5 rounded-control border border-line-soft bg-card/60 px-2 py-1 text-left text-[11px] text-ink-3 hover:border-accent/40 hover:text-ink-2"
+                    title={parent.focus_rank != null
+                      ? 'Parent is pinned too — its lane returns when this sub-task leaves focus'
+                      : 'Open parent ticket'}
+                  >
+                    <span class="flex-none text-[10px] uppercase tracking-[0.06em] text-ink-3/70">Parent</span>
+                    <span class="min-w-0 flex-1 truncate">{parent.title}</span>
+                    {#if parent.focus_rank != null}
+                      <FocusIcon class="h-3 w-3 flex-none text-accent/70" filled />
+                    {/if}
+                  </button>
+                  {#if onReparent}
+                    <button
+                      type="button"
+                      onclick={() => onReparent(t)}
+                      title="Move this sub-task to another parent task"
+                      aria-label={`Move “${t.title}” to another parent task`}
+                      class="flex-none rounded-control border border-line-soft bg-card/60 p-1 text-ink-3 transition-colors hover:border-accent/40 hover:text-accent-hi"
+                    >
+                      <DemoteIcon class="h-3 w-3" />
+                    </button>
                   {/if}
-                </button>
+                  <button
+                    type="button"
+                    onclick={() => void promoteSubtask(t)}
+                    title="Promote this sub-task to a full task"
+                    aria-label={`Promote “${t.title}” to a full task`}
+                    class="flex-none rounded-control border border-line-soft bg-card/60 p-1 text-ink-3 transition-colors hover:border-accent/40 hover:text-accent-hi"
+                  >
+                    <PromoteIcon class="h-3 w-3" />
+                  </button>
+                </div>
               {/if}
               <InlineEdit
                 value={t.title}
@@ -479,6 +525,24 @@
                             <span>·</span>
                             <span>{relTime(c.updated_at)}</span>
                             <div class="flex-1"></div>
+                            {#if onReparent}
+                              <button
+                                type="button"
+                                onclick={() => onReparent(c)}
+                                title="Move sub-task to another parent task"
+                                class="rounded-control px-1.5 py-0.5 text-ink-3 hover:bg-white/5 hover:text-accent-hi"
+                              >
+                                Move
+                              </button>
+                            {/if}
+                            <button
+                              type="button"
+                              onclick={() => void promoteSubtask(c)}
+                              title="Promote sub-task to a full task"
+                              class="rounded-control px-1.5 py-0.5 text-ink-3 hover:bg-white/5 hover:text-accent-hi"
+                            >
+                              Promote
+                            </button>
                             <button
                               type="button"
                               onclick={() => onSelect(c.id)}

@@ -4,7 +4,7 @@
 
 **mhtodo** is a personal todo manager written in Go with two frontends over one shared core:
 
-- **CLI** (`mhtodo add|list|show|open|edit|status|done|reorder|focus|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
+- **CLI** (`mhtodo add|list|show|open|edit|status|done|promote|demote|reorder|focus|rm|path|slack|ai|install|update|service|template|theme`) — the interface for **agentic tool
  access**. Scriptable, `--json` everywhere, stable exit codes and JSON field names (a documented contract).
  `mhtodo ai` installs/updates `~/.claude/skills/mhtodo/SKILL.md` (workflow skill) and strips
  legacy hooks/settings/integration manifests; `--check` reports only.
@@ -70,7 +70,11 @@ Single-task archive: `mhtodo archive ID` and the card archive action (done tasks
 Activity view, `review` status (after waiting). See
 [`.agent/plan/`](.agent/plan/README.md). New sub-tasks in the GUI seed cwd, Slack
 thread, and human-only from the parent; `include_in_report` defaults to false (CLI `add --parent`
-likewise).
+likewise). Sub-tasks can be promoted to top-level tasks (`Service.Promote`, `mhtodo promote ID`,
+`App.PromoteTask`; GUI promote actions in TaskDetail, Board sub-task rows, and Focus view) and
+tasks can be attached/moved under a top-level parent (`Service.SetParent`, `mhtodo demote ID PARENT_ID`
+/ alias `reparent`, `App.SetTaskParent`; GUI fuzzy `ParentPickerDialog` modal triggered from
+TaskDetail, Board cards/sub-task rows, and Focus view).
 
 **Also:** `mhtodo ai` installs the Claude skill from embedded
 [`internal/aiskill/SKILL.md`](internal/aiskill/SKILL.md) (named workflows; no hooks). The live

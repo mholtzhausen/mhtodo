@@ -10,6 +10,8 @@
   } from '../lib/settings'
   import TaskActivityActions from './TaskActivityActions.svelte'
   import FocusIcon from './FocusIcon.svelte'
+  import DemoteIcon from './DemoteIcon.svelte'
+  import PromoteIcon from './PromoteIcon.svelte'
   import PriorityPicker from './PriorityPicker.svelte'
   import type { Priority } from '../lib/priority'
   import { FOCUS_MAX } from '../lib/focus'
@@ -27,6 +29,7 @@
     zedBinaryOk = false,
     focusFull = false,
     onToggleFocus,
+    onReparent,
     onSelect,
     onQuickAdd,
     onArchived,
@@ -45,6 +48,7 @@
     zedBinaryOk?: boolean
     focusFull?: boolean
     onToggleFocus?: (id: string) => void
+    onReparent?: (task: any) => void
     onSelect: (id: string) => void
     onQuickAdd: (s: Status) => void
     onArchived?: (n: number) => void
@@ -483,6 +487,15 @@
     }
   }
 
+  async function promoteSubtask(c: any) {
+    try {
+      await api.promote(c.id)
+      onToast?.(`Promoted “${c.title}” to a full task`, 'info')
+    } catch (err) {
+      onError?.(errMsg(err))
+    }
+  }
+
   const rootCount = $derived(tasks.filter((t) => !t.parent_id).length)
 </script>
 
@@ -778,6 +791,34 @@
                           <span class="min-w-0 flex-1 truncate text-[11px] text-ink-2">{c.title}</span>
                           <span class="font-mono text-[10px] text-ink-3">{c.progress}%</span>
                         </button>
+                        {#if onReparent}
+                          <button
+                            type="button"
+                            onclick={(e) => {
+                              e.stopPropagation()
+                              onReparent(c)
+                            }}
+                            ondragstart={(e) => e.preventDefault()}
+                            title="Move to another parent task"
+                            aria-label={`Move “${c.title}” to another parent task`}
+                            class="rounded-control p-0.5 text-ink-3 opacity-0 transition-opacity hover:text-accent-hi group-hover/sub:opacity-100 focus:opacity-100"
+                          >
+                            <DemoteIcon class="h-3 w-3" />
+                          </button>
+                        {/if}
+                        <button
+                          type="button"
+                          onclick={(e) => {
+                            e.stopPropagation()
+                            void promoteSubtask(c)
+                          }}
+                          ondragstart={(e) => e.preventDefault()}
+                          title="Promote to full task"
+                          aria-label={`Promote “${c.title}” to full task`}
+                          class="rounded-control p-0.5 text-ink-3 opacity-0 transition-opacity hover:text-accent-hi group-hover/sub:opacity-100 focus:opacity-100"
+                        >
+                          <PromoteIcon class="h-3 w-3" />
+                        </button>
                         <PriorityPicker
                           value={c.priority}
                           iconClass="h-3 w-3"
@@ -788,7 +829,24 @@
                     {/each}
                   </ul>
                 {/if}
-                <div class="flex justify-end px-2 pb-2 pt-1">
+                <div class="flex items-center justify-between px-2 pb-2 pt-1">
+                  <div>
+                    {#if onReparent && (childrenOf[t.id]?.length ?? 0) === 0}
+                      <button
+                        type="button"
+                        onclick={(e) => {
+                          e.stopPropagation()
+                          onReparent(t)
+                        }}
+                        ondragstart={(e) => e.preventDefault()}
+                        title="Make sub-task of another task"
+                        aria-label={`Make “${t.title}” a sub-task of another task`}
+                        class="rounded-control p-1 text-ink-3 opacity-0 transition-opacity hover:bg-white/5 hover:text-accent-hi group-hover/card:opacity-100 focus:opacity-100"
+                      >
+                        <DemoteIcon class="h-3.5 w-3.5" />
+                      </button>
+                    {/if}
+                  </div>
                   <TaskActivityActions
                     task={t}
                     {settings}

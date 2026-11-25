@@ -381,6 +381,25 @@ func (a *App) Unarchive(id string) (core.Task, error) {
 	return t, err
 }
 
+// PromoteTask maps to CLI `promote ID`: turns a sub-task into a top-level task.
+func (a *App) PromoteTask(id string) (core.Task, error) {
+	t, err := a.svc.Promote(a.ctx, id)
+	if err == nil {
+		a.emitChanged(t.ID, "promote")
+	}
+	return t, err
+}
+
+// SetTaskParent maps to CLI `demote ID PARENT_ID`: attaches a task as a
+// sub-task of another top-level task (or moves an existing sub-task).
+func (a *App) SetTaskParent(id, parentID string) (core.Task, error) {
+	t, err := a.svc.SetParent(a.ctx, id, parentID)
+	if err == nil {
+		a.emitChanged(t.ID, "reparent")
+	}
+	return t, err
+}
+
 // DeleteTask maps to CLI `rm`; returns the deleted task. Children cascade via FK.
 func (a *App) DeleteTask(id string) (core.Task, error) {
 	t, err := a.svc.Delete(a.ctx, id)

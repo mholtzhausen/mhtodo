@@ -700,3 +700,258 @@ func TestMigrateStatusAndIceboxListDefault(t *testing.T) {
 		t.Fatalf("after migrate want 3 pending, got %d", len(list))
 	}
 }
+
+func TestPromoteSubtask(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	parent, err := svc.Create(ctx, core.CreateInput{Title: "Parent", Status: core.StatusWIP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Promoting a root task fails with ErrNotSubtask.
+	if _, err := svc.Promote(ctx, parent.ID); !errors.Is(err, core.ErrNotSubtask) {
+		t.Fatalf("promote root: want ErrNotSubtask, got %v", err)
+	}
+
+	sub, err := svc.Create(ctx, core.CreateInput{
+		Title:       "Sub-task",
+		Description: "Detailed notes",
+		Status:      core.StatusWIP,
+		Progress:    40,
+		ParentID:    parent.ID,
+		Cwd:         "/tmp/work",
+		Priority:    core.PriorityHigh,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AddActivity(ctx, sub.ID, core.ActivityInput{Activity: "Note", Comment: "keep me"}); err != nil {
+		t.Fatal(err)
+	}
+
+	promoted, err := svc.Promote(ctx, core.ShortID(sub.ID))
+	if err != nil {
+		t.Fatalf("promote sub-task: %v", err)
+	}
+	if promoted.ParentID != nil {
+		t.Fatalf("expected nil ParentID, got %v", *promoted.ParentID)
+	}
+	if promoted.BoardRank == nil || *promoted.BoardRank <= *parent.BoardRank {
+		t.Fatalf("expected board_rank appended after parent (%v), got %v", parent.BoardRank, promoted.BoardRank)
+	}
+	if promoted.Title != "Sub-task" || promoted.Description != "Detailed notes" || promoted.Status != core.StatusWIP ||
+		promoted.Progress != 40 || promoted.Cwd != "/tmp/work" || promoted.Priority != core.PriorityHigh {
+		t.Fatalf("fields not preserved: %+v", promoted)
+	}
+	// Activities stay attached.
+	acts, err := svc.ListActivity(ctx, core.ActivityFilter{TaskIDs: []string{promoted.ID}})
+	if err != nil || len(acts) != 1 {
+		t.Fatalf("expected 1 preserved activity, got %d (err=%v)", len(acts), err)
+	}
+	// Promoted task can now have sub-tasks of its own.
+	if _, err := svc.Create(ctx, core.CreateInput{Title: "Grandchild now child", ParentID: promoted.ID}); err != nil {
+		t.Fatalf("add child to promoted task: %v", err)
+	}
+	// Parent no longer has sub-tasks.
+	n, err := svc.CountChildren(ctx, parent.ID)
+	if err != nil || n != 0 {
+		t.Fatalf("parent children = %d (err=%v), want 0", n, err)
+	}
+
+	// Archived sub-task cannot be promoted.
+	archSub, err := svc.Create(ctx, core.CreateInput{Title: "Done sub", Status: core.StatusDone, ParentID: parent.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Archive(ctx, archSub.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Promote(ctx, archSub.ID); !errors.Is(err, core.ErrAlreadyArchived) {
+		t.Fatalf("promote archived sub-task: want ErrAlreadyArchived, got %v", err)
+	}
+}
+
+func TestPromoteFocusInteraction(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	// Under cap: promoting a focused sub-task of a focused parent unhides the parent so both show.
+	p1, err := svc.Create(ctx, core.CreateInput{Title: "P1", Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s1, err := svc.Create(ctx, core.CreateInput{Title: "S1", ParentID: p1.ID, Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Promote(ctx, s1.ID); err != nil {
+		t.Fatal(err)
+	}
+	lanes, err := svc.ListFocus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lanes) != 2 || lanes[0].ID != p1.ID || lanes[1].ID != s1.ID {
+		t.Fatalf("under cap expected [p1, s1], got %+v", lanes)
+	}
+
+	// At FocusMax cap: promoting a focused sub-task whose parent is also focused
+	// unpins the hidden parent so visible lanes stay at FocusMax.
+	for i := 2; i < core.FocusMax; i++ {
+		if _, err := svc.Create(ctx, core.CreateInput{Title: "Fill", Focus: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// p1 is one of the 6 lanes; focusing a new sub-task of p1 replaces p1's lane (still 6 visible).
+	s2, err := svc.Create(ctx, core.CreateInput{Title: "S2", ParentID: p1.ID, Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Promote(ctx, s2.ID); err != nil {
+		t.Fatal(err)
+	}
+	lanes, err = svc.ListFocus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lanes) != core.FocusMax {
+		t.Fatalf("expected %d focus lanes after promote at cap, got %d", core.FocusMax, len(lanes))
+	}
+	gotP1, err := svc.Get(ctx, p1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotP1.FocusRank != nil {
+		t.Fatalf("expected hidden parent unpinned at cap, got focus_rank=%v", *gotP1.FocusRank)
+	}
+}
+
+func TestSetParent(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	parent1, err := svc.Create(ctx, core.CreateInput{Title: "Parent 1", Status: core.StatusWIP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent2, err := svc.Create(ctx, core.CreateInput{Title: "Parent 2", Status: core.StatusPending})
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := svc.Create(ctx, core.CreateInput{
+		Title:       "Standalone",
+		Description: "keep notes",
+		Status:      core.StatusWIP,
+		Progress:    30,
+		Priority:    core.PriorityMedium,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AddActivity(ctx, task.ID, core.ActivityInput{Activity: "Note", Comment: "stays"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Self-parenting is refused.
+	if _, err := svc.SetParent(ctx, task.ID, task.ID); !errors.Is(err, core.ErrParentIsSelf) {
+		t.Fatalf("self-parent: want ErrParentIsSelf, got %v", err)
+	}
+
+	// Demote standalone root under parent1.
+	demoted, err := svc.SetParent(ctx, core.ShortID(task.ID), core.ShortID(parent1.ID))
+	if err != nil {
+		t.Fatalf("demote: %v", err)
+	}
+	if demoted.ParentID == nil || *demoted.ParentID != parent1.ID {
+		t.Fatalf("expected ParentID %s, got %v", parent1.ID, demoted.ParentID)
+	}
+	if demoted.BoardRank != nil {
+		t.Fatalf("expected nil BoardRank on sub-task, got %v", *demoted.BoardRank)
+	}
+	if demoted.Title != "Standalone" || demoted.Description != "keep notes" || demoted.Progress != 30 || demoted.Priority != core.PriorityMedium {
+		t.Fatalf("fields not preserved: %+v", demoted)
+	}
+	acts, err := svc.ListActivity(ctx, core.ActivityFilter{TaskIDs: []string{demoted.ID}})
+	if err != nil || len(acts) != 1 {
+		t.Fatalf("expected 1 preserved activity, got %d (err=%v)", len(acts), err)
+	}
+
+	// Cannot attach another task to a sub-task (one-level nesting only).
+	if _, err := svc.SetParent(ctx, parent2.ID, demoted.ID); !errors.Is(err, core.ErrParentIsChild) {
+		t.Fatalf("parent is child: want ErrParentIsChild, got %v", err)
+	}
+	// A parent with children cannot itself become a sub-task.
+	if _, err := svc.SetParent(ctx, parent1.ID, parent2.ID); !errors.Is(err, core.ErrTaskHasChildren) {
+		t.Fatalf("task has children: want ErrTaskHasChildren, got %v", err)
+	}
+
+	// Re-attaching to the same parent is a no-op.
+	same, err := svc.SetParent(ctx, demoted.ID, parent1.ID)
+	if err != nil || same.ParentID == nil || *same.ParentID != parent1.ID {
+		t.Fatalf("same parent no-op: task=%+v err=%v", same, err)
+	}
+
+	// Moving sub-task to a different root parent works.
+	moved, err := svc.SetParent(ctx, demoted.ID, parent2.ID)
+	if err != nil || moved.ParentID == nil || *moved.ParentID != parent2.ID {
+		t.Fatalf("move parent: task=%+v err=%v", moved, err)
+	}
+
+	// Archived parent or archived task is refused.
+	doneParent, err := svc.Create(ctx, core.CreateInput{Title: "Done P", Status: core.StatusDone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Archive(ctx, doneParent.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetParent(ctx, parent1.ID, doneParent.ID); !errors.Is(err, core.ErrParentArchived) {
+		t.Fatalf("archived parent: want ErrParentArchived, got %v", err)
+	}
+	if _, err := svc.SetParent(ctx, doneParent.ID, parent1.ID); !errors.Is(err, core.ErrAlreadyArchived) {
+		t.Fatalf("archived task: want ErrAlreadyArchived, got %v", err)
+	}
+}
+
+func TestSetParentFocusCap(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+
+	p1, err := svc.Create(ctx, core.CreateInput{Title: "P1", Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, err := svc.Create(ctx, core.CreateInput{Title: "P2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i < core.FocusMax; i++ {
+		if _, err := svc.Create(ctx, core.CreateInput{Title: "Fill", Focus: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Focus sub-task of p1 (replaces p1's lane; total stays FocusMax).
+	s, err := svc.Create(ctx, core.CreateInput{Title: "Sub", ParentID: p1.ID, Focus: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Move s to unfocused p2: detaching from p1 would otherwise unhide p1 → 7 lanes, so p1 is unpinned.
+	if _, err := svc.SetParent(ctx, s.ID, p2.ID); err != nil {
+		t.Fatal(err)
+	}
+	lanes, err := svc.ListFocus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lanes) != core.FocusMax {
+		t.Fatalf("expected %d focus lanes, got %d", core.FocusMax, len(lanes))
+	}
+	gotP1, err := svc.Get(ctx, p1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotP1.FocusRank != nil {
+		t.Fatalf("expected old hidden parent unpinned at cap, got %v", *gotP1.FocusRank)
+	}
+}

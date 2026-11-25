@@ -239,6 +239,12 @@ export const api = {
   unarchive(id: string) {
     return App.Unarchive(id)
   },
+  promote(id: string): Promise<Task> {
+    return App.PromoteTask(id) as Promise<Task>
+  },
+  setParent(id: string, parentId: string): Promise<Task> {
+    return App.SetTaskParent(id, parentId) as Promise<Task>
+  },
   remove(id: string) {
     return App.DeleteTask(id)
   },

@@ -90,6 +90,8 @@ export function OpenZedTicket(arg1:string):Promise<void>;
 
 export function PickDirectory(arg1:string):Promise<string>;
 
+export function PromoteTask(arg1:string):Promise<core.Task>;
+
 export function Quit():Promise<void>;
 
 export function ReorderBoardTask(arg1:string,arg2:string):Promise<core.Task>;
@@ -107,6 +109,8 @@ export function SetPriority(arg1:string,arg2:core.Priority):Promise<core.Task>;
 export function SetSlackLinks(arg1:string,arg2:Array<core.SlackLink>):Promise<core.Task>;
 
 export function SetStatus(arg1:string,arg2:core.Status):Promise<core.Task>;
+
+export function SetTaskParent(arg1:string,arg2:string):Promise<core.Task>;
 
 export function ShowWindow():Promise<void>;
 
